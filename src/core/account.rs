@@ -577,10 +577,12 @@ impl AccountState {
         // the rest of the node (consensus, RPC) checks, so an account that
         // was slashed at the account-state layer must also become inactive in
         // the registry — otherwise the same offence would be paid-for twice.
+        // Tur 12 / BUG #6: apply_slashing feeds double-sign evidence — label
+        // the registry mirror as DoubleSign, not LivenessFault (audit trail).
         let _ = self.registry.slash(
             *address,
             crate::registry::role::roles::VALIDATOR,
-            crate::registry::permissionless::SlashingCondition::LivenessFault,
+            crate::registry::permissionless::SlashingCondition::DoubleSign,
             slash_ratio_fixed,
         );
 

@@ -134,11 +134,39 @@ impl Default for PoWFinalityAdapter {
     fn default() -> Self {
         Self {
             default_min_confirmations: 64,
-            // Conservative non-zero floor: each confirmation must carry at least
-            // this much declared work. Tunable per deployment.
-            min_work_per_confirmation: 1,
+            // Tur 12 / BUG #9: non-trivial floor so depth claims must be
+            // backed by declared work (still not a full light-client).
+            min_work_per_confirmation: 1_000,
         }
     }
+}
+
+/// Count leading zero bits in a 32-byte block hash (big-endian byte order).
+/// Used as a minimal PoW difficulty check for declared domain heads.
+pub fn leading_zero_bits(hash: &crate::domain::Hash32) -> u32 {
+    let mut bits = 0u32;
+    for b in hash {
+        if *b == 0 {
+            bits += 8;
+        } else {
+            bits += b.leading_zeros();
+            break;
+        }
+    }
+    bits
+}
+
+/// Map domain config_hash / chain parameters to a minimum leading-zero
+/// difficulty. When no explicit difficulty is encoded, require a modest
+/// floor so totally random hashes cannot finalize.
+pub fn pow_min_difficulty_bits(domain: &crate::domain::ConsensusDomain) -> u32 {
+    // Optional override: config_hash[0..4] = b"DIFF", config_hash[4..8] = u32 LE bits.
+    // Otherwise use a conservative default floor (8 leading zero bits).
+    if &domain.config_hash[0..4] == b"DIFF" {
+        let encoded = u32::from_le_bytes(domain.config_hash[4..8].try_into().unwrap_or([0; 4]));
+        return encoded.clamp(1, 128);
+    }
+    8
 }
 
 impl DomainFinalityAdapter for PoWFinalityAdapter {
@@ -197,7 +225,18 @@ impl DomainFinalityAdapter for PoWFinalityAdapter {
                     ));
                 }
 
-                // (5) Depth threshold.
+                // (5) Tur 12 / BUG #9: the committed domain block hash must
+                // itself exhibit proof-of-work (leading zero bits). Self-declared
+                // confirmations alone are not enough for Finalized status.
+                let min_bits = pow_min_difficulty_bits(domain);
+                let observed_bits = leading_zero_bits(declared_head_hash);
+                if observed_bits < min_bits {
+                    return Ok(FinalityStatus::Rejected(format!(
+                        "PoW domain block hash has only {observed_bits} leading zero bits, need >= {min_bits}"
+                    )));
+                }
+
+                // (6) Depth threshold.
                 if *confirmations >= min_depth {
                     Ok(FinalityStatus::Finalized)
                 } else {
@@ -637,12 +676,26 @@ mod tests {
         }
     }
 
-    #[test]
-    fn pow_finality_requires_confirmation_depth_and_rejects_wrong_proof() {
-        let domain = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 80);
-        let commitment = commitment(ConsensusKind::PoW);
-        let adapter = PoWFinalityAdapter::default();
+    /// Hash with at least 8 leading zero bits (default PoW floor).
+    fn pow_looking_hash() -> [u8; 32] {
+        let mut h = [0u8; 32];
+        h[0] = 0x00;
+        h[1] = 0x0f; // 12 leading zero bits
+        h
+    }
 
+    #[test]
+    fn pow_finality_requires_confirmation_depth_work_and_pow_hash() {
+        let mut domain = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 80);
+        // Default difficulty floor = 8 bits (config_hash first u32 == 0).
+        domain.config_hash = [0u8; 32];
+        let pow_hash = pow_looking_hash();
+        let mut commitment = commitment(ConsensusKind::PoW);
+        commitment.domain_block_hash = pow_hash;
+        let adapter = PoWFinalityAdapter::default();
+        let min_work = adapter.min_work_per_confirmation;
+
+        // Depth short + sufficient work + valid PoW hash → Pending.
         assert_eq!(
             adapter
                 .verify_finality(
@@ -650,9 +703,9 @@ mod tests {
                     &commitment,
                     &FinalityProof::PoW {
                         confirmations: 79,
-                        total_work_hint: 79,
-                        declared_head_hash: [1u8; 32],
-                        declared_cumulative_work: 79,
+                        total_work_hint: 79 * min_work,
+                        declared_head_hash: pow_hash,
+                        declared_cumulative_work: 79 * min_work,
                     },
                 )
                 .unwrap(),
@@ -662,6 +715,7 @@ mod tests {
             }
         );
 
+        // Depth met + work met + PoW hash → Finalized.
         assert_eq!(
             adapter
                 .verify_finality(
@@ -669,14 +723,51 @@ mod tests {
                     &commitment,
                     &FinalityProof::PoW {
                         confirmations: 80,
-                        total_work_hint: 80,
-                        declared_head_hash: [1u8; 32],
-                        declared_cumulative_work: 80,
+                        total_work_hint: 80 * min_work,
+                        declared_head_hash: pow_hash,
+                        declared_cumulative_work: 80 * min_work,
                     },
                 )
                 .unwrap(),
             FinalityStatus::Finalized
         );
+
+        // Self-declared depth with non-PoW hash → Rejected (Tur 12 / #9).
+        let junk = [0xABu8; 32];
+        let mut junk_commit = commitment.clone();
+        junk_commit.domain_block_hash = junk;
+        assert!(matches!(
+            adapter
+                .verify_finality(
+                    &domain,
+                    &junk_commit,
+                    &FinalityProof::PoW {
+                        confirmations: 80,
+                        total_work_hint: 80 * min_work,
+                        declared_head_hash: junk,
+                        declared_cumulative_work: 80 * min_work,
+                    },
+                )
+                .unwrap(),
+            FinalityStatus::Rejected(_)
+        ));
+
+        // Work inconsistent with depth → Rejected.
+        assert!(matches!(
+            adapter
+                .verify_finality(
+                    &domain,
+                    &commitment,
+                    &FinalityProof::PoW {
+                        confirmations: 80,
+                        total_work_hint: 1,
+                        declared_head_hash: pow_hash,
+                        declared_cumulative_work: 1,
+                    },
+                )
+                .unwrap(),
+            FinalityStatus::Rejected(_)
+        ));
 
         assert!(adapter
             .verify_finality(
@@ -688,6 +779,17 @@ mod tests {
                 },
             )
             .is_err());
+    }
+
+    #[test]
+    fn tur12_leading_zero_bits_counts_prefix() {
+        assert_eq!(leading_zero_bits(&[0u8; 32]), 256);
+        let mut h = [0u8; 32];
+        h[0] = 0x0f;
+        assert_eq!(leading_zero_bits(&h), 4);
+        h[0] = 0x00;
+        h[1] = 0x0f;
+        assert_eq!(leading_zero_bits(&h), 12);
     }
 
     #[test]

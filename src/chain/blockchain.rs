@@ -1000,6 +1000,24 @@ impl Blockchain {
         let expected_block_hash = expected_block_hash.ok_or_else(|| {
             "Bridge mint requires explicit expected_block_hash (forgery gate)".to_string()
         })?;
+
+        // Tur 12 / paradigm + BUG #9: PoW domain finality is still
+        // light-client incomplete (declared work + hash difficulty only).
+        // Refuse bridge mint from PoW sources until a real PoW header
+        // chain check exists — otherwise self-declared finality can
+        // inflate cross-domain supply.
+        if let Some(domain) = self.domain_registry.get(source_domain) {
+            if matches!(domain.kind, crate::domain::types::ConsensusKind::PoW) {
+                return Err(
+                    "Bridge mint from PoW domains disabled until light-client PoW verification (Tur 12)"
+                        .into(),
+                );
+            }
+            if !domain.bridge_enabled {
+                return Err(format!("Bridge mint disabled for domain {}", source_domain));
+            }
+        }
+
         let verified = self
             .verify_domain_event_proof(
                 source_domain,

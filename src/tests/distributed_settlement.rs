@@ -347,7 +347,16 @@ mod distributed_settlement_tests {
             })
             .await;
         assert!(res2.is_err());
-        assert!(res2.unwrap_err().contains("not finalized"));
+        let err2 = res2.unwrap_err();
+        // Tur 12: may fail on insufficient work, missing PoW bits, or not finalized.
+        assert!(
+            err2.contains("not finalized")
+                || err2.contains("Rejected")
+                || err2.contains("leading zero")
+                || err2.contains("inconsistent")
+                || err2.contains("work"),
+            "unexpected rejection reason: {err2}"
+        );
         assert_eq!(
             n.chain_handle.get_domain_height(1).await.unwrap(),
             0,

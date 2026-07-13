@@ -60,17 +60,26 @@ impl Executor {
             _ => {}
         }
 
-        let total_cost = tx.total_cost();
+        // Tur 12 / BUG #10: liquid balance is only charged `fee` for Unstake/Vote.
+        // `tx.amount` on Unstake is stake principal (not liquid); Vote amount is
+        // not a liquid debit either. Charging amount+fee blocked fully-staked
+        // validators from ever unstaking (self-DoS).
+        let liquid_cost = match tx.tx_type {
+            TransactionType::Unstake | TransactionType::Vote => tx.fee,
+            _ => tx.total_cost(),
+        };
 
         {
             let sender_account = state.get_or_create(&tx.from);
-            if sender_account.balance < total_cost {
+            if sender_account.balance < liquid_cost {
                 return Err(BudlumError::validation(
                     "insufficient_balance",
                     "Insufficient balance",
                 ));
             }
         }
+
+        let total_cost = tx.total_cost();
 
         match tx.tx_type {
             TransactionType::Transfer => {
@@ -709,4 +718,25 @@ fn tur11_zkvm_memory_covers_compiler_heap_base() {
     // 8 bytes starting at 4096 hold the stored little-endian value 7.
     let word = u64::from_le_bytes(large_enough.memory[4096..4104].try_into().unwrap());
     assert_eq!(word, 7);
+}
+
+/// Tur 12 / BUG #10: a validator with all funds staked (zero free liquid
+/// beyond the fee) must still be able to unstake — amount is stake, not liquid.
+#[test]
+fn tur12_fully_staked_validator_can_unstake() {
+    let mut state = AccountState::new();
+    let alice = Address::from_hex(&"0d".repeat(32)).unwrap();
+    // Only enough liquid balance to cover the fee.
+    state.add_balance(&alice, 1);
+    state.add_validator(alice, 10_000);
+
+    let mut unstake = Transaction::new(alice, Address::zero(), 5_000, vec![]);
+    unstake.tx_type = TransactionType::Unstake;
+    unstake.fee = 1;
+    unstake.nonce = 0;
+
+    Executor::apply_transaction(&mut state, &unstake)
+        .expect("fully-staked validator must be able to unstake when fee is covered");
+    assert_eq!(state.get_validator(&alice).unwrap().stake, 5_000);
+    assert_eq!(state.get_balance(&alice), 0);
 }

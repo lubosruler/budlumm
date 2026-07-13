@@ -1449,20 +1449,27 @@ mod tests {
         let mut commitment =
             crate::domain::DomainCommitment::from_block(&domain, &block, [2u8; 32], [3u8; 32], 0)
                 .unwrap();
-        // Tur 6: PoW proof must be bound to the commitment's block hash.
+        // Tur 12: PoW finality requires leading-zero work on the head hash
+        // and cumulative work >= confirmations * min_work_per_confirmation.
+        let mut pow_hash = [0u8; 32];
+        pow_hash[1] = 0x0f;
+        commitment.domain_block_hash = pow_hash;
+        let min_work = 1_000u128;
         let proof = crate::domain::FinalityProof::PoW {
             confirmations: 64,
-            total_work_hint: 64,
-            declared_head_hash: commitment.domain_block_hash,
-            declared_cumulative_work: 64,
+            total_work_hint: 64 * min_work,
+            declared_head_hash: pow_hash,
+            declared_cumulative_work: 64 * min_work,
         };
         commitment.finality_proof_hash = crate::domain::hash_finality_proof(&proof);
 
         let payload = crate::domain::VerifiedDomainCommitment { commitment, proof };
-        assert!(chain
-            .submit_verified_domain_commitment(payload)
-            .await
-            .is_ok());
+        let res = chain.submit_verified_domain_commitment(payload).await;
+        assert!(
+            res.is_ok(),
+            "submit_verified_domain_commitment failed: {:?}",
+            res.err()
+        );
         assert_eq!(chain.get_domain_commitments().await.len(), 1);
     }
 

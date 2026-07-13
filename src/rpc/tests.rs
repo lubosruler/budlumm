@@ -281,11 +281,16 @@ mod rpc_tests {
             crate::domain::DomainCommitment::from_block(&domain, &block2, [4u8; 32], [5u8; 32], 1)
                 .unwrap();
         let mut new_commitment = new_commitment;
+        // Tur 12: PoW head must show difficulty bits; work floor is 1000/conf.
+        let mut pow_hash = [0u8; 32];
+        pow_hash[1] = 0x0f;
+        new_commitment.domain_block_hash = pow_hash;
+        let min_work = 1_000u128;
         let proof2 = crate::domain::FinalityProof::PoW {
             confirmations: 64,
-            total_work_hint: 64,
-            declared_head_hash: new_commitment.domain_block_hash,
-            declared_cumulative_work: 64,
+            total_work_hint: 64 * min_work,
+            declared_head_hash: pow_hash,
+            declared_cumulative_work: 64 * min_work,
         };
         new_commitment.finality_proof_hash = crate::domain::hash_finality_proof(&proof2);
         let result = server
@@ -310,11 +315,15 @@ mod rpc_tests {
         let mut verified_commitment =
             crate::domain::DomainCommitment::from_block(&domain, &block3, [6u8; 32], [7u8; 32], 2)
                 .unwrap();
+        let mut pow_hash2 = [0u8; 32];
+        pow_hash2[1] = 0x0f;
+        verified_commitment.domain_block_hash = pow_hash2;
+        let min_work = 1_000u128;
         let proof = crate::domain::FinalityProof::PoW {
             confirmations: 64,
-            total_work_hint: 64,
-            declared_head_hash: verified_commitment.domain_block_hash,
-            declared_cumulative_work: 64,
+            total_work_hint: 64 * min_work,
+            declared_head_hash: pow_hash2,
+            declared_cumulative_work: 64 * min_work,
         };
         verified_commitment.finality_proof_hash = crate::domain::hash_finality_proof(&proof);
         let verified_payload = crate::domain::VerifiedDomainCommitment {

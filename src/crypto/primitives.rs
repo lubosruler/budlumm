@@ -115,6 +115,7 @@ impl BlsKeypair {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, CryptoError> {
+        // Tur 12 / BUG #5: validate G2 encoding AND that pk matches sk.
         if bytes.len() < 32 + 96 {
             return Err(CryptoError::InvalidKey(
                 "Invalid BLS keypair bytes length".into(),
@@ -126,10 +127,28 @@ impl BlsKeypair {
         if sk_opt.is_none().into() {
             return Err(CryptoError::InvalidKey("Invalid BLS secret key".into()));
         }
-        let pk = bytes[32..128].to_vec();
+        let sk = sk_opt.unwrap();
+
+        let mut pk_bytes = [0u8; 96];
+        pk_bytes.copy_from_slice(&bytes[32..128]);
+        let pk_affine = G2Affine::from_compressed(&pk_bytes);
+        if pk_affine.is_none().into() {
+            return Err(CryptoError::InvalidKey(
+                "Invalid BLS public key encoding".into(),
+            ));
+        }
+        let _pk_checked = pk_affine.unwrap();
+
+        let expected = G2Affine::from(G2Projective::generator() * sk);
+        if expected.to_compressed() != pk_bytes {
+            return Err(CryptoError::InvalidKey(
+                "BLS public key does not match secret key".into(),
+            ));
+        }
+
         Ok(BlsKeypair {
-            secret_key: sk_opt.unwrap(),
-            public_key: pk,
+            secret_key: sk,
+            public_key: pk_bytes.to_vec(),
         })
     }
 }
@@ -503,4 +522,20 @@ fn keypair_generate_does_not_leak_public_key_via_println() {
     // is complete without the println.
     let hex_pk = hex::encode(pk_bytes);
     assert_eq!(hex_pk.len(), 64, "hex-encoded pubkey is 64 chars");
+}
+
+#[test]
+fn tur12_bls_from_bytes_roundtrip_and_integrity() {
+    let kp = BlsKeypair::generate().expect("generate");
+    let bytes = kp.to_bytes();
+    let loaded = BlsKeypair::from_bytes(&bytes).expect("roundtrip");
+    assert_eq!(loaded.public_key, kp.public_key);
+
+    // Corrupt the public key half — must reject.
+    let mut bad = bytes.clone();
+    bad[32] ^= 0xFF;
+    assert!(
+        BlsKeypair::from_bytes(&bad).is_err(),
+        "mismatched/corrupt pk must be rejected"
+    );
 }
