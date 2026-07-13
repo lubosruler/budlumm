@@ -21,7 +21,7 @@
 
 ---
 
-## The 2035 Vision
+## The Vision
 
 Every blockchain today is an island. Bitcoin, Ethereum, Solana, every
 CBDC pilot, every corporate chain — they all disagree on one
