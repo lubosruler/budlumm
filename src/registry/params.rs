@@ -162,16 +162,20 @@ mod tests {
 
     #[test]
     fn tur11_registry_params_validate_rejects_zero_unbonding() {
-        let mut p = RegistryParams::default();
-        p.unbonding_epochs = 0;
+        let p = RegistryParams {
+            unbonding_epochs: 0,
+            ..Default::default()
+        };
         let err = p.validate().expect_err("zero unbonding must fail");
         assert!(err.contains("unbonding_epochs"), "got: {err}");
     }
 
     #[test]
     fn tur11_registry_params_validate_rejects_slash_above_scale() {
-        let mut p = RegistryParams::default();
-        p.double_sign_slash_ratio_fixed = FIXED_POINT_SCALE + 1;
+        let p = RegistryParams {
+            double_sign_slash_ratio_fixed: FIXED_POINT_SCALE + 1,
+            ..Default::default()
+        };
         let err = p.validate().expect_err("slash > scale must fail");
         assert!(err.contains("double_sign_slash_ratio_fixed"), "got: {err}");
     }
