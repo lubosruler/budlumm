@@ -3634,7 +3634,7 @@ fn slashing_ratios_come_from_registry_params_not_hardcoded() {
         1337,
         None,
     );
-        let mut custom_params = *blockchain.state.registry.params();
+    let mut custom_params = *blockchain.state.registry.params();
     custom_params.double_sign_slash_ratio_fixed = (7 * FIXED_POINT_SCALE) / 100;
     custom_params.malicious_slash_ratio_fixed = (25 * FIXED_POINT_SCALE) / 100;
     blockchain.state.registry.set_params(custom_params);
