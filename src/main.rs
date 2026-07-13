@@ -573,6 +573,36 @@ async fn main() {
             }
         };
 
+        // Tur 7 (security audit §5 wiring): emit a prominent startup
+        // warning if the *resolved* `auth_required` is false. This block
+        // runs regardless of which constructor
+        // (`RpcSecurityConfig::default()`, `operator_default()`,
+        // `from_env()`) produced the config — the check is on the
+        // resolved value, not the code path. Without this, an operator
+        // who set `[rpc] auth_required = false` in their TOML (or
+        // relied on the prior NodeConfig default) would silently ship
+        // an unauthenticated node.
+        if !rpc_security.auth_required {
+            tracing::warn!(
+                "[GUVENLIK] Public RPC auth_required=false calisiyor — tum state-degistiren metodlar kimlik dogrulamasiz aga acik! --rpc-auth-required=true (veya esdeger config) ile kapatin."
+            );
+        }
+        // Same reasoning for an unrestricted IP allow-list. The runtime
+        // treats an empty list as "allow all", so a non-empty list
+        // outside localhost is a strong signal that this is an
+        // intentional public deployment.
+        let has_localhost_only = !rpc_security.allowed_ips.is_empty()
+            && rpc_security
+                .allowed_ips
+                .iter()
+                .all(|ip| ip == "127.0.0.1" || ip == "::1");
+        if !has_localhost_only && !rpc_security.allowed_ips.is_empty() {
+            tracing::warn!(
+                "[GUVENLIK] Public RPC allowed_ips genisletildi: {:?} — sadece guvenilir / ozel ag uzerinde calistirin.",
+                rpc_security.allowed_ips
+            );
+        }
+
         // Public RPC listener
         let public_addr = config
             .rpc_public_listener

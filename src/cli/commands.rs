@@ -231,9 +231,21 @@ impl Default for NodeConfig {
             config: None,
             metrics_port: 9090,
             rpc_enabled: true,
-            rpc_auth_required: false,
+            // Tur 7 (security audit §5 wiring): secure-by-default for
+            // NodeConfig::default(). The previous `false` here meant
+            // `main.rs:557`'s `RpcSecurityConfig::from_env(config.rpc_auth_required, ...)`
+            // silently opened a public, unauthenticated RPC at startup
+            // unless an operator flipped this in a config file. The
+            // operator can still set `auth_required = false` explicitly
+            // via `[rpc] auth_required = false` in their TOML (or by
+            // setting `BUDLUM_RPC_AUTH_REQUIRED=0` in env), but a
+            // forgetful operator no longer ships an open node.
+            rpc_auth_required: true,
             rpc_api_key_env: None,
-            rpc_allowed_ips: Vec::new(),
+            // Same reasoning: empty `allowed_ips` means "allow all" in
+            // the runtime check, so we now default to localhost-only and
+            // require an explicit opt-out to broaden.
+            rpc_allowed_ips: vec!["127.0.0.1".to_string(), "::1".to_string()],
             rpc_cors_origins: Vec::new(),
             rpc_rate_limit_per_minute: None,
             validators_file_cli: None,

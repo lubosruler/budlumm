@@ -1791,6 +1791,27 @@ impl Blockchain {
         }
 
         let snapshot = self.validator_snapshot_for_epoch(blob.epoch);
+        // Tur 7 (security audit §4): enforce a minimum signature count
+        // matching the BLS finality quorum (2/3 of `snapshot.validators`).
+        // `verify_against_snapshot` with `required_signers=None` only
+        // checks individual signature validity, not how many there are.
+        // A zero-signature blob with a matching merkle root would
+        // otherwise pass structural checks and be inserted into
+        // `verified_qc_blobs` unconditionally. Compute ceil(n*2/3).
+        use crate::core::chain_config::{FINALITY_QUORUM_DENOMINATOR, FINALITY_QUORUM_NUMERATOR};
+        let n_validators = snapshot.validators.len();
+        let min_signers = (n_validators * FINALITY_QUORUM_NUMERATOR as usize
+            + FINALITY_QUORUM_DENOMINATOR as usize
+            - 1)
+            / FINALITY_QUORUM_DENOMINATOR as usize;
+        if blob.pq_signatures.len() < min_signers {
+            return Err(format!(
+                "QcBlob has {} signatures, need at least {} (2/3 of {} validators)",
+                blob.pq_signatures.len(),
+                min_signers,
+                n_validators
+            ));
+        }
         blob.verify_against_snapshot(&snapshot, None, Some(self.state.epoch_index))?;
 
         self.verified_qc_blobs

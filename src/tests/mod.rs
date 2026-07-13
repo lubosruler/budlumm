@@ -5,6 +5,12 @@
 // `apply_bridge_sweep` expiry-sweep.
 #[cfg(test)]
 pub mod bridge_lifecycle;
+// Tur 7: QcBlob quorum-check unit tests (security audit §4). The
+// `import_qc_blob` minimum-signature count contract is verified by
+// replaying the same arithmetic the production code uses, against
+// 3-validator snapshots.
+#[cfg(test)]
+pub mod qcblob_quorum;
 #[cfg(test)]
 pub mod bench_performance;
 #[cfg(test)]
