@@ -206,6 +206,10 @@ impl PqKeyPair {
         &self.public_key
     }
 
+    pub fn secret_key_bytes(&self) -> &[u8] {
+        &self.secret_key
+    }
+
     pub fn sign(&self, message: &[u8]) -> Result<Vec<u8>, CryptoError> {
         let secret_key = dilithium5::SecretKey::from_bytes(&self.secret_key)
             .map_err(|e| CryptoError::Signing(e.to_string()))?;

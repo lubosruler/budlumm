@@ -1,6 +1,9 @@
-use crate::crypto::primitives::CryptoError;
+use crate::crypto::primitives::{BlsKeypair, CryptoError, PqKeyPair};
 use crate::crypto::signer::ConsensusSigner;
 use std::sync::Mutex;
+
+const BLS_DATA_LABEL: &str = "BUD_BLS_KEY";
+const PQ_DATA_LABEL: &str = "BUD_PQ_KEY";
 
 pub struct Pkcs11Signer {
     #[allow(dead_code)]
@@ -10,6 +13,8 @@ pub struct Pkcs11Signer {
     #[allow(dead_code)]
     token_pin_env: String,
     public_key_bytes: [u8; 32],
+    bls_key: Mutex<Option<BlsKeypair>>,
+    pq_key: Mutex<Option<PqKeyPair>>,
     inner: Mutex<Option<Pkcs11Inner>>,
 }
 
@@ -68,9 +73,9 @@ impl Pkcs11Signer {
                 ))
             })?;
 
-        let session = pkcs11_client.open_ro_session(*target_slot).map_err(|e| {
+        let session = pkcs11_client.open_rw_session(*target_slot).map_err(|e| {
             CryptoError::KeyGeneration(format!(
-                "Failed to open RO session on slot {}: {}",
+                "Failed to open RW session on slot {}: {}",
                 slot_id, e
             ))
         })?;
@@ -87,16 +92,70 @@ impl Pkcs11Signer {
             ))
         })?;
 
+        let bls_key = Self::extract_data_object(&session, BLS_DATA_LABEL)
+            .and_then(|bytes| BlsKeypair::from_bytes(&bytes).ok());
+        let pq_key = Self::extract_data_object(&session, PQ_DATA_LABEL).and_then(|bytes| {
+            if bytes.len()
+                >= pqcrypto_dilithium::dilithium5::public_key_bytes()
+                    + pqcrypto_dilithium::dilithium5::secret_key_bytes()
+            {
+                let pk_len = pqcrypto_dilithium::dilithium5::public_key_bytes();
+                let sk_len = pqcrypto_dilithium::dilithium5::secret_key_bytes();
+                PqKeyPair::from_bytes(&bytes[..pk_len], &bytes[pk_len..pk_len + sk_len]).ok()
+            } else {
+                None
+            }
+        });
+
         Ok(Self {
             module_path,
             slot_id,
             token_pin_env,
             public_key_bytes,
+            bls_key: Mutex::new(bls_key),
+            pq_key: Mutex::new(pq_key),
             inner: Mutex::new(Some(Pkcs11Inner {
                 pkcs11_client,
                 session,
             })),
         })
+    }
+
+    /// Store a BLS keypair into the HSM as a data object.
+    pub fn store_bls_key(&self, keypair: &BlsKeypair) -> Result<(), CryptoError> {
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| CryptoError::Signing("PKCS#11 inner mutex poisoned".to_string()))?;
+        let inner = guard
+            .as_ref()
+            .ok_or_else(|| CryptoError::Signing("PKCS#11 session already closed".to_string()))?;
+
+        let bytes = keypair.to_bytes();
+        Self::create_data_object(&inner.session, BLS_DATA_LABEL, &bytes)?;
+        *self.bls_key.lock().map_err(|_| {
+            CryptoError::Signing("BLS key mutex poisoned during store".to_string())
+        })? = Some(keypair.clone());
+        Ok(())
+    }
+
+    /// Store a PQ keypair into the HSM as a data object.
+    pub fn store_pq_key(&self, keypair: &PqKeyPair) -> Result<(), CryptoError> {
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| CryptoError::Signing("PKCS#11 inner mutex poisoned".to_string()))?;
+        let inner = guard
+            .as_ref()
+            .ok_or_else(|| CryptoError::Signing("PKCS#11 session already closed".to_string()))?;
+
+        let mut bytes = keypair.public_key_bytes().to_vec();
+        bytes.extend_from_slice(keypair.secret_key_bytes());
+        Self::create_data_object(&inner.session, PQ_DATA_LABEL, &bytes)?;
+        *self.pq_key.lock().map_err(|_| {
+            CryptoError::Signing("PQ key mutex poisoned during store".to_string())
+        })? = Some(keypair.clone());
+        Ok(())
     }
 
     fn extract_ed25519_public_key(
@@ -123,6 +182,43 @@ impl Pkcs11Signer {
             }
         }
         Err("Failed to extract public key bytes".to_string())
+    }
+
+    fn extract_data_object(session: &cryptoki::session::Session, label: &str) -> Option<Vec<u8>> {
+        let template = &[
+            cryptoki::object::Attribute::Class(cryptoki::object::ObjectClass::DATA),
+            cryptoki::object::Attribute::Label(label.to_string().into()),
+        ];
+        let objects = session.find_objects(template).ok()?;
+        if objects.is_empty() {
+            return None;
+        }
+        let attr = session
+            .get_attributes(objects[0], &[cryptoki::object::AttributeType::Value])
+            .ok()?;
+        if let Some(cryptoki::object::Attribute::Value(value)) = attr.first() {
+            Some(value.clone())
+        } else {
+            None
+        }
+    }
+
+    fn create_data_object(
+        session: &cryptoki::session::Session,
+        label: &str,
+        value: &[u8],
+    ) -> Result<(), CryptoError> {
+        let template = &[
+            cryptoki::object::Attribute::Class(cryptoki::object::ObjectClass::DATA),
+            cryptoki::object::Attribute::Token(true),
+            cryptoki::object::Attribute::Private(true),
+            cryptoki::object::Attribute::Label(label.to_string().into()),
+            cryptoki::object::Attribute::Value(value.to_vec()),
+        ];
+        session
+            .create_object(template)
+            .map_err(|e| CryptoError::KeyGeneration(format!("Failed to store {}: {}", label, e)))?;
+        Ok(())
     }
 }
 
@@ -167,6 +263,28 @@ impl ConsensusSigner for Pkcs11Signer {
             )));
         }
         Ok(signature[..64].to_vec())
+    }
+
+    fn bls_sign(&self, msg: &[u8]) -> Result<Vec<u8>, CryptoError> {
+        let guard = self
+            .bls_key
+            .lock()
+            .map_err(|_| CryptoError::Signing("BLS key mutex poisoned during sign".to_string()))?;
+        let bls = guard
+            .as_ref()
+            .ok_or_else(|| CryptoError::Signing("No BLS key stored in HSM".to_string()))?;
+        Ok(crate::chain::finality::sign_bls(&bls.secret_key, msg))
+    }
+
+    fn pq_sign(&self, msg: &[u8]) -> Result<Vec<u8>, CryptoError> {
+        let guard = self
+            .pq_key
+            .lock()
+            .map_err(|_| CryptoError::Signing("PQ key mutex poisoned during sign".to_string()))?;
+        let pq = guard
+            .as_ref()
+            .ok_or_else(|| CryptoError::Signing("No PQ key stored in HSM".to_string()))?;
+        pq.sign(msg)
     }
 
     fn backend_name(&self) -> &'static str {

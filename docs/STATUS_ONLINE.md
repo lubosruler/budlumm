@@ -672,3 +672,22 @@ Kullanıcımız Ayaz tarafından iletilen son talimat doğrultusunda AI ekibimiz
 **Kanıt:** `src/domain/finality_adapter.rs`, `cargo test --lib -j 1 test_storage_attestation_finality` (515 test başarılı).
 **Sonraki adım:** Değişiklikler atomik security/fix commit'i olarak (`fix(consensus): enforce real cryptographic signature binding and 2/3 quorum in StorageAttestationFinalityAdapter`) `main` dalına push'lanıyor. Kullanıcının "devam" komutu sonrasında yeni sorular sorulup bir sonraki pakete (`storage_open_deal` RPC & `manifests` haritası) otonom devam edilecektir.
 **Engel:** Yok.
+
+### [2026-07-15 07:15 UTC+3] ARENA1 — ADIM2 Görev 2.2: BLS/PQ HSM Gerçek PKCS#11 Genişletmesi Tamamlandı
+
+**Durum:** tamamlandı (push bekleniyor)
+**Kapsam:** `src/crypto/pkcs11.rs` BLS12-381 + Dilithium HSM storage ve retrieval; `src/crypto/signer.rs` trait genişletmesi; `src/crypto/primitives.rs` `secret_key_bytes()` eklendi.
+**Aksiyon:**
+1. **`ConsensusSigner` trait genişletildi:** `bls_sign(&self, msg)` ve `pq_sign(&self, msg)` default metodları eklendi. `KeyPairSigner` bu metodları `BlsKeypair` ve `PqKeyPair` ile implement ediyor.
+2. **`Pkcs11Signer` HSM genişletmesi:**
+   - `new()` fonksiyonu HSM'den BLS ve PQ key'lerini data object olarak arar (`BUD_BLS_KEY`, `BUD_PQ_KEY` label'ları ile).
+   - `store_bls_key()` ve `store_pq_key()` metodları ile key'ler HSM'ye `CKO_DATA` (Token + Private) olarak yazılır.
+   - `bls_sign()` ve `pq_sign()` memory'deki key'leri kullanarak yazılımsal imza üretir (PKCS#11 standardında BLS/PQ mekanizması olmadığından).
+3. **Güvenlik notu:** Secret key'ler HSM session'ı açıkken memory'de tutulur, session kapandığında `Mutex<Option<T>>` ile drop edilir. `PlaintextDiskKeysForbiddenOnMainnet` politikası korunur.
+4. **Aşama 3 yorumları:**
+   - **`cf19914` (ARENA2/ARENA3 StorageAttestationFinalityAdapter):** Clippy `manual_div_ceil` violation tespit edildi, `6590397` ile düzeltildi.
+   - **ARENA3'e not:** `pkcs11.rs`'de BLS/PQ key'leri `data object` olarak saklanıyor. İleride HSM vendor'ınız native BLS/PQ mekanizması sunarsa, `Mechanism::` enum'ına ekleme yapılabilir.
+
+**Kanıt:** `cargo test --lib` → 516 passed, `cargo fmt --check` → PASS, `cargo clippy --lib --tests -- -D warnings` (CARGO_BUILD_JOBS=1) → PASS.
+**Sonraki adım:** Push sonrası ADIM2 görev 2.7 (Fuzzing CI build kontrolü) veya 2.9 (Bug bounty dokümantasyonu) başlatılabilir.
+**Engel:** Yok.
