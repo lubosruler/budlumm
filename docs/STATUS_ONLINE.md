@@ -565,3 +565,24 @@ Kullanıcımız Ayaz tarafından iletilen son talimat doğrultusunda AI ekibimiz
 **Kanıt:** `git diff src/cross_domain/bridge.rs`, `cargo test --lib -j 1 bridge::tests` (513 test başarılı).
 **Sonraki adım:** Değişiklikler atomik performans/bug fix commit'i olarak (`perf(bridge): optimize sweep_expired_locks from 3-pass to single-pass O(N) iteration`) `main` dalına push'lanıyor.
 **Engel:** Yok.
+
+### [2026-07-15 05:10 UTC+3] ARENA1 — 4 Stratejik Karar Alındı; ADIM2 `main` Dalından Başlatılıyor
+
+**Durum:** kararlandı + koordinasyon
+**Kapsam:** `docs/MAINNET_READINESS.md` §2 kararlarının uygulanması, ADIM2 görev dağılımı, ARENA2/ARENA3 son commit'lerinin Aşama 3 onayı.
+**Aksiyon:**
+1. **Kullanıcı Kararları (§2.1-2.4):**
+   - **2.1 = B:** `VerifyMerkle` ADIM2'de tamamlanacak (64-depth path + AIR constraint'leri).
+   - **2.2 = B:** `pkcs11.rs` BLS12-381 + Dilithium ile genişletilecek.
+   - **2.3 = A:** B.U.D. mainnet'e dahil (interim retrieval challenge; Faz 3 ADIM4'te).
+   - **2.4 = C:** Bug bounty programı ile başlanacak (harici firma denetimi ADIM5'te).
+2. **Branch kararı:** Kullanıcı "yeni branch açmadan mainden ilerle" talimatı verdi. `arena/adim2-mainnet-prep` açılmayacak. Tüm ADIM2 görevleri `main` üzerinden atomik commit'lerle ilerleyecek.
+3. **Aşama 3 Yorumları (Diğer AI Commit'leri):**
+   - **`f4071ba` (ARENA3 network fix):** Onaylıyorum. `node.rs`'deki `unwrap/expect` → `if let Ok` ve `drain(..).flatten()` dönüşümleri, P2P senkronizasyonundaki `Lock Poisoning` ve `DoS via unwrap` risklerini etkili şekilde azaltıyor. `clippy::manual-flatten` uyarısı da temizlenmiş.
+   - **`c1dfa06` (ARENA3 consensus fix):** Onaylıyorum. `pow.rs:85`'teki `saturating_sub` kullanımı, dağıtık madenci saat sapmalarındaki `u64 underflow` paniğini %100 engelliyor. Eklenen `test_difficulty_adjustment_safely_handles_non_monotonic_timestamps` testi regresyon koruması sağlıyor.
+   - **`2256bf6` (ARENA2/ARENA3 bridge perf):** Onaylıyorum. `sweep_expired_locks`'un 3-pass → single-pass O(N) dönüşümü, Bridge Lock Bloat durumunda blok süresi ek yükünü azaltıyor. `cargo test --lib` 513 passed ile doğrulanmış.
+4. **ADIM2 Görev Tablosu Güncellendi:** `docs/MAINNET_READINESS.md` §3'teki 9 görev (2.1-2.9) kararlara göre revize edildi. Sahipler: ARENA1 (2.2, 2.7, 2.8, 2.9), ARENA2 (2.3, 2.4), ARENA3 (2.1, 2.5, 2.6).
+
+**Kanıt:** `docs/MAINNET_READINESS.md` (güncellendi), `cargo test --lib` → 513 passed, `cargo fmt --check` → temiz, `cargo clippy --lib --tests -- -D warnings` (CARGO_BUILD_JOBS=1) → temiz.
+**Sonraki adım:** Kullanıcı "devam" komutu verdiğinde ADIM2 görevlerinden biri seçilip uygulanacak.
+**Engel:** Yok.

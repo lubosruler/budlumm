@@ -24,9 +24,11 @@
 
 ---
 
-## 2. Kritik Mainnet Blocker'lar (Kullanıcı Kararı Gerektiren)
+## 2. Kritik Mainnet Blocker'lar — Kullanıcı Kararları Uygulandı
 
-Aşağıdaki 4 madde **ciddi stratejik kararlar** içerir. Her biri için seçenekler sunulmuştur. **Lütfen her madde için bir seçenek belirtin.**
+**Karar tarihi:** 2026-07-15  
+**Karar veren:** Kullanıcı (owner)  
+**Uygulama yolu:** `main` dalından devam (yeni branch açılmayacak).
 
 ### 2.1 VerifyMerkle Z-B Gate (BudZero) — EN KRİTİK
 
@@ -34,80 +36,66 @@ Aşağıdaki 4 madde **ciddi stratejik kararlar** içerir. Her biri için seçen
 `budzero/bud-isa/src/lib.rs:39-43` — `VerifyMerkle` production'da **disabled**.  
 `proves_verify_merkle_valid_64_depth` testi `#[ignore]` ile işaretli.
 
-**Etki:** B.U.D. Faz 3 (gerçek Proof-of-Storage) bu gate'e bağlı. Gate açılmadan B.U.D. depolama kanıtı **kriptografik olarak güvenli değil** — sadece "interim retrieval challenge" (operatörün söylediğine güvenme) var.
+**Etki:** B.U.D. Faz 3 (gerçek Proof-of-Storage) bu gate'e bağlı.
 
-**Seçenekler:**
-- **A)** Gate'i açmadan mainnet'e git. `VerifyMerkle` experimental kalır. B.U.D. Faz 3 sonraki ADIM'a (ADIM4+) ertelenir. *Risk: B.U.D. mainnet'te "gerçek PoS" iddiası taşıyamaz.*
-- **B)** ADIM2'de Z-B Commit 3.5'i tamamlayıp gate'i aç. 64-depth Poseidon path + final root check AIR constraint'leri tamamlanır. *Tahmini süre: 2-3 hafta. Risk: Büyük ZK mühendislik işi; süre tahmini güvenilir değil.*
-- **C)** B.U.D.'yi mainnet'ten çıkar. Sadece L1 + BudZero core (31 opcode, settlement, bridge) mainnet'e girer. B.U.D. ayrı ADIM'da değerlendirilir. *Risk: Vizyonun merkeziyetsiz depolama bileşeni eksik kalır.*
-
-**ARENA1 önerisi:** A veya C. B seçeneği mainnet lansmanını önemli ölçüde geciktirir ve ZK soundness garantisi verilemez.
+**✅ Karar: B — ADIM2'de Z-B Commit 3.5'i tamamlayıp gate'i aç.**  
+64-depth Poseidon path + final root check AIR constraint'leri tamamlanacak. Tahmini süre: 2-3 hafta.
 
 ---
 
 ### 2.2 BLS/PQ Anahtar Koruma Yolu (HSM)
 
-**Durum:** `src/crypto/pkcs11.rs` — Gerçek PKCS#11 HSM entegrasyonu mevcut (Ed25519 için). Ancak BLS finality ve PQ (Dilithium) imzaları için **HSM yolu yok**. `AI_BIRLIGI.md` §4.5'te "Mock backend" seçilmiş ama kodda gerçek HSM var; BLS/PQ için ayrı bir yol gerekiyor.
+**Durum:** `src/crypto/pkcs11.rs` — Gerçek PKCS#11 HSM entegrasyonu mevcut (Ed25519 için). BLS finality ve PQ (Dilithium) imzaları için HSM yolu yok.
 
-**Etki:** Mainnet'te validator BLS key'leri ve PQ key'leri diskte saklanırsa, `AI_BIRLIGI.md` §4.4'teki "Mainnet disk ValidatorKeys yasağı" ihlal edilir.
+**Etki:** Mainnet'te validator BLS/PQ key'leri diskte saklanırsa `AI_BIRLIGI.md` §4.4 ihlal edilir.
 
-**Seçenekler:**
-- **A)** BLS/PQ için mock HSM backend ekle (`src/crypto/hsm_mock.rs`). Sadece test/development. Mainnet'te gerçek HSM zorunlu olur ama kodda mock var. *Risk: Mock production'a karışırsa güvenlik açığı.*
-- **B)** BLS/PQ key'leri için de PKCS#11 yolunu genişlet (mevcut `pkcs11.rs`'ye BLS12-381 ve Dilithium mekanizmaları ekle). *Risk: HSM vendor'larının BLS/PQ desteği sınırlı olabilir.*
-- **C)** Mainnet v1'de BLS/PQ disk key'ine izin ver (yumuşak geçiş). HSM yolu ADIM3'te zorunlu hale getirilir. *Risk: Güvenlik politikası gevşetilir.*
-
-**ARENA1 önerisi:** B (mümkünse) veya C (zaman baskısı varsa). A seçeneği mock/production karışması riski taşır.
+**✅ Karar: B — Mevcut `pkcs11.rs`'ye BLS12-381 ve Dilithium mekanizmaları eklenecek.**  
+HSM vendor desteği sınırlıysa fallback stratejisi ADIM2'de belirlenecek.
 
 ---
 
 ### 2.3 B.U.D. Mainnet'e Dahil mi?
 
-**Durum:** ADIM1'de B.U.D. Faz 1-2 (kayıt/muhasebe) + Faz 5 (deal/challenge ekonomisi) tamamlandı. Faz 3 (gerçek PoS) kapalı.
+**Durum:** ADIM1'de B.U.D. Faz 1-2 + Faz 5 tamamlandı. Faz 3 (gerçek PoS) kapalı.
 
-**Etki:** B.U.D. mainnet'e girerse, operatörler `StorageDeal` açabilir, challenge yanıtlayabilir ama **kriptografik depolama kanıtı yok** — sadece ekonomik oyun teorisi (bond/slash) var.
+**Etki:** B.U.D. mainnet'e girerse operatörler `StorageDeal` açabilir ama kriptografik depolama kanıtı yok.
 
-**Seçenekler:**
-- **A)** Evet, dahil et. Interim retrieval challenge ile başla. Faz 3 sonraki ADIM'da açılır. *Risk: Kullanıcılar "gerçek PoS" sanabilir.*
-- **B)** Hayır, dahil etme. B.U.D. devnet'te kalır. Mainnet sadece L1 settlement + BudZero ZKVM. *Risk: Değer önerisi eksik.*
-- **C)** Sadece Faz 1-2'yi dahil et (domain kayıt, manifest oluşturma). Faz 5 (deal/challenge) devnet'te kalır. *Risk: Yarım ürün algısı.*
-
-**ARENA1 önerisi:** B veya C. A seçeneği kullanıcı beklentisi yönetimi açısından riskli.
+**✅ Karar: A — Evet, dahil et. Interim retrieval challenge ile başla.**  
+Faz 3 (gerçek PoS) ADIM4'te açılacak. Kullanıcı beklentisi yönetimi dokümantasyonda netleştirilecek.
 
 ---
 
 ### 2.4 Harici Güvenlik Denetimi (External Audit)
 
-**Durum:** `docs/operations/DEPENDENCY_AUDIT.md` + `SBOM.md` + `scripts/audit-deps.sh` mevcut. Ancak **harici bir güvenlik firmasından kod denetimi yapılmadı**. `STATUS.md` §4.4'te "Harici audit yapılmadan README'de 'audited/mainnet ready' yazma" yasağı var.
+**Durum:** `docs/operations/DEPENDENCY_AUDIT.md` + `SBOM.md` + `scripts/audit-deps.sh` mevcut. Harici firma denetimi yapılmadı.
 
-**Etki:** Mainnet lansmanı "self-audited" olarak değerlendirilir. Kurumsal kullanıcılar/validator'lar harici audit raporu bekleyebilir.
+**Etki:** Mainnet lansmanı "self-audited" olarak değerlendirilir.
 
-**Seçenekler:**
-- **A)** Harici audit olmadan mainnet'e git. İç denetim (Tur 10-14.9) yeterli kabul edilir. Audit ADIM3+'te yapılır. *Risk: "Kurumsal güven" eksikliği.*
-- **B)** ADIM2'de harici audit checklist'ini tamamla (`docs/EXTERNAL_AUDIT_CHECKLIST.md`) ve bir güvenlik firmasına teslim et. *Tahmini süre: 4-8 hafta (firma süreci dahil).*
-- **C)** Bug bounty programı ile başla (immunefi.com benzeri). Harici audit yerine crowdsourced denetim. *Risk: Zamanla kazanılan güven, anlık değil.*
-
-**ARENA1 önerisi:** A veya C. B seçeneği mainnet lansmanını önemli ölçüde geciktirir.
+**✅ Karar: C — Bug bounty programı ile başla (immunefi.com benzeri).**  
+Harici firma denetimi ADIM5'te değerlendirilecek.
 
 ---
 
-## 3. ADIM Planı (Kullanıcı Kararlarına Göre Şekillenecek)
+## 3. ADIM Planı (Kullanıcı Kararlarına Göre Güncellendi)
 
-Aşağıdaki plan, **2.1-2.4 arasındaki kararların A seçeneği** (en hızlı mainnet yolu) alındığı varsayımıyla hazırlanmıştır. Farklı seçenekler planı değiştirir.
+**Karar özeti:** 2.1=B, 2.2=B, 2.3=A, 2.4=C  
+**Branch:** `main` (yeni branch açılmayacak, `AI_BIRLIGI.md` §6.1 force-push yasağı geçerli).
 
-### ADIM2 — Mainnet Önkoşulları (Tahmini: 1-2 hafta)
+### ADIM2 — Mainnet Önkoşulları (Tahmini: 2-3 hafta)
 
-**Hedef:** L1 + BudZero core'u mainnet'e hazır hale getirmek (B.U.D. hariç).
+**Hedef:** `VerifyMerkle` gate açılışı + BLS/PQ HSM genişletmesi + B.U.D. interim stabilizasyon.
 
 | # | Görev | Dosya/Hedef | Test Kriteri | Sahip |
 |---|-------|-------------|--------------|-------|
-| 2.1 | `VerifyMerkle` production gate kararını uygula | `budzero/bud-isa/src/lib.rs` | `tur119_verify_merkle_disabled_in_production` testi güncel | ARENA1/ARENA3 |
-| 2.2 | BLS/PQ HSM mock backend ekle (eğer C seçilmediyse) | `src/crypto/hsm_mock.rs` | Mock BLS/PQ imza üretimi testi | ARENA1 |
+| 2.1 | `VerifyMerkle` 64-depth path + AIR constraint'leri tamamla | `budzero/bud-proof/src/plonky3_prover.rs` | `proves_verify_merkle_valid_64_depth` `#[ignore]`'den çıkar, test geçer | ARENA3 |
+| 2.2 | BLS/PQ HSM: `pkcs11.rs`'ye BLS12-381 + Dilithium mekanizmaları ekle | `src/crypto/pkcs11.rs` | BLS/PQ imza üretimi HSM üzerinden test edilir | ARENA1 |
 | 2.3 | `ConsensusStateV2` migration hook ekle | `src/chain/snapshot.rs` | V2 → V3 migration testi | ARENA2 |
 | 2.4 | README roadmap kapanış tablosu güncelle | `README.md` | Tüm org maddeleri "done/open" olarak işaretli | ARENA2 |
 | 2.5 | Prometheus latency histogram wiring | `src/observability/` veya mevcut | Histogram metrikleri `/metrics`'te görünür | ARENA3 |
 | 2.6 | Per-IP quota / operator admin methods netleştir | `src/rpc/server.rs` | Quota testleri mevcut | ARENA3 |
 | 2.7 | Fuzzing CI build kontrolü | `fuzz/Cargo.toml` | `cargo check --manifest-path fuzz/Cargo.toml` temiz | ARENA1 |
 | 2.8 | SBOM + dependency audit script CI'ya bağla (kullanıcı manuel) | `scripts/audit-deps.sh` | Script çalışır, rapor üretir | ARENA1 |
+| 2.9 | Bug bounty programı dokümantasyonu | `docs/BUG_BOUNTY.md` (yeni) | Kapsam, ödül seviyeleri, iletişim kanalı tanımlı | ARENA1 |
 
 **CI Kabul Kriteri:** `cargo test --lib` + `cargo fmt --check` + `cargo clippy --lib --tests -- -D warnings` + `cargo test --manifest-path budzero/Cargo.toml --workspace` → hepsi yeşil.
 
@@ -115,7 +103,7 @@ Aşağıdaki plan, **2.1-2.4 arasındaki kararların A seçeneği** (en hızlı 
 
 ### ADIM3 — Mainnet v1 Lansman Hazırlığı (Tahmini: 1 hafta)
 
-**Hedef:** Genesis config, node dağıtım, operatör onboarding.
+**Hedef:** Genesis config, node dağıtım, operatör onboarding. B.U.D. Faz 1-2-5 dahil (Faz 3 hâlâ kapalı).
 
 | # | Görev | Dosya/Hedef | Test Kriteri |
 |---|-------|-------------|--------------|
@@ -124,12 +112,13 @@ Aşağıdaki plan, **2.1-2.4 arasındaki kararların A seçeneği** (en hızlı 
 | 3.3 | Operatör runbook güncelle (mainnet spesifik) | `docs/operations/PRODUCTION_RUNBOOK.md` | Runbook'da mainnet genesis hash, seed node listesi |
 | 3.4 | Network hardening (p2p, RPC rate limit) | `src/network/`, `src/rpc/` | Stress test: 10k bağlantı, rate limit çalışır |
 | 3.5 | Validator onboarding flow (stake + register) | `src/registry/permissionless.rs` | E2E: yeni validator stake edip aktif olur |
+| 3.6 | B.U.D. interim retrieval challenge dokümantasyonu | `docs/BUD_INTERIM.md` (yeni) | Kullanıcıya "gerçek PoS değil, ekonomik oyun" netliği |
 
 ---
 
-### ADIM4 — B.U.D. Faz 3 (VerifyMerkle Açılışı) (Tahmini: 2-4 hafta)
+### ADIM4 — B.U.D. Faz 3 (VerifyMerkle Production Açılışı) (Tahmini: 2-4 hafta)
 
-**Hedef:** Gerçek kriptografik Proof-of-Storage. **Bu ADIM sadece 2.1'de B seçeneği seçilmediyse ayrı bir ADIM olarak kalır.**
+**Hedef:** Gerçek kriptografik Proof-of-Storage. ADIM2'deki 2.1 tamamlandıktan sonra gate açılır.
 
 | # | Görev | Dosya/Hedef | Test Kriteri |
 |---|-------|-------------|--------------|
@@ -140,16 +129,17 @@ Aşağıdaki plan, **2.1-2.4 arasındaki kararların A seçeneği** (en hızlı 
 
 ---
 
-### ADIM5 — Harici Denetim + Hardening (Tahmini: 2-8 hafta, firma bağımlı)
+### ADIM5 — Harici Denetim + Hardening (Tahmini: 2-8 hafta)
 
-**Hedef:** Kurumsal güven ve uzun vadeli güvenlik.
+**Hedef:** Kurumsal güven ve uzun vadeli güvenlik. Bug bounty sonuçlarına göre harici firma denetimi değerlendirilecek.
 
 | # | Görev | Dosya/Hedef | Test Kriteri |
 |---|-------|-------------|--------------|
-| 5.1 | Harici audit checklist tamamla | `docs/EXTERNAL_AUDIT_CHECKLIST.md` (yeni) | Teslim paketi hazır |
-| 5.2 | Fuzzing run (24+ saat) | `fuzz/fuzz_targets/` | 0 crash |
-| 5.3 | Chaos engineering testleri | `src/tests/chaos.rs` | Rastgele partition, latency injection |
-| 5.4 | BNS/.bud isimlendirme (Faz 6) | Ayrı repo/ADIM | — |
+| 5.1 | Bug bounty sonuçlarını değerlendir | `docs/BUG_BOUNTY.md` | Kritik/High bulgular çözülmüş |
+| 5.2 | Harici audit checklist tamamla (isteğe bağlı) | `docs/EXTERNAL_AUDIT_CHECKLIST.md` (yeni) | Teslim paketi hazır |
+| 5.3 | Fuzzing run (24+ saat) | `fuzz/fuzz_targets/` | 0 crash |
+| 5.4 | Chaos engineering testleri | `src/tests/chaos.rs` | Rastgele partition, latency injection |
+| 5.5 | BNS/.bud isimlendirme (Faz 6) | Ayrı repo/ADIM | — |
 
 ---
 
@@ -186,9 +176,9 @@ Bu maddeler **otomatik olarak** ADIM2 kapsamına alınabilir; stratejik karar ge
 
 ## 6. Sonraki Adım
 
-1. **Kullanıcı kararı bekle:** §2.1-2.4 arasındaki 4 stratejik seçenek için yanıt.
-2. Kararlar geldikten sonra ADIM2 branch'i aç (`arena/adim2-mainnet-prep`).
-3. ADIM2 görev tablosunu parçala ve AI'lar arasında dağıt.
-4. Her görev için ayrı commit; her commit öncesi `cargo test --lib` + `fmt` + `clippy` zorunlu.
+1. **ADIM2 görev dağılımı başlatıldı.** `main` dalından devam ediliyor.
+2. Her görev için ayrı commit; her commit öncesi `cargo test --lib` + `fmt` + `clippy` zorunlu.
+3. Diğer AI'lar araya commit atarsa: `fetch` → `merge` (conflict varsa çöz) → CI teyit → `push` (Aşama 1-2-3 protokolü).
+4. Kullanıcı "devam" komutu verdiğinde bir sonraki göreve geçilecek.
 
-**Kanıt:** Bu rapor `git log`, `cargo test --lib` (510 passed), `grep -rn TODO src/` (production kodunda 0) ve `grep -rn VerifyMerkle budzero/` (experimental gate aktif) verilerine dayanır.
+**Kanıt:** Bu rapor `git log`, `cargo test --lib` (513 passed), `grep -rn TODO src/` (production kodunda 0) ve `grep -rn VerifyMerkle budzero/` (experimental gate aktif) verilerine dayanır.
