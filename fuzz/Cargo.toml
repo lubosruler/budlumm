@@ -1,39 +1,18 @@
 [package]
-name = "budlum-core-fuzz"
+name = "budlum-fuzz"
 version = "0.0.0"
-publish = false
 edition = "2021"
+rust-version = "1.94.0"
+publish = false
 
-[package.metadata]
-cargo-fuzz = true
+# Fuzz harness'leri. CI'da çalıştırılmaz; Tur 15 §1.7 sadece setup.
+# Fuzzing run'u manuel olarak: `cargo +nightly fuzz run <target>`.
+# Kabul kriteri: hedef target sayısı ≥ 1, build temiz (cargo check).
 
 [dependencies]
+budlum-core = { path = ".." }
 libfuzzer-sys = "0.4"
-arbitrary = { version = "1", features = ["derive"] }
-
-[dependencies.budlum-core]
-path = ".."
 
 [[bin]]
-name = "block_deserialize"
-path = "fuzz_targets/block_deserialize.rs"
-test = false
-doc = false
-
-[[bin]]
-name = "transaction_deserialize"
-path = "fuzz_targets/transaction_deserialize.rs"
-test = false
-doc = false
-
-[[bin]]
-name = "snapshot_deserialize"
-path = "fuzz_targets/snapshot_deserialize.rs"
-test = false
-doc = false
-
-[[bin]]
-name = "consensus_validate"
-path = "fuzz_targets/consensus_validate.rs"
-test = false
-doc = false
+name = "fuzz_blockchain_serialize"
+path = "fuzz_targets/fuzz_blockchain_serialize.rs"

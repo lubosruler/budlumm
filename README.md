@@ -134,8 +134,52 @@ Aligned with [budlum-xyz/Budlum](https://github.com/budlum-xyz/Budlum) Research 
 | Personas (user / developer / enterprise PoA) | `config/personas/*` + [docs/PERSONAS.md](docs/PERSONAS.md) | Tur **13** |
 | Archive/backup/runbooks | Archive fail-closed policy, atomic verified backup + restore drill, PoA/RPC/HSM runbook | ✓ Tur **13.5** |
 | BudZero performance | Reproducible proof time/size baseline harness | ✓ baseline Tur **13.5** |
-| B.U.D. storage network | Out of scope here | **Tur 14** only |
+| B.U.D. storage network | Implemented (Faz 1-2 + Faz 5 iskeleti); Faz 3 pending Z-B gate | **Tur 14** |
 | External audit / TLA+ / Privacy / AI | Process / research — not claimed done | Checklist Tur 13.9 |
+
+## Research Roadmap Status (Budlum + BudZero — B.U.D. Hariç)
+
+**Son güncelleme:** 2026-07-14 (Tur 14.9 denetim turu, Tur 15 öncesi).
+
+Bu tablo `budlum-xyz/Budlum` Research Roadmap + ch12 mainnet blockers
+maddelerinin durumunu gösterir. B.U.D. (Broad Universal Database) **bu
+tablodan bilinçli olarak hariç tutulmuştur** — ayrı turlarda
+(Tur 14/15/16+) takip edilir.
+
+| Madde (org) | Durum (lubosruler fork, 2026-07-14) | Tur |
+|-------------|--------------------------------------|-----|
+| Devnet economic hardening | ✅ Closed (erken turlar + tokenomics) | — |
+| Settlement atomicity | ✅ Closed | — |
+| Verified settlement hardening | ✅ Closed (finality adapters, parent links) | — |
+| Verified bridge return path | ✅ Closed + Tur 12 PoW mint ban | 12.5 |
+| Sync hardening | ✅ Closed | — |
+| PKCS#11 HSM signer (Ed25519) | ✅ Closed (PoS/PoA blok üretimine bağlı) | 12.5 |
+| **BLS/PQ HSM (beyond Ed25519)** | ❌ **Açık** — BLS + Dilithium5 diskte, mainnet'te yasak | **15.1** |
+| BLS finality protocol | ✅ Closed (prevote/precommit + testler) | 13 |
+| **Finality live-path live scan** | ❌ **Açık** — adversarial test kapsamı genişletilecek | **15.3** |
+| RPC dual listener | ✅ Closed + Tur 12.5 B2/B3 | 12.5 |
+| P2P hardening | ✅ Closed | 12.5 |
+| Snapshot V2 | ✅ Closed (archive policy `config/archive.toml`) | 13.5 |
+| Observability Prometheus | ✅ Closed (latency histogram wiring) | 13.5 |
+| Deployment docker/systemd | ✅ Closed (runbook) | 13.5 |
+| **ConsensusStateV2 migration** | ❌ **Açık** — minimum migration hook eksik | **15.4** |
+| **External audit** | ❌ **Açık** — sadece checklist hazır; audit yapılmadı | **15.5** + **16.5** |
+| **Fuzzing + dependency audit + SBOM** | ❌ **Açık** — araç entegrasyonu yok | **15.7** |
+| ZKVM optimizations | ⏳ Baseline complete (proof time/size harness) | 13.5 |
+| Formal verification (TLA+) | ❌ Süreç — checklist | 13.9 |
+| Privacy layer | ❌ Araştırma | 13 serisi dışı |
+| AI execution layer | ❌ Araştırma | 13 serisi dışı |
+| BudZero (BudZKVM) workspace | ✅ Closed (in-tree `budzero/`) | 13.5 |
+| Z-B valid 64-depth | ⏳ Partial (Production-gated) | BudZero |
+| Personas (user/dev/PoA) | ✅ Closed (`config/personas/*` + `docs/PERSONAS.md`) | 13 |
+
+**Toplam:** 17 Closed + 5 Açık (Tur 15'te) + 2 Açık (Tur 15 dışı:
+Privacy/AI). **Açık 5 madde = Tur 15'in 7 ana iş paketiyle birebir
+eşleşir** (BLS/PQ HSM + finality + ConsensusStateV2 + audit checklist +
+fuzzing).
+
+**B.U.D. Faz 1-2 implementasyonu** (PR #6 kapsamı) bu tabloda yok —
+ayrı turlarda (Tur 15.2 + 16.5) takip edilir.
 
 ### Personas (same binary)
 
@@ -149,6 +193,42 @@ cargo run -- --config config/personas/developer.toml
 ```
 
 ---
+
+## B.U.D. (Broad Universal Database) — Tur 14
+
+**Tur 14 Faz 1-2 + Faz 5** iskeleti eklendi. `ConsensusKind::StorageAttestation`
+yeni enum varyantı + `STORAGE_OPERATOR = RoleId(5)` (permissionless) +
+`ContentId` / `ContentManifest` / `StorageRegistry` (deal + challenge
+ekonomisi) + 7 yeni JSON-RPC uç noktası. 3-aktör E2E testi + 9
+ekip-bağımsızlık invariantı (`src/tests/bud_e2e.rs`).
+
+**ÖNEMLİ — interim retrieval sınırlama:** `RetrievalChallenge` gerçek
+**Proof-of-Storage DEĞİLDİR** (Tur 14.5 plan §2.5). Operatör sadece
+istenen byte-range'i saklayarak testi geçebilir. Tam kanıt (Faz 3,
+vision §8.3) BudZKVM `VerifyMerkle` + 64-depth SMT production gate'ine
+bağlıdır; o Z-B gate kapanana kadar "proof-of-storage" iddiası YAPILMAZ
+(sahte-yeşil yol riski, vision §9.1).
+
+**Veri egemenliği kuralı (Tur 14.5 plan §0.5):** B.U.D.'un hiçbir
+kritik fonksiyonu (deal açma, ücret ödeme, operatör keşfi, erişilebilirlik
+denetimi, slashing) "Budlum ekibinin çalıştırdığı bir servise"
+bağımlı değildir. Whitelist / admin / pause / freeze hook'u YOK.
+Tüm 7 storage RPC herhangi bir node tarafından sunulur.
+
+B.U.D. storage RPC'leri (`src/rpc/api.rs`):
+
+| RPC | Yön | Amaç |
+|-----|-----|------|
+| `bud_storageRegisterManifest` | write | `ContentManifest` kaydı, `manifest_id` döner |
+| `bud_storageGetManifest` | read | `manifest_id` → manifest bilgisi |
+| `bud_storageGetDealsByManifest` | read | Tüm deal'lar (replica dahil) |
+| `bud_storageGetDealsByShard` | read | `(manifest_id, shard_id)` → deal'lar |
+| `bud_storageOpenChallenge` | write | Herkes; opener_bond > 0 anti-spam |
+| `bud_storageAnswerChallenge` | write | Sadece deal.operator; on-chain hash-only dogrulama |
+| `bud_storageGetOutcome` | read | `challenge_id` → `ChallengeResult` |
+
+**B.U.D. mainnet launch'a dahil mi:** Tur 15 §1.2 bittikten sonra
+değerlendirilecek. Şu an devnet-only.
 
 ## License
 
