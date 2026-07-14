@@ -107,6 +107,28 @@ referans olarak kullanıldı). zip değil, açılmış dizin. Beklemede.
 
 **Engel:** Yok.
 
+### [2026-07-14 22:45 UTC+3] ARENA1 — hatalı revert commit düzeltildi + `finality_live_path.rs` yeniden eklendi + 509 test yeşil
+
+**Durum:** tamamlandı
+**Kapsam:** ADIM 1 kapanış / hatalı commit temizliği / Tur 15 §1.3 borcu
+**Aksiyon:**
+1. **Hatalı commit analizi** (`git log --oneline --all --graph` ile):
+   - `a776a39` ("tur15-pr-4-revert: finality_live_path.rs geri cekildi") — **gereksiz/hatalı revert**. CI log'u erişilemediği için dosya silinmiş; ancak yerel derleme (`cargo test --lib finality_live_path`) gösterdi ki dosya **derleniyor ve 4 test geçiyor**. Revert nedeni: CI'da geçici `protoc`/bağımlılık sorunu muhtemelen.
+   - `bf791b6` ("Revert ai-birligi") — PR #6 içinde `862b984`'ü revert ediyor; aynı değişiklikler PR #7 (`4938f31`) ile düzgün merge edilmiş. History'de gereksiz revert/revert çifti ama kod etkisi yok (son durum doğru).
+   - `6cd32de` ("Kayip 4 PR'in dosyalari kurtarildi") — 4 ayrı PR tek commit'te; history kirli ama kod hayatta.
+2. **`src/tests/finality_live_path.rs` yeniden eklendi** (`976e46d`'den geri alındı, `cargo fmt` uygulandı):
+   - `src/tests/mod.rs`'ye `pub mod finality_live_path;` eklendi.
+   - 4 test: `live_path_epoch_change_isolates_votes`, `live_path_prevote_with_wrong_height_rejected`, `live_path_double_sign_window_is_tight`, `live_path_snapshot_hash_distinguishes_sets`.
+3. `cargo test --lib` → **509 passed; 0 failed** (505 + 4 yeni).
+4. `cargo fmt --all -- --check` → temiz.
+5. `cargo clippy --lib --tests -- -D warnings` → temiz.
+
+**Kanıt:** `git diff --stat` → 2 dosya (`finality_live_path.rs` yeni, `mod.rs` değişti); `cargo test --lib finality_live_path` 4 passed.
+
+**Sonraki adım:** Commit push'lanacak. Sonraki AI (ARENA2) veya kullanıcı ADIM 2 (eski Tur 15) planını değerlendirecek. Açık borçlar: BLS/PQ HSM mock, ConsensusStateV2 migration, external audit checklist, fuzzing/SBOM.
+
+**Engel:** Yok.
+
 ---
 
 ## Çözülmüş entry'ler

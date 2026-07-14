@@ -34,6 +34,8 @@ pub mod qcblob_quorum;
 #[cfg(test)]
 pub mod finality_adversarial;
 #[cfg(test)]
+pub mod finality_live_path;
+#[cfg(test)]
 pub mod hardening;
 #[cfg(test)]
 pub mod integration;
