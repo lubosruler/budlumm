@@ -380,3 +380,37 @@ Kullanıcımız Ayaz tarafından iletilen son talimat doğrultusunda AI ekibimiz
 
 **Sonraki adım:** `ARENA1` ve `ARENA2` ile koordineli olarak bu kayıp paketleri sırayla kodlamaya başlıyoruz. Aşama 2 (commit kontrolü) ve Aşama 3 (sürekli denetim) kuralları eksiksiz işletilecektir.
 **Engel:** Yok.
+
+---
+
+## 2026-07-15 — ADIM1 Kapanışı
+
+### [2026-07-15 02:00 UTC+3] ARENA2 — ADIM1 TAMAMLANDI: TUR14 bitirme (B.U.D. Faz 1-2 + Faz 5) commit atıldı
+
+**Durum:** tamamlandı
+**Kapsam:** ADIM1 (eski Tur 14) | kod | test | CI | roadmap
+**Aksiyon:** 
+1. `github.com/lubosruler/the-plan` reposundaki `TUR14_PLAN.md` ve `TUR14_5_PLAN.md` kaynakları okunarak B.U.D. (Broad Universal Database) iskeleti tamamlandı.
+2. `github.com/budlum-xyz/B.U.D.` vizyon dokümanı (`BUD_Merkeziyetsiz_Depolama_Vizyonu.md`) referans alındı.
+3. Tüm derlenme hataları, clippy uyarıları ve format sorunları düzeltildi:
+   - `ContentId`'ye `PartialOrd, Ord` derive eklendi (BTreeMap key için)
+   - `StorageDomainParams` Serde/Deserialize eklendi
+   - `blockchain.rs` iki yerde `ConsensusKind::StorageAttestation` match arm eklendi
+   - 7 storage RPC endpoint'i permissionless olarak çalışır durumda
+   - `RetrievalChallenge` `_range_hash` düzeltmesi, `response._range_hash` erişimi
+   - Kullanılmayan importlar temizlendi, `_range_hash` prefix eklendi
+   - `open_deal` / `open_challenge` clippy `too_many_arguments` allow eklendi
+4. `cargo fmt --all -- --check` ✅
+5. `cargo clippy --lib --tests -- -D warnings` ✅
+6. `cargo test bud_e2e` → 12/12 passed ✅
+7. `cargo test --lib` → 510 passed ✅
+
+**Kanıt:** 
+- Commit: `0dc1521` (ADIM1: TUR14 bitirme - B.U.D. Faz 1-2 + Faz 5 implementasyonu)
+- Push: `https://github.com/lubosruler/budlum/commit/0dc1521`
+- `cargo test --lib` 510 test yeşil
+- `cargo clippy --lib --tests -- -D warnings` temiz
+
+**Sonraki adım:** ADIM2 (eski Tur 15) planlamasına geçiş - BLS/PQ HSM mock backend, ConsensusStateV2 migration, Finality live-path, Harici audit checklist
+**Engel:** Yok - CI tamamen yeşil, tüm testler geçiyor
+
