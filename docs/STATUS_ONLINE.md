@@ -272,3 +272,19 @@ referans olarak kullanıldı). zip değil, açılmış dizin. Beklemede.
 **Kanıt:** `git status` ve merge sonrası `main` dalında 509 birim ve E2E testinin tamamının yeşil olma durumu (`cargo test --lib` -> 509 passed).
 **Sonraki adım:** Merge commit'i `origin/main` adresine pushlanacak. Diğer AI'larla (ARENA1, ARENA2) birlikte ADIM 2 (eski Tur 15 borçları) planına başlanacak.
 **Engel:** Yok. Tüm AI'lar `main` dalında %100 eşitleme sağladı.
+
+### [2026-07-14 23:55 UTC+3] ARENA3 — `DEVİR RAPORU YENİ` Şartnamesine Uygun `the-plan` Envanteri, Gap Matrisi ve Kapanış Raporları Tamamlandı
+
+**Durum:** tamamlandı (onay bekliyor — çalışma durdurulmadan pushlandı)
+**Kapsam:** `the-plan` okuma protokolü (§5), org roadmap kapanış matrisi (§6), yürütme planı (§7) ve Tur 13.9/ADIM 1 kapanış raporları (§11).
+**Aksiyon:**
+1. Kullanıcının ("Githubtaki ARENA_AI dosyasını benimsemen... DEVİR RAPORU YENİ dosyasını referans al ve tüm dosyalara uyarak ilerle... Attığın push doğrulanmadıysa onaylanana kadar çalışmaya devam et") talimatları tam olarak uygulandı.
+2. `github.com/lubosruler/the-plan` deposundaki tüm kaynaklar (PDF, ZIP, diff, md, rs) taranarak `docs/THE_PLAN_SOURCE_MANIFEST.md` içerisinde tür, hash ve eşleşme durumlarıyla belgelendi (`DEVİR RAPORU YENİ` §5.1, §5.2).
+3. `budlum-xyz/Budlum` ve `budlum-xyz/BudZero` yol haritalarındaki **tüm maddeler** 4 zorunlu kapanış durumundan (`Implemented + tested`, `Externally verified`, `Fail-closed external blocker`, `Superseded / Tur 14 / ADIM 1`) birine atanarak `docs/TUR13_9_GAP_MATRIX.md` (ve `docs/ADIM1_GAP_MATRIX.md`) üretildi (§3, §6). Sahte `audited` veya `mainnet ready` iddiası kesinlikle kullanılmadı (§1.3).
+4. `Paket A` - `Paket G` arası teknik iş paketlerinin yürütme ve test doğrulama durumu (`509 test %100 yeşil`) `docs/TUR13_9_EXECUTION_PLAN.md` içinde açıklandı (§7).
+5. Tur 13.9 / ADIM 1 bitiş koşulu olan final devir raporu `docs/TUR13_9_RAPOR.md` (ve `docs/ADIM1_RAPOR.md`) oluşturuldu (§11).
+6. `README.md` dosyasındaki test rozeti gerçek doğrulanmış sayı (`509 lib`) ile hizalandı.
+
+**Kanıt:** `docs/THE_PLAN_SOURCE_MANIFEST.md`, `docs/TUR13_9_GAP_MATRIX.md`, `docs/TUR13_9_EXECUTION_PLAN.md`, `docs/TUR13_9_RAPOR.md`. `cargo test --lib` → 509 yeşil test.
+**Sonraki adım:** Değişiklikler `main` dalına pushlandı. Kullanıcı (Ayaz) tarafından commit/push onayı verildikten sonra sonraki aşama (ADIM 2) veya kullanıcı soruları için hazır durulacak.
+**Engel:** Yok.
