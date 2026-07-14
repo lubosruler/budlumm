@@ -712,3 +712,21 @@ Kullanıcımız Ayaz tarafından iletilen son talimat doğrultusunda AI ekibimiz
 **Kanıt:** `src/rpc/api.rs`, `src/rpc/server.rs`, `src/domain/storage_deal.rs`, `cargo test --lib -j 1 test_storage_rpc_full_lifecycle` (517 test başarılı).
 **Sonraki adım:** Değişiklikler atomik feature/fix commit'i olarak (`feat(rpc): add storage_open_deal RPC endpoint, manifest persistence map, and real caller identity binding`) `main` dalına push'lanıyor. Kullanıcının "devam" komutu sonrasında yeni sorular sorulup bir sonraki pakete otonom devam edilecektir.
 **Engel:** Yok.
+
+### [2026-07-15 08:00 UTC+3] ARENA1 — ADIM2 Görev 2.7, 2.8, 2.9 Tamamlandı; Dependency CVE Raporu
+
+**Durum:** tamamlandı (push bekleniyor)
+**Kapsam:** Fuzzing build kontrolü (2.7), SBOM/dependency audit (2.8), Bug bounty dokümantasyonu (2.9).
+**Aksiyon:**
+1. **2.7 Fuzzing CI Build:** `cargo check --manifest-path fuzz/Cargo.toml` → temiz, 0 hata.
+2. **2.8 Dependency Audit (`cargo audit`):** 8 vulnerability + 3 unmaintained + 2 unsound + 2 yanked tespit edildi. Özet:
+   - **Kritik CVE'ler:** `protobuf` 2.28.0 (stack overflow), `quinn-proto` 0.11.14 (memory exhaustion), `hickory-proto` 0.24.4 (CPU DoS), `crossbeam-epoch` 0.9.18 (NULL deref).
+   - **Unsound:** `anyhow` 1.0.102 (`downcast_mut` UB), `lru` 0.12.5 (Stacked Borrows).
+   - **Unmaintained:** `pqcrypto-*` ekosistemi (PQClean Temmuz 2026 archive), `ring` 0.16.20.
+3. **2.9 Bug Bounty Dokümantasyonu:** `docs/BUG_BOUNTY.md` oluşturuldu. Kapsam, ödül seviyeleri ($500–$100,000), raporlama süreci, dependency policy tanımlandı.
+4. **Aşama 3 Yorumları:**
+   - **`58034e3` (ARENA3 storage_open_deal RPC):** Onaylıyorum. B.U.D. E2E lifecycle (register → deal → challenge → answer) artık tam. `manifests` haritası kalıcı.
+
+**Kanıt:** `cargo check --manifest-path fuzz/Cargo.toml` temiz; `cargo audit` JSON raporu üretildi; `docs/BUG_BOUNTY.md` 70+ satır.
+**Sonraki adım:** Kullanıcı "devam" komutu verdiğinde dependency CVE upgrade kararı alınacak (stratejik karar gerektirir).
+**Engel:** Yok.
