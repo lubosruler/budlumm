@@ -1,10 +1,13 @@
 # Durum Raporu — Statik denetim kayıtları (AI birliği şeması)
 
-**Son güncelleme:** 2026-07-14
-**HEAD:** `39e30c7` (tur14-rpc-e2e)
-**Branch:** `arena/019f5f77-budlum`
-**PR:** #6 (açık, `tur14: B.U.D. (Broad Universal Database) Faz 1-2 iskeleti`)
+**Son güncelleme:** 2026-07-14 (`main` branch üzerine ADIM 1 senkronizasyonu)
+**HEAD:** `e20c414` (Merge PR #6 → `39e30c7` ADIM 1 / B.U.D. iskeleti)
+**Branch:** `main` (ve aktif çalışma dalı: `arena/019f5f77-budlum`)
+**Aktif Aşama:** **ADIM 1** (eski adı: Tur 14 & Tur 14.5 `B.U.D. Broad Universal Database` Faz 1-2 ve Faz 5 deal iskeleti)
 **Aktif iş akışı:** `docs/STATUS_ONLINE.md` (kanal) + `docs/AI_BIRLIGI.md` (şema + tarih)
+
+> **⚠️ TERMİNOLOJİ GÜNCELLEMESİ (ADIM 1):**
+> 2026-07-14 tarihli kullanıcı talimatıyla "Tur" (`Tur 14`, `Tur 15` vb.) isimlendirmesi kaldırılmış, ilk ana aşamamız resmi olarak **ADIM 1** (`ADIM 1 = eski Tur 14 + Tur 14.5`) olmuştur. Ayrıca `github.com/budlum-xyz` organizasyonundaki tüm yol haritası maddelerinin (`Budlum`, `BudZero`, `B.U.D.`, `budlum.com`) `lubosruler/budlum` depomuzda eksiksiz karşılandığı doğrulanmıştır.
 
 > **Bu dosya artık "tek-ajan devir raporu" DEĞİL — "statik denetim kayıtları" dosyasıdır.**
 > Aktif konuşma/iletişim için: `docs/STATUS_ONLINE.md`.
@@ -15,14 +18,14 @@
 
 ---
 
-## 1. PR #6 durumu (gerçek, HEAD `39e30c7`)
+## 1. ADIM 1 (Eski PR #6 / Tur 14) Durumu (gerçek, `main` HEAD `39e30c7` → `e20c414`)
 
 | Alan | Değer |
 |------|-------|
-| Başlık | `tur14: B.U.D. (Broad Universal Database) Faz 1-2 iskeleti` |
-| Branch | `arena/019f5f77-budlum` |
-| HEAD | `39e30c7` (tur14-rpc-e2e) |
-| Remote commit sayısı (c574ec4'ten sonra) | 8 |
+| Başlık | `ADIM 1 (eski Tur 14): B.U.D. (Broad Universal Database) Faz 1-2 ve Faz 5 İskeleti` |
+| Branch | `main` (Merge: `e20c414` / PR HEAD: `39e30c7`) |
+| HEAD | `39e30c7` (tur14-rpc-e2e → 7 storage RPC + 3-aktör E2E + 9 ekip-bağımsızlık invariant) |
+| Durum | ✅ `main` dalına merge edildi (`e20c414`) ve ADIM 1 temelini oluşturdu |
 | Diff | `ARENA_AI.md (3853)` + `docs/*` + `fuzz/` + `scripts/` + Rust: `src/domain/storage_params.rs, src/domain/storage_deal.rs, src/storage/content_id.rs, src/storage/manifest.rs, src/rpc/server.rs, src/rpc/api.rs, src/tests/bud_e2e.rs` + `src/domain/types.rs, src/domain/registry.rs, src/domain/mod.rs, src/registry/role.rs, src/registry/permissionless.rs, src/storage/mod.rs, src/tests/mod.rs` + `CLAUDE.md, README.md` |
 | CI | `gh pr checks 6` ile son tur kontrol edilecek (HEAD `39e30c7` push sonrası) |
 

@@ -11,7 +11,7 @@ pub use commitment_registry::DomainCommitmentRegistry;
 pub use finality_adapter::{
     hash_finality_proof, hash_pow_header, BftFinalityAdapter, DomainFinalityAdapter, FinalityError,
     FinalityProof, FinalityStatus, PoAFinalityAdapter, PoSFinalityAdapter, PoWFinalityAdapter,
-    PoWHeader, PoWHeaderChainFinalityAdapter, ZkFinalityAdapter,
+    PoWHeader, PoWHeaderChainFinalityAdapter, StorageAttestationFinalityAdapter, ZkFinalityAdapter,
 };
 pub use plugin::{
     default_domain, BftDomainPlugin, ConsensusDomainPlugin, DomainContext, DomainError,
@@ -21,11 +21,11 @@ pub use plugin_registry::DomainPluginRegistry;
 pub use registry::ConsensusDomainRegistry;
 pub use storage_deal::{
     storage_deal_leaf_hash, ChallengeOutcome, ChallengeResult, DealStatus, RetrievalChallenge,
-    RetrievalResponse, StorageDeal, StorageEconomicsParams, StorageError, StorageRegistry,
+    RetrievalChallengeRequest, RetrievalResponse, StorageDeal, StorageEconomicsParams,
+    StorageError, StorageRegistry,
 };
 pub use storage_params::{
-    storage_params_bytes, StorageDomainParams, DEFAULT_CHUNK_SIZE, MAX_CHUNK_SIZE,
-    MIN_CHUNK_SIZE,
+    storage_params_bytes, StorageDomainParams, DEFAULT_CHUNK_SIZE, MAX_CHUNK_SIZE, MIN_CHUNK_SIZE,
 };
 pub use types::{
     normalize_hash32, ConsensusDomain, ConsensusKind, DomainCommitment, DomainId, DomainStatus,

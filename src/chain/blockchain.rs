@@ -546,6 +546,9 @@ impl Blockchain {
                 }
                 !domain.finality_adapter.trim().is_empty()
             }
+            ConsensusKind::StorageAttestation(_) => {
+                domain.finality_adapter == crate::domain::STORAGE_ATTESTATION_ADAPTER
+            }
         };
 
         if !adapter_valid {
@@ -886,6 +889,12 @@ impl Blockchain {
                         commitment.domain_id
                     ));
                 }
+            }
+            ConsensusKind::StorageAttestation(_) => {
+                // ADIM 1: StorageAttestation domains now use StorageAttestationFinalityAdapter (implemented by ARENA3)
+                let adapter = crate::domain::StorageAttestationFinalityAdapter;
+                self.ensure_adapter_name(domain, adapter.adapter_name())?;
+                adapter.verify_finality(domain, commitment, proof)
             }
         }
         .map_err(|e| e.to_string())?;

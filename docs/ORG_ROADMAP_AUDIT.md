@@ -75,59 +75,32 @@ Kaynak: org `README.md` → “Research Roadmap”
 
 ---
 
-## 4. B.U.D. — Broad Universal Database (**Tur 14**)
+## 4. B.U.D. — Broad Universal Database ve Merkeziyetsiz Depolama Sunucu Sistemi (**ADIM 1 / Eski Tur 14**)
 
-Kaynak: `BUD_Merkeziyetsiz_Depolama_Vizyonu.md`
+> **⚠️ TERMİNOLOJİ GÜNCELLEMESİ:** Kullanıcının 2026-07-14 talimatı üzerine "Tur" söylemi kaldırılmış, ilk ana adımımız resmi olarak **ADIM 1** (`ADIM 1 = eski Tur 14 + Tur 14.5`) olarak adlandırılmıştır.
 
-| Faz | Konu | 13 serisi? |
-|-----|------|------------|
-| 0 | Kavramsal harita | Sadece referans |
-| 1 | Storage ConsensusDomain | **Tur 14** |
-| 2 | İçerik-adresleme (CID/Poseidon) | **Tur 14** |
-| 3 | Proof-of-Storage (`VerifyMerkle` bağlama) | **Tur 14** (13’te Z-B olgunlaşması *önkoşul*) |
-| 4 | GlobalBlockHeader StorageRoot | **Tur 14** |
-| 5 | Operator bond / slash ekonomisi | **Tur 14** |
-| 6 | BNS/.bud + devnet pilot | **Tur 14** |
+Kaynak: `budlum-xyz/B.U.D.` reposundaki `BUD_Merkeziyetsiz_Depolama_Vizyonu.md`
 
-**Tur 13 serisinde B.U.D. kodu yazılmayacak.**  
-Not: Faz 3, BudZero’da sağlam `VerifyMerkle` ister → Tur 13 Z-B ilerlemesi Tur 14’ü kolaylaştırır, ama B.U.D. değildir.
+| Faz | Konu | Karşılama Durumu (lubosruler/budlum) |
+|-----|------|--------------------------------------|
+| 0 | Kavramsal harita | Sadece referans / temel spesifikasyon |
+| 1 | Storage ConsensusDomain (`StorageAttestation(StorageDomainParams)`) | ✅ **ADIM 1** kapsamında tamamlandı (`src/domain/storage_params.rs`) |
+| 2 | İçerik-adresleme (`ContentId`, `ContentManifest`, `ShardRef`) | ✅ **ADIM 1** kapsamında tamamlandı (`src/storage/content_id.rs`, `manifest.rs`) |
+| 3 | Proof-of-Storage (`VerifyMerkle` bağlama) | ⏳ BudZero `VerifyMerkle` 64-depth Z-B gate açılışına bağımlı (`CLAUDE.md` §4) |
+| 4 | GlobalBlockHeader StorageRoot | ⏳ Faz 3 Z-B gate sonrasına bağımlı |
+| 5 | Operator bond / deal / challenge ekonomisi | ✅ **ADIM 1** kapsamında tamamlandı (`src/domain/storage_deal.rs`, 7 RPC, E2E) |
+| 6 | BNS/.bud + devnet pilot | ⏳ İlerideki Adımlarda devreye alınacak |
 
-### Tur 14.1 kapsamı (bu alt-tur)
+**Tur 13 serisinde B.U.D. kodu yazılmamıştır; tüm B.U.D. Sunucu Sistemi ADIM 1 olarak `main` dalında (`39e30c7`) yer almaktadır.**
 
-- `ConsensusKind::Storage` enum varyantı (`src/domain/types.rs`).
+### ADIM 1 (Eski Tur 14 / Tur 14.5) Gerçekleşen Kapsamı
+
+- `ConsensusKind::StorageAttestation(StorageDomainParams)` enum varyantı (`src/domain/types.rs`, `src/domain/storage_params.rs`).
 - `roles::STORAGE_OPERATOR` (`src/registry/role.rs`, `RoleId(5)`).
-- `src/storage/content_id.rs` — `ContentId` (Faz 2'de Keccak-256,
-  Faz 3'te Poseidon2).
-- `docs/BUD/{README,ROADMAP,ARCHITECTURE,INTERFACES,BUD-IN-BUDLUM}.md`
-  anlatım seti.
-- PoA izolasyon testinin kırılmadığının doğrulanması.
-
-### Tur 14.1 bilinçli YAPMAYACAKLARI
-
-- `VerifyMerkle` tabanlı proof-of-storage (Faz 3 — Z-B gate'ine bağlı).
-- Disk depolama / shard yönetimi (Faz 5).
-- Operatör bond / slashing mantığı (Faz 5).
-- `GlobalBlockHeader.storage_root` alanı (Faz 4).
-- BNS / `.bud` (Faz 6).
-- `budlum-xyz/B.U.D.` repo'suna taşıma (üretim zamanı kararı; Faz 5+
-  sonrası).
-
-### Tur 14.5 kapsamı (mevcut durum)
-
-**Kaynak plan:** `the-plan/TUR14_5_PLAN.md` (bölüm 0, 1, 2, 4, 5).
-
-- **`ContentManifest` + `ShardRef`** (`src/storage/manifest.rs`) — çok-parçalı
-  içerik. `build_manifest(&[(bytes, size)])` deterministik manifest üretir;
-  `compute_manifest_id` Keccak-256 (`CODEC_RAW` byte ile domain-separated).
-- **`StorageDeal` + `DealStatus` + `StorageEconomicsParams`**
-  (`src/domain/storage_deal.rs`) — operatör + shard + bond + fee + epoch
-  aralığı. Sabit kodlu ekonomik parametreler (governance YOK): min bond
-  1000, fee 1/epoch, slash 500 bps (%5), reward 100 bps (%1).
-- **`RetrievalChallenge` + `RetrievalResponse` + `ChallengeOutcome`** — byte-range
-  erişilebilirlik testi. **GEÇİCİ / ZAYIF doğrulama** — gerçek Proof-of-Storage
-  DEĞİL. Kod-içi `RETRIEVAL_CHALLENGE_TEMPORARY` tombstone sabitlenmiştir;
-  silinmesi ancak Faz 3 (VerifyMerkle production gate) ile olur.
-- **`StorageRegistry`** — BTreeMap-backed, permissionless, **whitelist YOK**,
+- **`ContentManifest` + `ShardRef` + `ContentId`** (`src/storage/manifest.rs`, `src/storage/content_id.rs`) — çok-parçalı içerik, deterministik manifest üretimi ve byte-range hash kontrolü.
+- **`StorageDeal` + `DealStatus` + `StorageEconomicsParams`** (`src/domain/storage_deal.rs`) — operatör, shard, bond, fee ve epoch aralığı.
+- **`RetrievalChallenge` + `RetrievalResponse` + `ChallengeOutcome`** — byte-range erişilebilirlik testi (**interim / geçici** — gerçek Proof-of-Storage Z-B gate'ine bağlı olduğu için tombstone ile dürüstçe işaretlenmiştir).
+- **`StorageRegistry` + 7 Storage RPC + 3-Aktör E2E Testi** (`src/rpc/api.rs`, `src/rpc/server.rs`, `src/tests/bud_e2e.rs`) — whitelist veya admin-only kapısı olmadan tam permissionless mimari.
   admin/pause/freeze/force/owner/set_params metodu YOK. Bu invariant
   `src/tests/bud_e2e.rs::storage_registry_has_no_admin_or_pause_or_freeze_hook`
   tarafından elle tutulan `forbidden` listesi ile zorunlu kılınır.

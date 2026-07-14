@@ -13,8 +13,8 @@
 //! node. No "Budlum Inc. indexer" service is required.
 
 use crate::core::hash::hash_fields_bytes;
-use crate::domain::Hash32;
-use crate::storage::content_id::{ContentId, DEFAULT_CHUNK_SIZE_BYTES};
+use crate::storage::content_id::ContentId;
+
 use serde::{Deserialize, Serialize};
 
 /// A reference to a single shard (chunk) of a multi-shard piece of content.
@@ -134,6 +134,7 @@ pub fn manifest_id_from_shards(shards: &[ShardRef]) -> ContentId {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::storage::content_id::DEFAULT_CHUNK_SIZE_BYTES;
 
     #[test]
     fn manifest_id_is_deterministic() {
@@ -193,8 +194,8 @@ mod tests {
     fn default_chunk_size_matches_content_id_default() {
         // Cross-module sanity check: the chunk-size default used by the
         // sharder is the same constant the ContentId module advertises.
-        let m = ContentManifest::from_bytes_sliced(&vec![0u8; 1024], DEFAULT_CHUNK_SIZE_BYTES)
-            .unwrap();
+        let m =
+            ContentManifest::from_bytes_sliced(&vec![0u8; 1024], DEFAULT_CHUNK_SIZE_BYTES).unwrap();
         // 1024 / 262_144 = 1 shard
         assert_eq!(m.shard_count, 1);
     }

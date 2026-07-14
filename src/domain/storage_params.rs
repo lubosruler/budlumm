@@ -52,7 +52,7 @@ pub struct StorageDomainParams {
     /// active operator. `0` is rejected — challenges must be periodic.
     pub challenge_interval: u64,
     /// Minimum operator bond, in the same `u64` units as
-    [`ConsensusDomain::operator_bond`](crate::domain::types::ConsensusDomain::operator_bond)
+    /// [`ConsensusDomain::operator_bond`](crate::domain::types::ConsensusDomain::operator_bond)
     /// (1 token = 1_000_000 fixed-point). This is the **storage-specific**
     /// minimum; the domain still has to satisfy the protocol-level
     /// `MIN_DOMAIN_OPERATOR_BOND` from `domain::registry`.
@@ -166,6 +166,9 @@ mod tests {
     fn params_bytes_change_with_field() {
         let mut p2 = good_params();
         p2.chunk_size += 1;
-        assert_ne!(storage_params_bytes(&good_params()), storage_params_bytes(&p2));
+        assert_ne!(
+            storage_params_bytes(&good_params()),
+            storage_params_bytes(&p2)
+        );
     }
 }

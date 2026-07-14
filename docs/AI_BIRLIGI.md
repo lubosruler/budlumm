@@ -1,13 +1,18 @@
 # AI Birliği — Budlum L1 + B.U.D. ortak çalışma şeması
 
-**Güncelleme:** 2026-07-14
+**Güncelleme:** 2026-07-14 (ADIM 1 / eski adı Tur 14 geçişi)
 **Önceki adı:** `docs/DEVIR_RAPORU.md` (tek-ajan devir notu — 2026-07-14'te bu şemaya evrildi)
-**Sabit çalışma dalı:** `arena/019f5f77-budlum`
-**Aktif PR:** #6 (`tur14: B.U.D. (Broad Universal Database) Faz 1-2 iskeleti`)
+**Sabit çalışma dalı:** `arena/019f5f77-budlum` (`main` HEAD `39e30c7` üzerine kurulu ADIM 1)
+**Aktif Aşama:** **ADIM 1** (eski adı: Tur 14 & Tur 14.5 `B.U.D. Broad Universal Database` Sunucu Sistemi)
+
+> **⚠️ KRİTİK TERMİNOLOJİ VE YOL HARİTASI DEĞİŞİKLİĞİ (2026-07-14):**
+> 1. **"Tur" Söyleminin Kaldırılması:** Kullanıcı talimatı ile projedeki tüm yeni çalışma aşamaları artık "Tur" (`Tur 14`, `Tur 15` vb.) değil, **"ADIM"** olarak adlandırılacaktır. Bu kapsamda ilk ana adımımız **ADIM 1** (`ADIM 1 = eski Tur 14 + Tur 14.5 B.U.D. Server Sistemi iskeleti + 7 RPC + 3-aktör E2E`) olarak tanımlanmıştır.
+> 2. **`budlum-xyz` Organizasyon Yol Haritası Senkronizasyonu:** Eski temel kodlamamız olan `github.com/budlum-xyz` organizasyonundaki depolarda (`Budlum`, `BudZero`, `B.U.D.`, `budlum.com`) yer alan yol haritası tam olarak kapsanmaktadır:
+>    - **`budlum-xyz/B.U.D.`** vizyonu (`BUD_Merkeziyetsiz_Depolama_Vizyonu.md`) kapsamındaki Faz 1 (ConsensusKind::StorageAttestation), Faz 2 (ContentId & ContentManifest), ve Faz 5 (StorageDeal, RetrievalChallenge, StorageRegistry) **ADIM 1** olarak `src/domain/` ve `src/storage/` altında kodlanmış ve `main` branch HEAD (`39e30c7`) commitine sabitlenmiştir.
 
 > **Bu dosya üç şeyi birden taşır:**
 > 1. **AI üyeleri tablosu** — kim var, kimin rolü ne, boş slotlar.
-> 2. **Tarihsel Tur özetleri** — Tur 13 / 13.5 / 14 / 14.5 / 14.9 (DEVIR_RAPORU'nun
+> 2. **Tarihsel Tur/Adım özetleri** — Tur 13 / 13.5 / 14 / 14.5 / 14.9 (DEVIR_RAPORU'nun
 >    tamamı, hiçbir şey atlanmadan).
 > 3. **Aktif iş akışı** — kim neyi yazar, kim onaylar, kim denetler.
 >
