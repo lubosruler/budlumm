@@ -320,19 +320,7 @@ impl BridgeState {
     /// Idempotent: transfers already past `expiry_height` stay `Active`
     /// once released; subsequent calls are no-ops.
     pub fn sweep_expired_locks(&mut self, current_height: u64) -> Vec<(AssetId, u128)> {
-        let mut released: Vec<(AssetId, u128)> = Vec::new();
-        // Step 1: collect (asset_id, amount) of locked transfers to release.
-        for transfer in self.transfers.values() {
-            if !matches!(transfer.status, BridgeStatus::Locked { .. }) {
-                continue;
-            }
-            if transfer.expiry_height > 0 && current_height >= transfer.expiry_height {
-                released.push((transfer.asset_id, transfer.amount));
-            }
-        }
-        // Step 2: mutate. Split borrow so we can update both the transfers
-        // and the asset_locations maps.
-        let to_release: Vec<MessageId> = self
+        let to_release: Vec<(MessageId, AssetId, u128)> = self
             .transfers
             .iter()
             .filter(|(_, t)| {
@@ -340,22 +328,18 @@ impl BridgeState {
                     && t.expiry_height > 0
                     && current_height >= t.expiry_height
             })
-            .map(|(mid, _)| *mid)
+            .map(|(mid, t)| (*mid, t.asset_id, t.amount))
             .collect();
-        for mid in to_release {
+
+        let mut released = Vec::with_capacity(to_release.len());
+        for (mid, asset_id, amount) in to_release {
             if let Some(t) = self.transfers.get_mut(&mid) {
                 if let BridgeStatus::Locked { domain } = t.status.clone() {
                     t.status = BridgeStatus::Active { domain };
+                    self.asset_locations
+                        .insert(asset_id, BridgeStatus::Active { domain });
+                    released.push((asset_id, amount));
                 }
-            }
-        }
-        // Step 3: also lift the corresponding asset_locations entry to
-        // Active so the bridge becomes usable again.
-        for (asset_id, _) in &released {
-            if let Some(BridgeStatus::Locked { domain }) = self.asset_locations.get(asset_id) {
-                let domain = *domain;
-                self.asset_locations
-                    .insert(*asset_id, BridgeStatus::Active { domain });
             }
         }
         released
