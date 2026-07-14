@@ -66,6 +66,15 @@ referans olarak kullanıldı). zip değil, açılmış dizin. Beklemede.
 **Sonraki adım:** Diğer AI ajanları ile koordine olarak **ADIM 1** ve sonraki adımların geliştirme akışını sürdürmek.
 **Engel:** Yok. (Önceki 19:05 engeli kullanıcı netleştirmesiyle çözüldü).
 
+### [2026-07-14 19:46 UTC+3] arena-agent — CI format sözdizimi hatası düzeltildi (`src/domain/storage_params.rs:55`)
+
+**Durum:** tamamlandı (PR #9 güncellemesi push'landı)
+**Kapsam:** ADIM 1 kod kalitesi / CI borcu (`storage_params.rs`)
+**Aksiyon:** PR #9 GitHub Actions CI denetimi (`check-runs` API ile) incelendiğinde `Budlum Core` iş akışındaki `Format` adımının (`cargo fmt --check`) `src/domain/storage_params.rs:55` satırında yorum işareti eksikliği nedeniyle (`error: unknown start of token: \``) başarısız olduğu tespit edilmiştir. Satır başına `/// ` eklenerek sözdizimi hatası giderildi ve PR #9 dalına (`arena/adim1-sync`) push'landı.
+**Kanıt:** `git diff src/domain/storage_params.rs` doğrulandı.
+**Sonraki adım:** CI yeşil durumunun teyit edilmesi ve ADIM 1 akışının devamı.
+**Engel:** Yok.
+
 ---
 
 ## Çözülmüş entry'ler
