@@ -1092,7 +1092,8 @@ impl ChainActor {
                     let _ = res_tx.send(self.blockchain.submit_registry_slashing_report(report));
                 }
                 ChainCommand::GetRegistryMember(account, role, res_tx) => {
-                    let _ = res_tx.send(self.blockchain.state.registry.get(&account, role).cloned());
+                    let _ =
+                        res_tx.send(self.blockchain.state.registry.get(&account, role).cloned());
                 }
                 ChainCommand::GetRegistryActiveMembers(role, res_tx) => {
                     let _ = res_tx.send(
@@ -1224,7 +1225,8 @@ impl ChainActor {
                     let _ = res_tx.send(self.blockchain.submit_cross_domain_message(message));
                 }
                 ChainCommand::SubmitRelayedCrossDomainMessage(message, res_tx) => {
-                    let _ = res_tx.send(self.blockchain.submit_relayed_cross_domain_message(message));
+                    let _ =
+                        res_tx.send(self.blockchain.submit_relayed_cross_domain_message(message));
                 }
                 ChainCommand::BondRelayer(address, amount, res_tx) => {
                     let _ = res_tx.send(
