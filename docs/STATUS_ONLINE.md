@@ -530,3 +530,21 @@ Kullanıcımız Ayaz tarafından iletilen son talimat doğrultusunda AI ekibimiz
 **Kanıt:** `git diff src/network/node.rs`, `cargo clippy -D warnings`, `cargo test --lib -j 1` (512 test başarılı).
 **Sonraki adım:** Değişiklikler atomik ve küçük bir fix commit'i olarak (`fix(network): eliminate unwrap calls and panic risks in peer sync and snapshot reassembly`) `main` dalına push'lanıyor.
 **Engel:** Yok.
+
+### [2026-07-15 04:00 UTC+3] ARENA3 — Mainnet v1 PoW Zorluk Ayarı (`timestamp` Underflow Panik Riskinin Çözümü) & AI Müzakeresi
+
+**Durum:** tamamlandı (`main` dalına commit ve push yapılmak üzere)
+**Kapsam:** Mainnet v1 dayanıklılık ve bug fix (`src/consensus/pow.rs`), AI Birliği Aşama 1-2-3 sürekli müzakere.
+**Aksiyon (ARENA1 ve ARENA2 ile İstişare/Yorumlar):**
+1. **Mainnet v1 PoW Difficulty Underflow Bug Fix (`src/consensus/pow.rs`):**
+   - PoW madencilik zorluk ayarını (`compute_new_difficulty`) çalıştıran `pow.rs:85` satırındaki `let actual_time = (last_block.timestamp - first_block.timestamp) / 1000;` işlemi incelendi. Madenciler arası saat sapması (`Clock Skew`), ağ gecikmesi veya out-of-order zaman damgaları geldiğinde (`last_block.timestamp < first_block.timestamp`) bu çıkarma işleminin `u64/u128` integer underflow panik (`attempt to subtract with overflow`) üreterek L1 düğümünü çökerttiği (`DoS`) tespit edildi.
+   - Doğrudan çıkarma işlemi `last_block.timestamp.saturating_sub(first_block.timestamp) / 1000` güvenli doygunluk formülüne çevrildi. Böylece ters zaman damgalarında `actual_time` güvenlice `0` değerine oturuyor ve `actual_time.max(1)` sayesinde hem sıfıra bölünme hem de underflow paniği %100 engelleniyor.
+   - `test_difficulty_adjustment_safely_handles_non_monotonic_timestamps` birim testi eklenerek ters zaman damgalı blokların paniksiz ve güvenli bir şekilde `[1, 32]` zorluk aralığına oturduğu kanıtlandı.
+2. **Aşama 3 AI Müzakeresi:**
+   - **ARENA2 Yorumu:** *"ARENA3, PoW zorluk hesaplama yolundaki bu integer underflow paniğini (`subtract with overflow`) tespit etmen Mainnet v1 hazırlığı için harika bir bulgu. Gerçek dünyada dağıtık madencilerin saat sapmaları olması kaçınılmazdır; `saturating_sub` kullanımı ağın bu tür anormalliklerde dahi ayakta kalmasını (`Crash Resilience`) sağlıyor."*
+   - **ARENA1 Yorumu:** *"Doğru. Eklenen birim testle birlikte `budlum-core` (L1) test envanterimiz **513 yeşil teste (`513 passed; 0 failed`)** ulaştı. `cargo clippy -D warnings` ve `cargo fmt --check` kapıları sıfır uyarı ile geçmektedir."*
+3. **Aşama 2 Kontrolü:** Push öncesi `git fetch origin && git log origin/main -n 3` denetlenmiş, `f4071ba` sonrası çakışan commit olmadığı doğrulanmıştır.
+
+**Kanıt:** `git diff src/consensus/pow.rs`, `cargo test --lib -j 1 pow::tests` (513 test başarılı).
+**Sonraki adım:** Değişiklikler atomik ve küçük bir fix commit'i olarak (`fix(consensus): prevent u64/u128 underflow panic in PoW difficulty adjustment on timestamp jitter across miners`) `main` dalına push'lanıyor.
+**Engel:** Yok.

@@ -82,7 +82,7 @@ impl PoWEngine {
         let interval = self.config.adjustment_interval as usize;
         let last_block = &chain[chain.len() - 1];
         let first_block = &chain[chain.len() - interval];
-        let actual_time = (last_block.timestamp - first_block.timestamp) / 1000;
+        let actual_time = last_block.timestamp.saturating_sub(first_block.timestamp) / 1000;
         let expected_time = self.config.target_block_time * self.config.adjustment_interval;
         let ratio_scaled = (expected_time as u128 * 100) / actual_time.max(1);
         let new_diff = (self.get_difficulty() * ratio_scaled as usize) / 100;
@@ -368,5 +368,18 @@ mod tests {
             "adjusted difficulty must be within [1, 32] clamp, got {}",
             diff_after_record
         );
+    }
+
+    #[test]
+    fn test_difficulty_adjustment_safely_handles_non_monotonic_timestamps() {
+        let mut engine = PoWEngine::new(1);
+        engine.config.adjustment_interval = 2;
+        let mut block1 = Block::new(1, "g".into(), vec![]);
+        block1.timestamp = 2000;
+        let mut block2 = Block::new(2, "b1".into(), vec![]);
+        block2.timestamp = 1000;
+        let chain = vec![block1, block2.clone()];
+        engine.record_block_with_chain(&block2, &chain);
+        assert!((1..=32).contains(&engine.get_difficulty()));
     }
 }
