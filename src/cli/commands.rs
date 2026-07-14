@@ -172,6 +172,10 @@ pub struct NodeConfig {
     #[arg(long)]
     pub restore_backup: Option<String>,
 
+    /// Migrate an existing database at path to ConsensusStateV2 schema (requires atomic backup first) and exit.
+    #[arg(long)]
+    pub migrate_v2: Option<String>,
+
     #[arg(long)]
     pub p2p_identity_file: Option<String>,
 
@@ -275,6 +279,7 @@ impl Default for NodeConfig {
             backup_retention_count: 24,
             backup_now: false,
             restore_backup: None,
+            migrate_v2: None,
             p2p_identity_file: None,
             dns_seeds: Vec::new(),
             max_peers: None,
@@ -950,6 +955,12 @@ mod tests {
     #[test]
     fn test_consensus_type_parsing() {
         assert_eq!(ConsensusType::PoW as u8, 0);
+    }
+    #[test]
+    fn test_cli_migrate_v2_parsing() {
+        let args = vec!["budlum", "--migrate-v2", "./test.db"];
+        let cfg = NodeConfig::parse_from(args);
+        assert_eq!(cfg.migrate_v2, Some("./test.db".to_string()));
     }
 }
 

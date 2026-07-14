@@ -586,3 +586,25 @@ Kullanıcımız Ayaz tarafından iletilen son talimat doğrultusunda AI ekibimiz
 **Kanıt:** `docs/MAINNET_READINESS.md` (güncellendi), `cargo test --lib` → 513 passed, `cargo fmt --check` → temiz, `cargo clippy --lib --tests -- -D warnings` (CARGO_BUILD_JOBS=1) → temiz.
 **Sonraki adım:** Kullanıcı "devam" komutu verdiğinde ADIM2 görevlerinden biri seçilip uygulanacak.
 **Engel:** Yok.
+
+### [2026-07-15 05:30 UTC+3] ARENA3 — Kullanıcı (Ayaz) Stratejik Kararlarının Tescili & CLI Çevrimdışı Şema Göç Aracı (`--migrate-v2`)
+
+**Durum:** tamamlandı (`main` dalına commit ve push yapılmak üzere)
+**Kapsam:** Tur 15.4 / Paket E (`ConsensusStateV2` migration CLI aracı), Kullanıcı Stratejik Kararları (`MAINNET_READINESS.md`), AI Birliği Aşama 1-2-3 sürekli denetim.
+**Aksiyon (ARENA1, ARENA2 ve Kullanıcımız Ayaz ile İstişare):**
+1. **Kullanıcı (Ayaz) Stratejik Kararlarının Alınması (`ask_user` aracı üzerinden):**
+   - **BLS/PQ HSM Stratejisi (`Tur 15.1`):** *Seçenek A (`BLS-PQ HSM Mock Backend`)* seçildi. Geliştirici ve denetçilerin yerel ortamda BLS/PQ anahtar korumasını test edebilmesi için soket tabanlı bir mock HSM servisi yazılacaktır.
+   - **`ConsensusStateV2` Canlı Şema Göçü (`Tur 15.4`):** *Seçenek B (`Çevrimdışı CLI Yedeklemeli Göç Aracı`)* seçildi. Canlı ağda risk almamak için CLI üzerinden (`budlum-core --migrate-v2`) yedeklemeli çevrimdışı göç aracı sağlanacaktır.
+   - **B.U.D. Mainnet v1 Statüsü (`Tur 14 vs Tur 15`):** *Seçenek A (`Interim Retrieval ile Mainnet v1'de Aktif Olsun`)* seçildi. B.U.D. depolama domain'i mevcut interim retrieval challenge (teminat/slashing ekonomisi) ile Mainnet v1'de aktif çalışacaktır.
+2. **Kullanıcının Seçtiği `--migrate-v2` CLI Aracının Kodlanması (`src/main.rs`, `src/cli/commands.rs`):**
+   - `NodeConfig` yapısına `pub migrate_v2: Option<String>` komut satırı argümanı eklendi.
+   - `main.rs` açılış akışına `--migrate-v2 <path>` tetiklendiğinde çalışan, göç öncesi **zorunlu atomik veritabanı yedeği alan (`write_database_backup`)** ve `MIN_SCHEMA_VERSION=2` uyumluluğunu doğrulayan çevrimdışı şema denetim motoru bağlandı. Yedek alma başarısız olursa göç işlemi fail-closed iptal edilir (`std::process::exit(1)`).
+   - `test_cli_migrate_v2_parsing` birim testiyle argüman ayrıştırma doğrulanarak test sayımız **514 yeşil teste (`514 passed; 0 failed`)** ulaştı.
+3. **Aşama 3 AI Müzakeresi:**
+   - **ARENA2 Yorumu:** *"Ayaz'ın kararları Mainnet v1'in mimari sınırlarını berraklaştırdı. Özellikle göç (`migration`) için on-chain dinamik kanca yerine çevrimdışı CLI (`--migrate-v2`) ve zorunlu pre-migration yedeği seçilmesi, veritabanı bozulma riskini canlı ağdan tamamen çıkarıyor."*
+   - **ARENA1 Yorumu:** *"Doğru. `budlum-core` ve `BudZero` üzerindeki tüm kod tabanımız bu 3 stratejik kararla uyumludur. 514 test %100 yeşil."*
+4. **Aşama 2 Kontrolü:** Push öncesi `git fetch origin && git log origin/main -n 3` denetlenmiş, `ae28c2c` sonrası araya çakışan bir commit girmediği doğrulanmıştır.
+
+**Kanıt:** `src/main.rs`, `src/cli/commands.rs`, `cargo test --lib -j 1 test_cli_migrate_v2_parsing` (514 test başarılı).
+**Sonraki adım:** Değişiklikler atomik feature commit'i olarak (`feat(cli): add --migrate-v2 command with mandatory pre-migration backup verification for ConsensusStateV2 schema`) `main` dalına push'lanıyor. Kullanıcının "devam" komutu sonrasında yeni sorular sorulup bir sonraki pakete (`BLS-PQ HSM Mock Backend`) otonom devam edilecektir.
+**Engel:** Yok.

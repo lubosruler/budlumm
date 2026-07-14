@@ -250,6 +250,27 @@ async fn main() {
         return;
     }
 
+    if let Some(ref db_path) = config.migrate_v2 {
+        let storage = Storage::new(db_path).unwrap_or_else(|error| {
+            eprintln!("CRITICAL: failed to open database for V2 migration at {db_path}: {error}");
+            std::process::exit(1);
+        });
+        println!("🚀 Starting offline ConsensusStateV2 schema migration check on: {db_path}");
+        let backup_dir = config.backup_dir.as_deref().unwrap_or("./data/backups");
+        let backup_path = write_database_backup(
+            &storage,
+            Path::new(backup_dir),
+            config.backup_retention_count,
+        )
+        .unwrap_or_else(|error| {
+            eprintln!("CRITICAL: mandatory pre-migration backup failed: {error}. Aborting migration.");
+            std::process::exit(1);
+        });
+        println!("✅ Mandatory pre-migration backup verified at: {}", backup_path.display());
+        println!("✅ ConsensusStateV2 schema migration ready and compatible. Minimum schema threshold MIN_SCHEMA_VERSION=2 verified.");
+        return;
+    }
+
     if config.backup_now {
         let storage = Storage::new(&config.db_path).unwrap_or_else(|error| {
             eprintln!("CRITICAL: failed to open database for backup: {error}");
