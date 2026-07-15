@@ -3336,7 +3336,10 @@ impl Blockchain {
         // 2. Debit Payer (Client Escrow)
         if total_fee > 0 {
             if self.state.balance(&payer) < total_fee {
-                return Err(format!("Insufficient payer balance for deal fee {}", total_fee));
+                return Err(format!(
+                    "Insufficient payer balance for deal fee {}",
+                    total_fee
+                ));
             }
             self.state.sub_balance(&payer, total_fee);
         }
@@ -3348,7 +3351,10 @@ impl Blockchain {
                 if total_fee > 0 {
                     self.state.add_balance(&payer, total_fee);
                 }
-                return Err(format!("Insufficient operator balance for bond {}", economics.operator_bond));
+                return Err(format!(
+                    "Insufficient operator balance for bond {}",
+                    economics.operator_bond
+                ));
             }
             self.state.sub_balance(&operator, economics.operator_bond);
         }
@@ -3425,7 +3431,11 @@ impl Blockchain {
             // FAZ 5 ESCROW: Payer already locked fee_per_epoch in blockchain state when deal was opened.
             // We mint/add_balance back to operator from the virtual locked escrow.
             self.state.add_balance(&operator, amount);
-            tracing::info!("Faz 5 Escrow: Accrued {} reward to operator {}", amount, operator);
+            tracing::info!(
+                "Faz 5 Escrow: Accrued {} reward to operator {}",
+                amount,
+                operator
+            );
 
             let reward_entry = self.storage_operator_rewards.entry(operator).or_default();
             *reward_entry = reward_entry.saturating_add(amount);

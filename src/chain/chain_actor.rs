@@ -549,20 +549,24 @@ impl ChainHandle {
         domain_params: crate::domain::storage_params::StorageDomainParams,
     ) -> Result<u64, String> {
         let (tx, rx) = oneshot::channel();
-        let _ = self.tx.send(ChainCommand::OpenStorageDeal {
-            domain_id,
-            manifest,
-            shard_id,
-            operator,
-            payer,
-            replica_index,
-            start_epoch,
-            end_epoch,
-            economics,
-            domain_params,
-            response: tx,
-        }).await;
-        rx.await.unwrap_or_else(|_| Err("Actor dropped".to_string()))
+        let _ = self
+            .tx
+            .send(ChainCommand::OpenStorageDeal {
+                domain_id,
+                manifest,
+                shard_id,
+                operator,
+                payer,
+                replica_index,
+                start_epoch,
+                end_epoch,
+                economics,
+                domain_params,
+                response: tx,
+            })
+            .await;
+        rx.await
+            .unwrap_or_else(|_| Err("Actor dropped".to_string()))
     }
 
     pub async fn get_locator(&self) -> Vec<String> {
@@ -1587,20 +1591,18 @@ impl ChainActor {
                     domain_params,
                     response,
                 } => {
-                    let _ = response.send(
-                        self.blockchain.open_storage_deal_with_escrow(
-                            domain_id,
-                            &manifest,
-                            shard_id,
-                            operator,
-                            payer,
-                            replica_index,
-                            start_epoch,
-                            end_epoch,
-                            economics,
-                            &domain_params,
-                        ),
-                    );
+                    let _ = response.send(self.blockchain.open_storage_deal_with_escrow(
+                        domain_id,
+                        &manifest,
+                        shard_id,
+                        operator,
+                        payer,
+                        replica_index,
+                        start_epoch,
+                        end_epoch,
+                        economics,
+                        &domain_params,
+                    ));
                 }
                 ChainCommand::IssueStorageChallenges(epoch, res_tx) => {
                     let res = self.blockchain.issue_storage_challenges(epoch);

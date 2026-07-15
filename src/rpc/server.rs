@@ -1381,20 +1381,24 @@ impl BudlumApiServer for RpcServer {
             ErrorObjectOwned::owned(-32602, format!("Invalid payer hex: {e}"), None::<()>)
         })?;
 
-        let deal_id = self.chain.open_storage_deal(
-            domain_id,
-            manifest,
-            s_id,
-            op_addr,
-            payer_addr,
-            replica_index,
-            start_epoch,
-            end_epoch,
-            economics,
-            domain_params,
-        ).await.map_err(|e| {
-            ErrorObjectOwned::owned(-32602, format!("open_deal failed: {e}"), None::<()>)
-        })?;
+        let deal_id = self
+            .chain
+            .open_storage_deal(
+                domain_id,
+                manifest,
+                s_id,
+                op_addr,
+                payer_addr,
+                replica_index,
+                start_epoch,
+                end_epoch,
+                economics,
+                domain_params,
+            )
+            .await
+            .map_err(|e| {
+                ErrorObjectOwned::owned(-32602, format!("open_deal failed: {e}"), None::<()>)
+            })?;
 
         Ok(serde_json::json!({
             "dealId": deal_id,
