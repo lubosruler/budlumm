@@ -1,4 +1,5 @@
 pub mod bns;
+pub mod nft;
 pub mod chain;
 pub mod cli;
 pub mod consensus;
@@ -13,8 +14,6 @@ pub mod network;
 pub mod prover;
 pub mod registry;
 pub mod rpc;
-pub mod relayer;
-pub mod gateway;
 pub mod settlement;
 pub mod storage;
 pub mod tokenomics;
