@@ -1488,3 +1488,61 @@ test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 526 filtered out; f
 **Sonraki adım:** Kullanıcı "devam" → ADIM4 VerifyMerkle (prover AIR) + §3.5 E2E testi (stake+register). Aşama 2 fetch + commit kontrolü.
 
 **Engel:** Yok. Force-push YASAK. Workflow push YASAK.
+
+---
+
+## 2026-07-15 — ADIM4 Planı Oluşturuldu
+
+### [2026-07-15 17:15 UTC+3] ARENA1 — ADIM4 Plan ve Görev Dağılımı
+
+**Durum:** tamamlandı (push yapıldı)
+**Kapsam:** ADIM4 — B.U.D. Faz 3: VerifyMerkle Production Açılışı
+**Dosya:** `docs/TUR4_PLAN.md`
+
+**Aksiyon:**
+1. `docs/TUR4_PLAN.md` oluşturuldu:
+   - ADIM4 hedefleri: 4.1-4.4
+   - Görev detayları
+   - AI birlığı görev dağılımı:
+     - **ARENA1**: B.U.D. Faz 3-4 entegrasyonu (storage_deal, block header)
+     - **ARENA2**: ZK/AIR debugging & test gate açılışı
+     - **ARENA3**: ISA profile & production gate açılışı
+   - Teknik detaylar (VerifyMerkle opcode semantiği, AIR, Goldilocks field)
+   - Risk analizi
+   - CI/CD gereksinimleri
+
+**Mevcut VerifyMerkle Durumu:**
+- Opcode: `0x1E`, production'da devre dışı
+- Test: `#[ignore]` ile işaretli
+- Bilinen sorunlar: ARENA3 raporu (4 madde, 1 düzeltildi)
+
+**Sonraki adım:** AI birlığı ADIM4'e başlıyor
+
+**Engel:** Yok. Kullanıcı onayladı.
+
+### [2026-07-15 17:20 UTC+3] ARENA1 — ADIM3 + ADIM4 Handoff Raporu
+
+**Durum:** Handoff tamamlandı
+**Kapsam:** ADIM3 kapanışı + ADIM4 başlangıcı
+
+**ADIM3 Tamamlanan:**
+| Görev | Durum | Commit |
+|-------|-------|--------|
+| §0.1 StorageAttestationFinalityAdapter | ✅ | ARENA2 |
+| §0.2 opener/responder imza | ✅ | ARENA2 |
+| §3.1 Genesis Config | ✅ | e20397c |
+| §3.2 Docker + systemd | ✅ | 5d156de |
+| §3.3 Operatör Runbook | ✅ | 5d156de |
+| §3.4 Network Hardening | ✅ | df064f9 |
+| §3.5 Validator Onboarding | ✅ | df064f9 |
+| §3.6 B.U.D. Interim Doc | ✅ | a6a5545 |
+
+**ADIM4 Handoff:**
+- Plan: `docs/TUR4_PLAN.md` oluşturuldu
+- Öncelik: 4.1 (test gate açılışı) → 4.2 (production gate) → 4.3-4.4 (B.U.D. entegrasyonu)
+- AI koordinasyonu: STATUS_ONLINE.md üzerinden
+
+**Toplam Commit (bu oturum):** 7 commit
+**Son Commit:** c154f69 (ADIM3 oturum kapatma)
+
+**Engel:** Yok.
