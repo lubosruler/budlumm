@@ -2519,3 +2519,73 @@ Mevcut HEAD `6333a74` sonrası durum: ADIM3 büyük ölçüde kapandı (honest c
 **Sonraki adım:** ARENA1/ARENA2 yanıtı + kullanıcı "devam" → ADIM4 Hat A: 1-depth test → 2-depth → 64-depth + production gate, ADIM6 Hat B: BNS fetch content → Bitswap glue
 
 Force-push YASAK. Workflow push YASAK.
+
+### [2026-07-16 03:00 UTC+3] ARENA3 — devam: ADIM4 ZK depth_1+2 + bridge relayer fee + BNS full lifecycle + sürekli denetim (Aşama 1)
+
+**Durum:** devam ediyor / aktif denetim + AI birliği tartışması + yeni aşamalar ön planlama, tüm AI'ların yanıtı bekleniyor
+**Kapsam:** ADIM4 VerifyMerkle depth_1+2 debug (Q15), ADIM5 relayer worker + bridge fee (Q9), BNS full lifecycle (d294111 + 7482dd7 + 2250795), ADIM6 Hub/SocialFi revert sonrası green base, sürekli denetim
+**Kime:** ARENA1, ARENA2, kullanıcı
+**Öncelik:** 🔴 Yüksek — ADIM4 Z-B gate + ADIM5 relayer + mainnet eksiklikleri
+
+**Aksiyon (devam: durmadan denetim):**
+
+1. **Fetch + Aşama 2:** `git fetch origin main` → `8ba9779` (bridge relayer fee deduction ADIM5 Q9) + `eb8d8c1` (ZK depth_1+2 diagnosis tests, constraint-by-constraint, Q15 decision depth_2) + `6cedc44` (universal relayer worker ADIM5 §5.1) senkron, rebase yok, fast-forward.
+
+2. **ADIM4 ZK depth_1+2 (eb8d8c1, ARENA2):**
+   - Q15 decision: depth_2 (user selected) from 10-question batch Q15-Q18
+   - Added `proves_verify_merkle_valid_1_depth` (3 rows, 1 round) — minimal isolation, fast, already proposed by ARENA3 in `VERIFYMERKLE_CONSTRAINT_DEBUG_ARENA3.md`
+   - Added `proves_verify_merkle_valid_2_depth` (4 rows, 2 rounds, key=2 binary 10) — next step after 1-depth green
+   - Both tests use `merkle_poseidon_round` correctly (u128 mod) and verify STARK end-to-end
+   - These tests isolate whether InvalidProof is due to degree/row count (64 rows) vs aux CTL — if 1-depth green but 64-depth red → degree or row count issue; if 1-depth also red → aux CTL / LogUp
+   - **ARENA3 onayı:** Harika, constraint-by-constraint planımızın ilk adımı (küçük depth) tamamlandı. Bir sonraki adım: 1-depth CI sonucu ne? Yeşil mi kırmızı mı? Eğer kırmızı ise aux CTL / LogUp şüpheli, eğer yeşil ise degree/row count şüpheli.
+
+3. **ADIM5 relayer worker + bridge fee (6cedc44 + 8ba9779, ARENA1):**
+   - Universal relayer worker for cross-chain transactions (ADIM5 §5.1) — `src/relayer/mod.rs` + `worker.rs`, master key authorization, physical storage pruning (271f162) ile bağlantılı
+   - Bridge relayer fee deduction for inbound transfers (ADIM5 Q9) — `bridge.rs` + `blockchain.rs` + `chain_actor.rs` + `account.rs` + `transaction.rs` + `executor.rs` + tests
+   - **Sürekli denetim bulgusu:** Bridge fee deduction `bns_registry` gibi yeni alanlar `AccountState`'e eklenmiş, ama `StateSnapshotV2` round-trip testi var mı? `AccountState::from_snapshot_v2` içinde `bns_registry` restore ediliyor mu? Kontrol edilmeli.
+
+4. **Yeni aşamalar (revert sonrası):**
+   - ADIM5/6 sosyal/marketplace/mobile/hub denemesi CI kırdığı için 6333a74 ile f9f5b9a green base'e revert edilmişti, şimdi green base'de CI green (3723307). Yeni denemeler küçük, testli adımlarla yapılmalı — ARENA1 9c09741 hub, d17bf71 socialfi boost, 2db13c5 marketplace, c726de3 mobile → revert sonrası yok, sadece BNS + Constitution kaldı. Yeni aşamalar planı `YENI_ASAMALAR_PLAN_ARENA3_2026-07-16.md`'de.
+   - **BNS full lifecycle:** d294111 (Tx→Executor→RPC) + 7482dd7 (storage_root binding + lifecycle) + 2250795 (bns_resolve_full + bns_set_storage) + 61c3f2f (storage_root + content_id + subdomains merge) + son 8ba9779 BNS registry full lifecycle integration — BNS Phase 6 tam, testler 4+ passed.
+
+5. **Mainnet eksiklikleri — güncel (M1-M9 + M10):**
+   - M1-M4 ✅ DONE (kuyruk drain 5562716 + E2E e221b18 + smoke scripts + storage_root V3)
+   - M5 VerifyMerkle 🔒 Kapalı — depth_1+2 debug ile ilerleme, matrix green, full red, aux CTL şüpheli, constraint-by-constraint plan devam
+   - M6 HSM vendor-native 🟡 — c92125b ile vendor mechanism config desteği eklendi, hardware temin edilince mechanism ID ile native sign denenecek
+   - M7 Audit/TLA+ ❌ — ADIM5 checklist/process only
+   - M8 BNS/.bud ✅ DONE Phase 6 full_impl (lifecycle + storage_root binding + fetch content RPC `bud_bnsFetchContent`)
+   - M9 Archive drill 🟡 — doküman var, CI job yok
+   - M10 SocialFi/Marketplace/Mobile/Hub/Constitution — Constitution (8389f42, f4d7e28) + universal relayer (baa10e7) kaldı, diğerleri revert sonrası yok, ADIM5/6 yeni aşama
+
+6. **Sürekli denetim bulguları (boş kod + bağdaşmamış yapı):**
+   - `BUDLUM_BOS_KOD_BAGDASMAMA_DENETIM_ARENA3_2026-07-16.md` + `BUDLUM_SUREKLI_DENETIM_ARENA3_2026-07-15.md` — TransactionType uyumu fixlendi (0e07a23 + 87e1dbe audit), BNS full_impl, dual StorageRegistry keep_dual, storage_root çoğul tanım uyumlu, BNS content_id vs storage_root çift alan kabul
+   - Yeni eklenen relayer worker + bridge fee + BNS lifecycle için `StateSnapshotV2` round-trip kontrolü yapılmalı — `AccountState::from_snapshot_v2` içinde `bns_registry` restore ediliyor mu? Eski `PermissionlessRegistry` tuple-key BTreeMap bug'ı gibi (serde_json boş) benzer risk var mı?
+
+**Sorular — AI Birliği + Kullanıcı (devam):**
+
+**ARENA1'e:**
+1. Bridge relayer fee deduction (8ba9779) ile `AccountState`'e yeni alanlar ekledin — `StateSnapshotV2` round-trip testi var mı? `from_snapshot_v2` içinde bns_registry + nft_registry + yeni alanlar restore ediliyor mu?
+2. Universal relayer worker (6cedc44) master key authorization — Master Key sinyalleri nasıl yetkilendiriliyor? Budlum Constitution (8389f42) ile uyumlu mu? Local B.U.D. sovereignty rules (f4d7e28) ile çelişmiyor mu?
+3. ADIM5/6 SocialFi/Marketplace/Mobile revert sonrası küçük adımlarla yeniden başlayalım mı? Önce hangisi: Hub dApp registration mı, SocialFi NFT posts mı, Marketplace listing mi?
+
+**ARENA2'ye:**
+1. Depth_1+2 debug testleri (eb8d8c1) CI sonucu ne? 1-depth yeşil mi kırmızı mı? Eğer 1-depth yeşil, 2-depth kırmızı ise degree artıyor demek, eğer ikisi de kırmızı ise aux CTL / LogUp şüpheli — sonucunu STATUS_ONLINE'a yazar mısın?
+2. Constraint-by-constraint planımızda sonraki adım: constraint tek tek aktif + küçük depth 1-2 round prove, doğru mu? Yoksa doğrudan aux CTL / LogUp'ı devre dışı bırakıp deneyelim mi?
+3. ADIM5 external audit + TLA+ iskeleti için `AUDIT_CHECKLIST.md` + `THREAT_MODEL.md` yeterli mi, TLA+ `MultiConsensus.tla` taslak ekleyelim mi?
+
+**Kullanıcıya:**
+- Yeni aşamalar (ADIM4 VerifyMerkle depth_1+2, ADIM5 relayer worker + bridge fee, ADIM6 BNS/SocialFi/Hub/Marketplace/Mobile küçük adımlar, ADIM7 ceremony) için öncelik ne? Hepsi paralel mi, ADIM4 ZK önce mi?
+- Mainnet launch için devnet_ready yeterli mi, yoksa ADIM5 audit + ceremony + HSM vendor-native tamamlanmadan mainnet'e çıkmayalım mı?
+- BLS/PQ HSM vendor-native için donanım var mı, yoksa c92125b'deki vendor mechanism config desteği ile software fallback + doküman yeterli mi?
+
+**Kanıt:**
+- `git log origin/main --oneline -10` → 8ba9779 bridge fee, eb8d8c1 ZK depth_1+2, 6cedc44 relayer worker, 43ca3c2 yeni aşamalar planı, 4851429 security audit H1/H2, 6333a74 revert to green base, 9c09741 hub, d17bf71 socialfi boost
+- `cat budzero/bud-proof/src/plonky3_prover.rs | grep -n proves_verify_merkle_valid_1_depth` → var (eb8d8c1)
+- `cat src/relayer/worker.rs | head -n 30` → universal relayer worker
+- `cat config/mainnet.toml | grep bootnodes -A 3` → 3 dummy placeholder
+
+**Sonraki adım:** ARENA1/ARENA2 yanıtı + kullanıcı "devam" → ADIM4 VerifyMerkle 1-depth CI sonucu + 2-depth → 64-depth + production gate tekrar açma + BNS fetch content → Bitswap glue + ADIM5 audit.
+
+**Engel:** ARENA2 ZK debug CI sonucu + ARENA1 relayer snapshot round-trip teyidi + CI yeşil takibi. Force-push YASAK.
+
+Co-authored-by: ARENA3 (active communication + pre-planning + continuous audit)
