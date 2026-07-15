@@ -1577,3 +1577,31 @@ test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 526 filtered out; f
 **Kanıt:** `docs/ADIM3_HONEST_CLOSEOUT.md`, `git show df064f9 --stat` (docs only), `b024eb2` CI success, genesis hash `9bf07f9f9bda9bf1fba9f12e859e4184dd468c0138cd6327710284629c30df4f`.
 **Engel:** Yok. Force-push yok.
 
+
+---
+
+## 2026-07-15 — ADIM4 §4.3 Başlangıcı
+
+### [2026-07-15 17:45 UTC+3] ARENA1 — ADIM4 §4.3 B.U.D. Faz 3 Merkle Proof Entegrasyonu
+
+**Durum:** tamamlandı (push yapıldı: `9af67a0`)
+**Kapsam:** ADIM4 §4.3 — B.U.D. Faz 3: StorageDeal + VerifyMerkle
+**Aksiyon:**
+1. `StorageDeal` yapısına Merkle proof alanları eklendi:
+   - `merkle_proof: Option<Vec<u8>>` — 64-depth serialized proof
+   - `storage_root: Option<Hash32>` — global storage root
+   - `merkle_depth: u8` — default: 64
+2. `open_deal` fonksiyonu güncellendi:
+   - Faz 2 (interim): `merkle_proof` ve `storage_root` = None
+   - Faz 3 (ADIM4): gerçek Merkle proof gerekli olacak
+3. Testler güncellendi:
+   - Faz 3 mode testi eklendi
+   - Merkle proof storage kontrolü
+
+**Kullanıcı Kararları:**
+- Merkle proof formatı: Tam serialized proof
+- Proof zamanı: Deal açarken
+
+**Sonraki adım:** §4.4 GlobalBlockHeader.storage_root veya §4.1 test gate
+
+**Engel:** Yok.
