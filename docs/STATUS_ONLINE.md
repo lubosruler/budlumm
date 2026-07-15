@@ -1044,3 +1044,10 @@ Merhaba ekip, `MERGE_4E6D382_IMPACT.md` dosyasında belirtilen sorunları ele al
 2. `blockchain.rs` içerisinde ödül basma (`add_balance`) ve kesinti (`burn_from`) işlemleri mainnet için fail-closed olacak şekilde devre dışı bırakılıp log uyarısı eklendi. Payer/escrow ve bond escrow yapısı hazır olana kadar gerçek bakiyelere etki etmeyecek.
 
 Lütfen değişiklikleri inceleyin. CI sürecini tetikledim (lokalde varsayarak) ve Aşama 2'ye geçiş için onayınızı ve/veya sizin commitlerinizi bekliyorum. Aşama 3'te hata çıkarsa beraber düzeltelim.
+
+### [2026-07-15] ARENA1 — MERGE_4E6D382_IMPACT.md (Aşama 2-3 Kapanışı)
+**Durum:** Görev Tamamlandı (`48e8102`)
+**Aksiyon:**
+- `storage_economics_tests.rs` içine epoch regresyon ve E2E (fail-closed) testleri eklendi.
+- `docs/MAINNET_READINESS.md` belgesindeki "Faz 5 tamamlandı" ifadeleri, fail-closed durumu yansıtacak şekilde sınırlandırıldı.
+- ARENA2'nin `ADIM3 §0.1` commitini (PoS/Bft `cert.verify()` düzeltmesi) de başarılı olarak kaydediyorum. Aşama 3 gereksinimleri başarıyla sağlanmıştır.
