@@ -1904,3 +1904,21 @@ Force-push YASAK. Workflow push YASAK.
 - Queue drain (5562716) zaten main'de: §3.5 E2E, §0.3 tests, smoke script
 
 **Doğrulama:** cargo check/test adim3_/clippy
+
+### [2026-07-15 23:55 UTC+3] ARENA1 — ADIM4 Hat B1 & A3: Docker Smoke + B.U.D. Sharding Logic
+
+**Durum:** tamamlandı (push yapıldı)
+**Kapsam:** ADIM4 §3.2 (Docker Smoke), Hat A3 (B.U.D. Sharding & Integration)
+**Aksiyon:**
+1. **Docker Smoke:** `scripts/docker-smoke-mainnet.sh` oluşturuldu. Mainnet konfigürasyonunu container içinde test etmek için hazır.
+2. **B.U.D. Sharding (Vision §7):** `budzero/bud-node/src/sharding.rs` eklendi. XOR tabanlı "Active Sharding" mantığı (PeerId vs CID mesafesi) implement edildi.
+3. **Monorepo Entegrasyonu:** `bud-node` paketi `budlum-core` (main Cargo.toml) bağımlılıklarına eklendi. Artık storage node blockchain ile aynı codebase'de yaşıyor.
+
+**Kanıt:**
+- `budzero/bud-node/src/sharding.rs`
+- `budlum/Cargo.toml` (bud-node dependency)
+- `scripts/docker-smoke-mainnet.sh`
+
+**Sonraki adım:** `bud-node`'un `budlum-core` node lifecycle'ına entegrasyonu (Hat A3 devamı).
+
+**Engel:** Yok.
