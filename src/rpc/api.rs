@@ -360,4 +360,18 @@ pub trait BudlumApi {
     /// Returns active `PermissionlessRegistry` members filtered by storage operator role.
     #[method(name = "bud_storageActiveOperators")]
     async fn storage_active_operators(&self) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// B.U.D. Name Service (BNS): Resolve a human-readable name to an address.
+    #[method(name = "bud_bnsResolve")]
+    async fn bns_resolve(&self, name: String) -> Result<Option<String>, ErrorObjectOwned>;
+
+    /// B.U.D. Name Service (BNS): Prepare a registration transaction (offline helper).
+    /// Note: To actually register, the user must submit a signed transaction.
+    #[method(name = "bud_bnsPrepareRegister")]
+    async fn bns_prepare_register(
+        &self,
+        name: String,
+        owner: String,
+        duration: u64,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
 }

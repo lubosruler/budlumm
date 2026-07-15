@@ -58,6 +58,7 @@ pub enum TransactionType {
     Unstake,
     Vote,
     ContractCall,
+    BnsRegister,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

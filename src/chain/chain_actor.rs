@@ -234,6 +234,10 @@ pub enum ChainCommand {
         voter_id: Address,
         response: oneshot::Sender<Result<Precommit, String>>,
     },
+    BnsResolve {
+        name: String,
+        response: oneshot::Sender<Option<Address>>,
+    },
 }
 
 #[derive(Clone)]
@@ -1105,6 +1109,12 @@ impl ChainHandle {
             .await;
         rx.await.map_err(|_| "Actor dropped".to_string())
     }
+
+    pub async fn bns_resolve(&self, name: String) -> Option<Address> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self.tx.send(ChainCommand::BnsResolve { name, response: tx }).await;
+        rx.await.unwrap_or(None)
+    }
 }
 
 pub struct ChainActor {
@@ -1697,6 +1707,9 @@ impl ChainActor {
                         .cloned()
                         .collect();
                     let _ = res_tx.send(challenges);
+                }
+                ChainCommand::BnsResolve { name, response } => {
+                    let _ = response.send(self.blockchain.state.bns_registry.resolve(&name, self.blockchain.state.epoch_index));
                 }
             }
         }

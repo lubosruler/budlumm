@@ -270,6 +270,20 @@ impl Executor {
                 sender.balance = sender.balance.saturating_sub(tx.fee);
                 sender.nonce = sender.nonce.saturating_add(1);
             }
+            TransactionType::BnsRegister => {
+                // data: bincode({ name: String, duration: u64 })
+                let (name, duration): (String, u64) = bincode::deserialize(&tx.data)
+                    .map_err(|e| BudlumError::validation("bns_invalid_data", e.to_string()))?;
+
+                state
+                    .bns_registry
+                    .register(name, tx.from, state.epoch_index, duration)
+                    .map_err(|e| BudlumError::validation("bns_registration_failed", e.to_string()))?;
+
+                let sender = state.get_or_create(&tx.from);
+                sender.balance = sender.balance.saturating_sub(tx.fee);
+                sender.nonce = sender.nonce.saturating_add(1);
+            }
         }
 
         Ok(())

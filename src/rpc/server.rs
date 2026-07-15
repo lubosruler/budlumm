@@ -1752,6 +1752,50 @@ impl BudlumApiServer for RpcServer {
             "operators": list,
         }))
     }
+
+    async fn bns_resolve(&self, name: String) -> Result<Option<String>, ErrorObjectOwned> {
+        let addr = self.chain.bns_resolve(name).await;
+        Ok(addr.map(|a| Self::to_0x_hash(a.to_hex())))
+    }
+
+    async fn bns_prepare_register(
+        &self,
+        name: String,
+        owner: String,
+        duration: u64,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let clean_owner = owner.strip_prefix("0x").unwrap_or(&owner);
+        let owner_addr = Address::from_hex(clean_owner).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid owner address: {}", e), None::<()>)
+        })?;
+
+        let data = bincode::serialize(&(name.clone(), duration))
+            .map_err(|e| ErrorObjectOwned::owned(-32000, e.to_string(), None::<()>))?;
+
+        let tx = crate::core::transaction::Transaction {
+            from: owner_addr,
+            to: Address::zero(),
+            amount: 0,
+            fee: 1000, // Placeholder fee
+            nonce: self.chain.get_nonce(&owner_addr).await,
+            data,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis(),
+            hash: String::new(),
+            signature: None,
+            chain_id: self.chain.get_chain_id().await,
+            tx_type: crate::core::transaction::TransactionType::BnsRegister,
+        };
+
+        Ok(serde_json::json!({
+            "name": name,
+            "owner": owner,
+            "duration": duration,
+            "tx_template": tx,
+        }))
+    }
 }
 
 fn parse_content_id(s: &str) -> Result<ContentId, ErrorObjectOwned> {

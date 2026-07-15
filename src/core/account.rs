@@ -101,6 +101,7 @@ pub struct AccountState {
     pub tokenomics: crate::tokenomics::TokenomicsParams,
     /// State of the timed (annual) reserve burn.
     pub timed_burn: crate::tokenomics::TimedBurnState,
+    pub bns_registry: crate::bns::BnsRegistry,
     /// On-chain burn-reserve account the timed burn consumes. `None` when $BUD
     /// tokenomics is not enabled for this chain (e.g. plain devnet genesis).
     pub burn_reserve_address: Option<Address>,
@@ -140,6 +141,7 @@ impl AccountState {
             validators: BTreeMap::new(),
             tokenomics: crate::tokenomics::TokenomicsParams::default(),
             timed_burn: crate::tokenomics::TimedBurnState::new(),
+            bns_registry: crate::bns::BnsRegistry::new(),
             burn_reserve_address: None,
             team_vesting: None,
             unbonding_queue: Vec::new(),
@@ -168,6 +170,7 @@ impl AccountState {
             validators: BTreeMap::new(),
             tokenomics: crate::tokenomics::TokenomicsParams::default(),
             timed_burn: crate::tokenomics::TimedBurnState::new(),
+            bns_registry: crate::bns::BnsRegistry::new(),
             burn_reserve_address: None,
             team_vesting: None,
             unbonding_queue: Vec::new(),
@@ -211,6 +214,7 @@ impl AccountState {
             validators,
             tokenomics: crate::tokenomics::TokenomicsParams::default(),
             timed_burn: crate::tokenomics::TimedBurnState::new(),
+            bns_registry: crate::bns::BnsRegistry::new(),
             burn_reserve_address: None,
             team_vesting: None,
             unbonding_queue: Vec::new(),
