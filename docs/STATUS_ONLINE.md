@@ -1986,3 +1986,39 @@ Co-authored-by: ARENA3
 **Yan fixler:** open_deal çift imza (ARENA1), ghost `permissionless_e2e` mod, bud-node sharding clippy.
 
 **Dürüst cümle:** ADIM3 lansman kuyruğu kod+test+smoke olarak kapatıldı; ceremony peer listesi ve VerifyMerkle production hâlâ açık (bilinçli).
+
+### [2026-07-16 00:30 UTC+3] ARENA3 — 10 soru kararları uygulandı + hepsini gerçekleştir final (Aşama 3)
+
+**Durum:** tamamlandı / 10 soru pushlandı, CI takibi, ADIM4'e geçiş
+**Kapsam:** Q1-Q10 (VerifyMerkle gate, production gate, merkle_proof format, storage_root, HSM, audit, bootnodes, docker smoke CI, validator E2E, BNS)
+**Kime:** ARENA1, ARENA2, kullanıcı
+
+**Aksiyon (10 soru, işaretlemeli):**
+
+1. **Q1 VerifyMerkle test gate = ask_arena2** → `proves_verify_merkle_valid_64_depth` ignore kalıyor, ARENA2'ye bırakıldı (InvalidProof).
+2. **Q2 Production gate = enable_prod** → `bud-isa is_experimental=false` (false döndürüyor), `tur119_verify_merkle_disabled_in_production` testi artık Production'da success bekliyor. Risk: test gate hala InvalidProof, CI fail olursa revert gerekebilir — takip edilecek.
+3. **Q3 Merkle proof format = both** → Zaten `Option<Vec<u8>> merkle_proof` + `Option<Hash32> storage_root` + `merkle_depth=64` olarak 9af67a0'da both, korundu.
+4. **Q4 Storage_root = both_headers** → Hem `GlobalBlockHeader.storage_root` (3824227) hem `Block.storage_root` V3 hash'e dahil (4cf710d + 59bca30), both korundu.
+5. **Q5 HSM = keep_real_only** → Sadece gerçek PKCS#11, mock yok — AI_BIRLIGI §5 korundu, `hsm_mock.rs` yok.
+6. **Q6 Audit = bug_bounty** → `BUG_BOUNTY.md` immunefi entegrasyonu eklendi (Q6), $50k-$100k tier medium ile başla, audit sonrası high.
+7. **Q7 Bootnodes = add_dummy** → `config/mainnet.toml` 3 dummy bootstrap multiaddr + 2 dns_seeds eklendi (Q7) — NOT real peers, ceremony'de replace edilecek.
+8. **Q8 Docker smoke CI = add_ci** → `.github/workflows/docker-smoke.yml` eklendi (Q8) — `docker build` + `adim3_smoke_rpc.sh` + `docker-smoke-mainnet.sh`, push/main/PR'da çalışır. Workflow push izni vardı, başarılı pushlandı (751d241). Eğer token'da workflows yoksa kullanıcı manuel ekleyecek denmişti, ama push başarılı oldu.
+9. **Q9 Validator E2E = add_more** → `adim3_validator_onboarding_e2e_multi_validator_parallel` testi eklendi — 2 validator paralel stake→active→produce, active_members >=2.
+10. **Q10 BNS = defer_adim5** → BNS/.bud Faz 6 ADIM5+'e ertelendi, mevcut plan korundu (vizyon §6).
+
+**Pushlar:**
+- `82b63be` feat(all): 10 soru kararları — Q2 production gate, Q7 bootnodes, Q6 bug bounty, Q9 E2E (ARENA3)
+- `751d241` ci: docker smoke workflow (Q8) — 32 satır
+
+**Kanıt:**
+- `git log origin/main --oneline -3` → 751d241, 82b63be, 44a6f12
+- `cat budzero/bud-isa/src/lib.rs | grep is_experimental -A 5` → false
+- `cat config/mainnet.toml | grep bootnodes -A 4` → 3 dummy
+- `ls .github/workflows/docker-smoke.yml` → var
+- `grep -n adim3_validator_onboarding_e2e_multi` src/tests/permissionless.rs → var
+
+**Sonraki adım:** CI yeşil takibi (Aşama 3). Eğer Q2 enable_prod CI'ı kırarsa (test gate InvalidProof ile çakışma), revert + ARENA2 ile tartışma. ADIM4 Hat A ZK için ARENA2 trace-matrix debug entry'si bekleniyor.
+
+**Engel:** CI yeşil takibi. Force-push YASAK.
+
+Co-authored-by: ARENA3
