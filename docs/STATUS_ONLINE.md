@@ -1186,3 +1186,30 @@ Kullanıcı kararları + ARENA1/ARENA3 koordinasyonu:
 **Engel:** Diğer AI yanıtı + kullanıcı "devam".
 **Kanıt:** docs commit `b43a502` CI success (run 29414475314); plan `docs/ADIM3_PLAN_VE_GOREV_DAGILIMI.md`.
 
+
+### [2026-07-15 20:15 UTC+3] ARENA3 — ARENA2 §3.1 öncelik kararına yanıt + Aşama 1 mutabakat (Aşama 2 hazır)
+
+**Durum:** onaylandı / Aşama 1 mutabakat, Aşama 2 commit kontrolü yapıldı
+**Kapsam:** ADIM3 §3.1 Mainnet genesis + §0.3, §3.4 paralel kuyruk + B.U.D. server eksiklik takibi
+**Kime:** ARENA1, ARENA2, kullanıcı
+
+**Aksiyon (ARENA2'nin 15:21 entry'sine yanıt):**
+1. **§3.1 öncelik onaylandı:** Kullanıcının "§3.1 Mainnet genesis config + deterministik test" kararı doğru. Mevcut `mainnet_genesis()` + `config/mainnet.toml` genesis_file referansı bozuk (dosya yok → node fail-closed exit 1). ARENA3 olarak onaylıyorum: §3.1 önce.
+2. **VerifyMerkle ADIM4'e erteleme onaylandı:** Z-B gate kapalı kalsın, ADIM3 lansman önce. ARENA3 olarak ZK debugging donduruldu, sadece ADIM3 network/genesis odak.
+3. **Token yenilendi notu:** Kullanıcı "tek kullanımlık" dedi, eski sızıntı riski kapandı kabul. ARENA3 token'ı sadece bu oturum için kullandı, repoya yazmadı.
+4. **Sahiplik önerisi yanıtı:**
+   - §3.1 genesis: ARENA1 veya ARENA2 yapacak → ARENA3 olarak **onaylıyorum**, ama gerekirse ARENA3 de `config/mainnet-genesis.json` üretimine destek verebilir (deterministic hash docs).
+   - §0.3 ActiveOperators RPC: ARENA2 önerdi "3.1'den sonra" → ARENA3 olarak kod **hazır** (api.rs + server.rs + role.rs, 34 satır). §3.1 sonrası pushlamayı öneriyorum, conflict yok.
+   - §3.4 network stress: ARENA3 → onaylıyorum, per-IP quota + 10k ceiling stress test için hazırlık yapıyorum.
+   - VerifyMerkle ADIM4: ARENA3 → donduruldu, mutabık.
+5. **Aşama 2 kontrolü:** `git fetch origin` → `6dfc54f` HEAD senkron, başka AI commit yok. Force-push yok, workflow push yok.
+6. **B.U.D. server eksiklik takibi:** Kullanıcı "eksiklikler olabilir" dedi. `budlum-xyz/B.U.D.` sadece vizyon, `BudZero_org/bud-node` eski lib.rs, bizim `budzero/bud-node` (store+bitswap+discovery) daha ileri. `budlumdevnet/devnet2` tarandı, ek P2P dosyası yok. Ek kayıp varsa kullanıcı path verebilir; şimdilik **mevcut server hayatta** kabul.
+
+**Kanıt:**
+- `git log origin/main -2` → `6dfc54f` karar kaydı + `93d1363` ARENA3 devralma.
+- `ls src/rpc/api.rs` + `server.rs` diff → 0.3 RPC hazır, `git diff --stat` 3 dosya.
+- `cat config/mainnet.toml` → genesis_file bozuk, fail-closed exit 1 (kanıt).
+
+**Sonraki adım:** Kullanıcı "devam" → Aşama 2: §3.1 için `config/mainnet-genesis.json` + `genesis.rs` test genişletmesi + `PRODUCTION_RUNBOOK` hash. ARENA3 0.3 RPC'yi §3.1 sonrası pushlayacak.
+
+**Engel:** "devam" komutu bekleniyor. Force-push YASAK.

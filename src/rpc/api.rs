@@ -352,4 +352,10 @@ pub trait BudlumApi {
         &self,
         challenge_id: u64,
     ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Query active storage operators (STORAGE_OPERATOR RoleId=5).
+    /// ADIM3 §0.3 — previously documented as ghost RPC, now implemented.
+    /// Returns active `PermissionlessRegistry` members filtered by storage operator role.
+    #[method(name = "bud_storageActiveOperators")]
+    async fn storage_active_operators(&self) -> Result<serde_json::Value, ErrorObjectOwned>;
 }

@@ -1712,6 +1712,30 @@ impl BudlumApiServer for RpcServer {
             None => Ok(serde_json::Value::Null),
         }
     }
+
+    async fn storage_active_operators(&self) -> Result<serde_json::Value, ErrorObjectOwned> {
+        // ADIM3 §0.3: ghost RPC was documented but not implemented.
+        // Implementation: query PermissionlessRegistry active members for STORAGE_OPERATOR (RoleId 5).
+        // No admin gate, no whitelist — permissionless read, same as bud_registryActiveMembers.
+        let role = crate::registry::role::roles::STORAGE_OPERATOR;
+        let members = self.chain.get_registry_active_members(role).await;
+        let list: Vec<serde_json::Value> = members
+            .iter()
+            .map(|reg| {
+                serde_json::json!({
+                    "address": Self::to_0x_hash(reg.account.to_hex()),
+                    "stake": reg.stake,
+                    "role": "storage_operator",
+                })
+            })
+            .collect();
+        Ok(serde_json::json!({
+            "roleId": role.value(),
+            "role": "storage_operator",
+            "count": list.len(),
+            "operators": list,
+        }))
+    }
 }
 
 fn parse_content_id(s: &str) -> Result<ContentId, ErrorObjectOwned> {

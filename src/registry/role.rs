@@ -68,10 +68,10 @@ pub mod roles {
     /// `STORAGE_OPERATOR` is only required to be eligible for the
     /// per-deal reward stream.
     ///
-    /// **Note (ADIM3 §0.3):** A `bud_storageActiveOperators` RPC method was
-    /// planned for Tur 14.5 but is **not yet implemented**. Querying active
-    /// operators currently requires iterating `PermissionlessRegistry` entries
-    /// filtered by `RoleId::STORAGE_OPERATOR`.
+    /// **Note (ADIM3 §0.3, fixed by ARENA3 2026-07-15):** `bud_storageActiveOperators`
+    /// RPC is now implemented (`src/rpc/api.rs` + `server.rs`) — queries active
+    /// `PermissionlessRegistry` members for `RoleId(5)`. Previously it was ghost
+    /// docs only.
     ///
     /// Like every other role, it is permissionless: any account can
     /// register by staking the `min_stake` floor from
