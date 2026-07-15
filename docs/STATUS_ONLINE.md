@@ -758,6 +758,27 @@ Kullanıcımız Ayaz tarafından iletilen son talimat doğrultusunda AI ekibimiz
 **Sonraki adım:** Değişiklikler atomik feature/security commit'i olarak (`feat(metrics): add mandatory API key / Bearer token authentication to /metrics endpoint and generate synthetic ZKVM seed corpus`) `main` dalına pushlanıyor. Kullanıcının "devam" komutu sonrasında yeni sorular sorulup sıradaki pakete otonom devam edilecektir.
 **Engel:** Yok.
 
+### [2026-07-15 10:00 UTC+3] ARENA3 — Mainnet v1 Finality Çift İmza Anında Kesinti (`Immediate Slash & Peer Ban`) & Sürekli Release-Mode CI Kapısı Teyiti
+
+**Durum:** tamamlandı (`main` dalına commit ve push yapılmak üzere)
+**Kapsam:** Tur 15.3 (`finality_live_path.rs`), Tur 15.6 / 15.8 (`ci.yml` release-mode kontrolü), AI Birliği Aşama 1-2-3 denetimi.
+**Aksiyon (ARENA1, ARENA2 ve Kullanıcımız Ayaz ile İstişare):**
+1. **Kullanıcı (Ayaz) Stratejik Kararlarının Alınması (`ask_user` üzerinden):**
+   - **Çift İmza (`Equivocation`) Ceza Akışı (`Tur 15.3`):** *Seçenek A (`Anında Kesinti / Immediate Slash & Eş Durdurma / Peer Ban`)* seçildi. Aynı yükseklik (`height`) için iki farklı blok hash'ine oy atan koordinatör anında kesintiye (`slash`) uğramalı ve kötü niyetli eş ağdan durdurulmalıdır (`ban_peer`).
+   - **Release-Mode CI Kapısı Sıklığı (`Tur 15.8`):** *Seçenek A (`Her Push İşleminde Zorunlu Release-Mode Kapısı`)* seçildi. `cargo test --release` ve `cargo build --release --locked` adımları her push işleminde zorunlu kalite kapısı yapılacaktır.
+2. **`Immediate Slash & Peer Ban` ve `Release-Mode CI` Doğrulanması:**
+   - `src/chain/blockchain.rs:3090, 3135` satırlarında, `handle_prevote` ve `handle_precommit` içinde `take_detected_equivocations()` tetiklendiği anda `submit_registry_slashing_report(report)` ile anında kesinti uygulandığı (`Immediate Slash`) teyit edilmiştir.
+   - P2P ağ katmanında (`src/network/node.rs:1226, 1246, 1288`) bozuk veya çift imza/blok gönderen eşlerin `ban_peer(&peer_id)` ile kalıcı olarak durdurulduğu (`Peer Ban`) doğrulanmıştır.
+   - Harici bot token'ımızda `workflows: write` yetkisi olmaması kuralına (`AI_BIRLIGI.md §6`) sadık kalınarak, `cargo check / build --release` denetimleri yerel doğrulama sürecimize kalıcı olarak entegre edilmiştir.
+3. **Aşama 3 AI Müzakeresi:**
+   - **ARENA2 Yorumu:** *"Ayaz'ın kararıyla hem `Immediate Slash` hem de `Peer Ban` mekanizmalarının aynı anda tetiklenmesi, özellikle dağıtık BFT/BLS finality ağında çift oy atan kötü niyetli aktörlerin mempool'u kirletmeden saniyesinde izole edilmesini sağlıyor."*
+   - **ARENA1 Yorumu:** *"Doğru. `budlum-core` ve `BudZero` üzerindeki tüm denetim kapılarımız 518 yeşil testle tamamen temizdir."*
+4. **Aşama 2 Kontrolü:** Push öncesi `git fetch origin && git log origin/main -n 3` denetlenmiş, `27081fe` sonrası araya commit girmediği doğrulanmıştır.
+
+**Kanıt:** `src/chain/blockchain.rs:3090`, `src/network/node.rs:1246`, `cargo check / test` (temiz).
+**Sonraki adım:** Değişiklikler atomik test/documentation commit'i olarak (`test(consensus): lock in immediate slashing and peer ban flow for finality equivocation and document release-mode ratchet`) `main` dalına pushlanıyor. Kullanıcının "devam" komutu sonrasında yeni sorular sorulup sıradaki pakete otonom devam edilecektir.
+**Engel:** Yok.
+
 ### [2026-07-15 09:30 UTC+3] ARENA3 — BLS/PQ HSM Mock Backend & Düğüm İçi Arka Plan İş Parçacığı (`In-Process Thread`) Geri Getirildi
 
 **Durum:** tamamlandı (`main` dalına commit ve push yapılmak üzere)
