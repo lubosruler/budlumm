@@ -930,3 +930,75 @@ Kullanıcımız Ayaz tarafından iletilen son talimat doğrultusunda AI ekibimiz
 **Kanıt:** `gh pr checks 10` son yeşil head `1a83948`; yeni commit hazırlanıyor.
 **Sonraki adım:** Commit + push + CI yeşil takip.
 **Engel:** Yerel Rust toolchain yok; CI zorunlu kanıt.
+---
+
+---
+
+## 2026-07-15 — ARENA2 Çalışma Oturumu (Devralma + B.U.D. Faz 4/5 + VerifyMerkle Araştırması)
+
+### [2026-07-15 10:00 UTC+3] ARENA2 — Devralma ve B.U.D. Envanter Raporu
+
+**Durum:** tamamlandı (4 commit push edildi)
+**Kapsam:** B.U.D. tam envanter denetimi, Faz 4/5 implementasyonu, PR #10 merge, VerifyMerkle araştırması
+**Aksiyon:**
+
+#### Commit 1: B.U.D. Faz 4 — GlobalBlockHeader.storage_root (`3824227`)
+- `GlobalBlockHeader`'a `storage_root: Option<Hash32>` alanı eklendi (vision §8.4)
+- Domain-separation tag: `BDLM_GLOBAL_BLOCK_V1` → `V2` (hash çarpışması engeli)
+- `Blockchain.pending_storage_root` staging alanı
+- RPC `storageRoot` JSON output
+- 3 yeni birim test
+- 520 test passed
+
+#### Commit 2: PR #10 Merge (`2d4e4ef`)
+- PR #10 (ADIM 2: finality, migration, audit, fuzz) **fast-forward merge** edildi
+- 24 dosya, +755 -238 satır
+- `test_sign_prevote_fails_without_bls_key` error mesajı güncellendi
+- 523 test passed
+
+#### Commit 3: B.U.D. Faz 5 — Storage Economics + Chain Actor (`af5bb11`)
+- `Blockchain.storage_registry: StorageRegistry` — on-chain deal/challenge registry
+- `issue_storage_challenges(epoch)` — otomatik challenge üretimi (DEFAULT_CHALLENGE_INTERVAL=100)
+- `finalize_missed_storage_challenges(epoch)` — kaçırılan challenge'ları finalize et + slash
+- `accumulate_storage_proof(hash)` — doğrulanmış proof'ları `pending_storage_root`'a biriktir
+- `reset_pending_storage_root()` — header seal sonrası sıfırlama
+- 5 yeni `ChainCommand` + `ChainHandle` async API
+- `test_storage_challenge_lifecycle_via_actor` — tam lifecycle testi
+- 524 test passed
+
+#### Commit 4: VerifyMerkle Prover Bug Fix (`ceea0e9`)
+- **Kritik bug tespit edildi:** `bud-proof/src/plonky3_prover.rs` içindeki Poseidon witness hesaplamasında `s_plus_rc = s_in.wrapping_add(rc0[i]) % p` formülü Goldilocks field overflow'unda yanlış sonuç üretiyor
+- **Fix:** `wrapping_add` → `u128` ile doğru modüler toplama: `((s_in as u128 + rc0[i] as u128) % P as u128) as u64`
+- VM'nin `merkle_poseidon_round` fonksiyonu zaten doğru (`u128` kullanıyordu)
+- **Durum:** Fix gerekli ama yeterli değil — `proves_verify_merkle_valid_64_depth` hâlâ `InvalidProof`
+- Ek AIR constraint uyumsuzlukları var (muhtemelen trace-matrix alignment veya expansion row witness population)
+- Test hâlâ `#[ignore]` — derinlemesine ZK debugging gerekli
+
+#### B.U.D. Faz Durum Tablosu (Güncel):
+
+| Faz | Durum | Dosya | Sonraksi Adım |
+|-----|-------|-------|--------------|
+| Faz 0 | ✅ | `BUD_Merkeziyetsiz_Depolama_Vizyonu.md` | — |
+| Faz 1 | ✅ | `src/domain/storage_params.rs` (185 satır) | — |
+| Faz 2 | ✅ | `src/storage/content_id.rs` (136), `manifest.rs` (202) | — |
+| Faz 3 | ⚠️ Kısmen | `budzero/bud-proof/src/plonky3_air.rs`, `plonky3_prover.rs` | ZK constraint debugging |
+| Faz 4 | ✅ **ARENA2** | `src/settlement/global_block.rs` | — |
+| Faz 5 | ✅ **ARENA2** | `src/chain/blockchain.rs`, `src/chain/chain_actor.rs` | — |
+| Faz 6 | ❌ | — | BNS/.bud entegrasyonu (uzun vadeli) |
+
+#### ARENA1 ve ARENA3'e Notlar:
+- **ARENA1:** `89d7e4f` (libp2p 0.55 upgrade) ve PR #10 contributions onaylıyorum. `5e9bdef` (mock HSM kaldırma) ve `5efdec1` (geri getirme) tutarsızlığı var — son durum: mock HSM `src/crypto/hsm_mock.rs` ile mevcut, PKCS#11 ile birlikte çalışıyor (kullanıcı kararı: "keep both").
+- **ARENA3:** B.U.D. Faz 4 (`storage_root`) ve Faz 5 (`storage_registry` + `ChainCommand` entegrasyonu) tamamlandı. Sıradaki adım: **Faz 3 (VerifyMerkle Z-B gate)** — bu gate açıldığında gerçek Proof-of-Storage mümkün olacak. Prover'daki `wrapping_add` bug'ını düzelttim ama AIR constraint tarafında ek sorunlar var.
+
+#### VerifyMerkle Z-B Gate — Kalan Sorunlar (ARENA1/ARENA3 için handoff):
+1. ✅ Prover Poseidon witness: `wrapping_add` → `u128` fix uygulandı
+2. ❓ AIR Poseidon transition: `nxt_merkle_current = poseidon_output` constraint'i expansion rows arasında doğru çalışıyor mu?
+3. ❓ Final root check: original step'in `merkle_current`'ı 64th round output'a eşit mi? (VM tarafında evet, prover trace_matrix'te doğrulanmalı)
+4. ❓ Leaf binding: first expansion row'un `merkle_current`'ı `rs2_val` (leaf) ile eşleşiyor mu?
+5. Öneri: `bud-proof/src/plonky3_prover.rs` içinde `trace_matrix()` fonksiyonunda expansion row witness'larının Goldilocks field'da doğru hesaplandığını adım adım doğrulayın.
+
+**Kanıt:** 4 commit push edildi (3824227, 2d4e4ef, af5bb11, ceea0e9). 524 test passed. `cargo clippy -D warnings` temiz.
+
+**Sonraki adım:** Diğer AI'lar VerifyMerkle ZK debugging'e devam edebilir veya B.U.D. Faz 6 (BNS/.bud) veya `bud-node` P2P storage backend'e geçilebilir.
+
+**Engel:** Yok. ARENA2 oturumu tamamlandı.
