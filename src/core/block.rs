@@ -26,6 +26,7 @@ pub struct BlockHeader {
     pub vrf_output: Vec<u8>,
     pub vrf_proof: Vec<u8>,
     pub validator_set_hash: String,
+    pub storage_root: Option<crate::domain::types::Hash32>,
 }
 
 impl BlockHeader {
@@ -46,6 +47,7 @@ impl BlockHeader {
             vrf_output: block.vrf_output.clone(),
             vrf_proof: block.vrf_proof.clone(),
             validator_set_hash: block.validator_set_hash.clone(),
+            storage_root: block.storage_root,
         }
     }
 
@@ -71,7 +73,7 @@ impl BlockHeader {
             .unwrap_or_default();
 
         hash_fields_bytes(&[
-            b"BDLM_BLOCK_V2",
+            b"BDLM_BLOCK_V3",
             &self.index.to_le_bytes(),
             &self.timestamp.to_le_bytes(),
             self.previous_hash.as_bytes(),
@@ -86,6 +88,7 @@ impl BlockHeader {
             &self.vrf_output,
             &self.vrf_proof,
             self.validator_set_hash.as_bytes(),
+            &self.storage_root.unwrap_or([0u8; 32]),
         ])
     }
 
@@ -159,6 +162,7 @@ impl Block {
             vrf_output: Vec::new(),
             vrf_proof: Vec::new(),
             validator_set_hash: String::new(),
+            storage_root: None,
         };
         block.tx_root = block.calculate_tx_root();
         block.hash = block.calculate_hash();
@@ -229,7 +233,7 @@ impl Block {
             .unwrap_or_default();
 
         hash_fields_bytes(&[
-            b"BDLM_BLOCK_V2",
+            b"BDLM_BLOCK_V3",
             &self.index.to_le_bytes(),
             &self.timestamp.to_le_bytes(),
             self.previous_hash.as_bytes(),
@@ -244,6 +248,7 @@ impl Block {
             &self.vrf_output,
             &self.vrf_proof,
             self.validator_set_hash.as_bytes(),
+            &self.storage_root.unwrap_or([0u8; 32]),
         ])
     }
     pub fn sign(&mut self, keypair: &KeyPair) {
@@ -395,5 +400,20 @@ mod tests {
         assert!(block.signature.is_some());
         assert_eq!(block.signature.as_ref().unwrap().len(), 64);
         assert!(block.verify_signature());
+    }
+
+    #[test]
+    fn test_storage_root_hashing() {
+        let mut block = Block::new(1, "0".repeat(64), vec![]);
+        let hash_none = block.calculate_hash();
+        
+        block.storage_root = Some([42u8; 32]);
+        let hash_some = block.calculate_hash();
+        
+        assert_ne!(hash_none, hash_some, "Different storage_root must produce different hash");
+        
+        block.storage_root = Some([99u8; 32]);
+        let hash_other = block.calculate_hash();
+        assert_ne!(hash_some, hash_other, "Different storage_root values must produce different hash");
     }
 }

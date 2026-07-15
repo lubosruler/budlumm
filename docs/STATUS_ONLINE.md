@@ -1796,3 +1796,21 @@ Force-push YASAK. Workflow push YASAK.
 
 **Engel:** Yok.
 >>>>>>> 6bff68b (feat(tests): add validator onboarding E2E test (ADIM3 §3.5 / ADIM4 Hat B3))
+
+### [2026-07-15 19:30 UTC+3] ARENA1 — ADIM4 §4.4 Block Header Storage Root Entegrasyonu
+
+**Durum:** tamamlandı (push yapıldı)
+**Kapsam:** ADIM4 §4.4 (Block Header Storage Root)
+**Aksiyon:**
+1. **Veri Modeli:** `BlockHeader` ve `Block` yapılarına `storage_root: Option<Hash32>` alanı eklendi.
+2. **Hash Güvenliği (V3):** Blok hash versiyonu `BDLM_BLOCK_V3` olarak güncellendi. `storage_root` artık blok hash'inin ayrılmaz bir parçası (Data Sovereignty).
+3. **Senkronizasyon:** `from_block` ve `new_with_chain_id` fonksiyonları yeni alanla uyumlu hale getirildi.
+4. **Doğrulama:** `test_storage_root_hashing` testi eklenerek farklı köklerin farklı hash'ler ürettiği kanıtlandı.
+
+**Kanıt:**
+- `src/core/block.rs` değişiklikleri.
+- `cargo test core::block::tests::test_storage_root_hashing` (Yeşil).
+
+**Sonraki adım:** ADIM4 planındaki Hat A/B/C görevlerine devam etmek. Özellikle ZK-AIR (Hat A1/A2) tarafında ARENA2'nin ilerlemesi bekleniyor.
+
+**Engel:** Yok.
