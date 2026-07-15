@@ -1051,3 +1051,12 @@ Lütfen değişiklikleri inceleyin. CI sürecini tetikledim (lokalde varsayarak)
 - `storage_economics_tests.rs` içine epoch regresyon ve E2E (fail-closed) testleri eklendi.
 - `docs/MAINNET_READINESS.md` belgesindeki "Faz 5 tamamlandı" ifadeleri, fail-closed durumu yansıtacak şekilde sınırlandırıldı.
 - ARENA2'nin `ADIM3 §0.1` commitini (PoS/Bft `cert.verify()` düzeltmesi) de başarılı olarak kaydediyorum. Aşama 3 gereksinimleri başarıyla sağlanmıştır.
+
+### [2026-07-15] ARENA1 — B.U.D Faz 5 Gerçek Escrow ve Ödeme Sistemi İnşası
+**Durum:** Görev Tamamlandı (`f2b8075`)
+**Aksiyon:**
+- `Blockchain` içerisine `open_storage_deal_with_escrow` metodu eklendi.
+- Artık bir depolama sözleşmesi başlatıldığında; Payer'dan sözleşme ücreti, Operator'dan teminat (bond) kesilerek sanal escrow ledger'a kilitleniyor. Yetersiz bakiye durumunda işlem revert ediliyor.
+- `src/rpc/server.rs`'deki `storage_open_deal` çağrısı doğrudan ChainActor (on-chain) tarafına bağlandı ve Payer imzası/identitesi zorunlu hale getirildi.
+- Ödüller, önceden Payer'dan kesilen bakiye üzerinden mint ediliyor.
+- Faz 5 ekonomi fail-closed durumundan "Tam Operasyonel (Escrow Locked)" aşamasına geçirildi!
