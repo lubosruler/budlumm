@@ -1550,6 +1550,25 @@ impl BudlumApiServer for RpcServer {
         }))
     }
 
+    async fn storage_get_economics_summary(&self) -> Result<serde_json::Value, ErrorObjectOwned> {
+        self.chain
+            .get_storage_economics_summary()
+            .await
+            .map_err(|e| ErrorObjectOwned::owned(-32000, e, None::<()>))
+    }
+
+    async fn storage_get_economics_events(&self) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let events = self
+            .chain
+            .get_storage_economics_events()
+            .await
+            .map_err(|e| ErrorObjectOwned::owned(-32000, e, None::<()>))?;
+        Ok(serde_json::json!({
+            "count": events.len(),
+            "events": events.iter().map(storage_economics_event_to_json).collect::<Vec<_>>(),
+        }))
+    }
+
     async fn storage_get_outcome(
         &self,
         challenge_id: u64,
@@ -1617,6 +1636,27 @@ fn retrieval_challenge_to_json(c: &RetrievalChallenge) -> serde_json::Value {
         "deadlineEpoch": c.deadline_epoch,
         "opener": c.opener.to_string(),
         "openerBond": c.opener_bond,
+    })
+}
+
+fn storage_economics_event_to_json(
+    event: &crate::chain::blockchain::StorageEconomicsEvent,
+) -> serde_json::Value {
+    let kind = match event.kind {
+        crate::chain::blockchain::StorageEconomicsEventKind::OperatorRewardAccrued => {
+            "OperatorRewardAccrued"
+        }
+        crate::chain::blockchain::StorageEconomicsEventKind::OperatorBondSlashed => {
+            "OperatorBondSlashed"
+        }
+    };
+    serde_json::json!({
+        "epoch": event.epoch,
+        "dealId": event.deal_id,
+        "operator": event.operator.to_string(),
+        "amount": event.amount,
+        "balanceEffect": event.balance_effect,
+        "kind": kind,
     })
 }
 

@@ -499,4 +499,18 @@ mod rpc_tests {
             .unwrap();
         assert_eq!(ans_res["outcome"], "Answered");
     }
+
+    #[tokio::test]
+    async fn test_storage_economics_rpc_reports_chain_actor_state() {
+        let (server, _) = setup().await;
+
+        let summary = server.storage_get_economics_summary().await.unwrap();
+        assert_eq!(summary["slashedBondTotal"], serde_json::json!(0));
+        assert_eq!(summary["burnedBondTotal"], serde_json::json!(0));
+        assert_eq!(summary["eventCount"], serde_json::json!(0));
+
+        let events = server.storage_get_economics_events().await.unwrap();
+        assert_eq!(events["count"], serde_json::json!(0));
+        assert!(events["events"].as_array().unwrap().is_empty());
+    }
 }

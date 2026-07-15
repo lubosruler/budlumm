@@ -335,6 +335,16 @@ pub trait BudlumApi {
         response: crate::domain::storage_deal::RetrievalResponse,
     ) -> Result<serde_json::Value, ErrorObjectOwned>;
 
+    /// Query aggregate storage economics accounting from the chain actor.
+    /// Permissionless read: no official indexer or team-operated service.
+    #[method(name = "bud_storageGetEconomicsSummary")]
+    async fn storage_get_economics_summary(&self) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Query storage economics events (operator reward accrual and slashed-bond
+    /// accounting) from the chain actor. Permissionless read.
+    #[method(name = "bud_storageGetEconomicsEvents")]
+    async fn storage_get_economics_events(&self) -> Result<serde_json::Value, ErrorObjectOwned>;
+
     /// Look up a finalized `ChallengeResult` by `challenge_id`.
     #[method(name = "bud_storageGetOutcome")]
     async fn storage_get_outcome(
