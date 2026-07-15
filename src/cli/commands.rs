@@ -236,6 +236,14 @@ pub struct NodeConfig {
 
     #[arg(long, default_value = "true")]
     pub storage_mandatory_sharding: bool,
+
+    /// Mobile Device Mode (Lighter weight, high-priority self-hosting)
+    #[arg(long, default_value = "false")]
+    pub mobile_mode: bool,
+
+    /// Physical Hardware ID (Optional, for pre-configured nodes)
+    #[arg(long)]
+    pub hardware_id: Option<String>,
 }
 
 impl Default for NodeConfig {
@@ -313,6 +321,8 @@ impl Default for NodeConfig {
             storage_enabled: true,
             storage_replication_factor: 3,
             storage_mandatory_sharding: true,
+            mobile_mode: false,
+            hardware_id: None,
         }
     }
 }

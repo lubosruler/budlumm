@@ -24,19 +24,29 @@ Based on the 10 strategic decisions made by the owner (Ayaz), the following rule
 ## 3. Data Sovereignty & Economics
 -   **Spam Protection:** Fee per post. Every SocialFi interaction (NFT Mint) incurs a transaction fee.
 -   **Longevity:** Permanent by default. Data remains on the network until the owner explicitly burns the NFT.
--   **Rewards:** Storage Provider Heavy. The majority of new $BUD issuance goes to B.U.D. operators (Storage Proofs), ensuring the backbone is strong.
--   **Interoperability:** Universal Bridge Hub. Budlum will connect to all major chains (Ethereum, Solana, Bitcoin, etc.).
+-   **Self-Hosting Option:** Users who do not wish to pay annual storage rent can opt to "Self-Host" their data. In this mode, the user's own node is responsible for providing the data to the network (Vision: WhatsApp-style local sovereignty).
+-   **Rewards:** Storage Provider Heavy. The majority of new $BUD issuance goes to B.U.D. operators (Storage Proofs).
+-   **Advertising Revenue Model:**
+    -   When an NFT is "Highlighted" (Boosted/Ads):
+        -   4% to B.U.D. (Storage Operators).
+        -   16% to the Content Creator/Context (if ad appears inside a profile/content).
+        -   80% to Budlum Protocol (Treasury/Burn).
+-   **Interoperability:** Universal Bridge Hub.
 
 ---
 
-## 4. Artificial Intelligence (AI) Layer
--   **Access Policy:** Permissioned & Monetized.
--   **Data Marketplace:** Users "market" their data to Arena AI agents. AI access is not automatic; it requires explicit user permission and a fee/reward mechanism where AI pays for the data it consumes to train or provide insights.
+## 6. Infrastructure & Devices
+-   **Physical Hardware:** Specialized, pre-configured Budlum physical nodes will be available for purchase with $BUD, providing a "Plug & Play" entry into the storage economy.
+-   **Mobile Integration:** Mobile devices are treated as high-priority storage and validation nodes, allowing users to secure the network and host their own data directly from their phones.
 
 ---
 
-## 5. Technical Resilience
--   **Disaster Recovery:** Chaos Test Real. We will intentionally halt the testnet to practice and verify manual recovery procedures by operators.
+## 7. Social & BNS Rules
+-   **Verified Status:** Premium BNS records (High-tier annual payment) can grant a "Verified" badge, ensuring trust for public figures/brands.
+-   **Data Portability:** Internal focus. Budlum data structures are unique and optimized for B.U.D./BudZKVM; while the protocol is open, there is no focus on external "Export" compatibility to maintain internal sovereignty.
+-   **Sub-BNS Market:** Parent-controlled. Sub-domains (x.ayaz.bud) are strictly controlled and managed by the parent name owner, ensuring brand integrity.
+-   **Emergency Protocol:** DAO Halt. In the event of a critical security failure, the community (DAO) can vote to temporarily halt the chain to prevent damage.
+-   **Token Boosters:** $BUD can be burned/spent to "Boost" storage access speed and network priority for specific CIDs.
 
 ---
 
