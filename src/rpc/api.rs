@@ -454,4 +454,14 @@ pub trait BudlumApi {
         owner: String,
         nft_id: u64,
     ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// B.U.D. Relayer: Prepare an external chain transaction (Master Key).
+    #[method(name = "bud_relayerPrepareExternalTx")]
+    async fn relayer_prepare_external_tx(
+        &self,
+        from: String,
+        chain: crate::core::transaction::ExternalChain,
+        target_address: String,
+        payload: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
 }

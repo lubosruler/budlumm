@@ -54,6 +54,7 @@ pub enum NodeCommand {
     Subscribe(String),
     Broadcast(String, NetworkMessage),
     BroadcastTx(crate::core::transaction::Transaction),
+    StoragePrune(crate::storage::content_id::ContentId),
     ListPeers,
 }
 #[derive(Clone)]

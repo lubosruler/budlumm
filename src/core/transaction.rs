@@ -52,6 +52,30 @@ impl crate::core::chain_config::Network {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ExternalChain {
+    Ethereum,
+    Solana,
+    Bitcoin,
+    Avalanche,
+    Polygon,
+    Arbitrum,
+    Optimism,
+    Custom(u32),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ExternalTransaction {
+    pub chain: ExternalChain,
+    /// Targeted chain native address (hex)
+    pub target_address: String,
+    /// Raw payload to be executed on the external chain
+    pub payload: Vec<u8>,
+    /// Nonce/Sequence for the external chain if applicable
+    pub external_nonce: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TransactionType {
     Transfer,
     Stake,
@@ -65,6 +89,7 @@ pub enum TransactionType {
     NftMint,
     NftTransfer,
     NftBurn,
+    UniversalRelay(ExternalTransaction),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

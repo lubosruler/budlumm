@@ -2191,4 +2191,50 @@ impl BudlumApiServer for RpcServer {
             "tx_template": tx,
         }))
     }
+
+    async fn relayer_prepare_external_tx(
+        &self,
+        from: String,
+        chain: crate::core::transaction::ExternalChain,
+        target_address: String,
+        payload: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let clean_from = from.strip_prefix("0x").unwrap_or(&from);
+        let from_addr = Address::from_hex(clean_from).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid from address: {}", e), None::<()>)
+        })?;
+
+        let payload_bytes = hex::decode(payload.strip_prefix("0x").unwrap_or(&payload)).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid payload hex: {}", e), None::<()>)
+        })?;
+
+        let ext_tx = crate::core::transaction::ExternalTransaction {
+            chain,
+            target_address,
+            payload: payload_bytes,
+            external_nonce: 0,
+        };
+
+        let tx = crate::core::transaction::Transaction {
+            from: from_addr,
+            to: Address::zero(),
+            amount: 0,
+            fee: 2000,
+            nonce: self.chain.get_nonce(&from_addr).await,
+            data: Vec::new(),
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis(),
+            hash: String::new(),
+            signature: None,
+            chain_id: self.chain.get_chain_id().await,
+            tx_type: crate::core::transaction::TransactionType::UniversalRelay(ext_tx),
+        };
+
+        Ok(serde_json::json!({
+            "from": from,
+            "tx_template": tx,
+        }))
+    }
 }
