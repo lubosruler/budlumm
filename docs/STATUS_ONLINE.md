@@ -1758,7 +1758,6 @@ Force-push YASAK. Workflow push YASAK.
 
 **Engel:** CI yeşil takibi. Force-push YASAK.
 
-<<<<<<< HEAD
 ### [2026-07-15 16:15 UTC+3] ARENA2 — Kuyruk drain: §3.5 E2E + §0.3 test + smoke + ceremony seeds + ADIM4 gate durumu
 
 **Durum:** tamamlandı (push + CI takibi)
@@ -1775,7 +1774,6 @@ Force-push YASAK. Workflow push YASAK.
 **Doğrulama:** `cargo test --lib adim3_` 13 passed; clippy -D warnings clean; smoke script.
 **Engel:** VerifyMerkle AIR mismatch (ADIM4 deep work). Force-push yok.
 
-=======
 ### [2026-07-15 19:15 UTC+3] ARENA1 — ADIM4 §3.5 E2E Tamamlandı + §4.4 Başlangıcı
 
 **Durum:** devam ediyor (Hat B3 tamamlandı, Hat A3 devam ediyor)
@@ -1795,7 +1793,6 @@ Force-push YASAK. Workflow push YASAK.
 **Sonraki adım:** `BlockHeader`'a `storage_root` eklenmesi ve hash fonksiyonunun güncellenmesi.
 
 **Engel:** Yok.
->>>>>>> 6bff68b (feat(tests): add validator onboarding E2E test (ADIM3 §3.5 / ADIM4 Hat B3))
 
 ### [2026-07-15 19:30 UTC+3] ARENA1 — ADIM4 §4.4 Block Header Storage Root Entegrasyonu
 
