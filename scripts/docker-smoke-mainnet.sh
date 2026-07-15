@@ -14,9 +14,14 @@ RPC_PORT="8545"
 echo "[docker-smoke] Building Docker image: $IMAGE_NAME"
 docker build -t "$IMAGE_NAME" .
 
-echo "[docker-smoke] Starting container: $CONTAINER_NAME"
+echo "[docker-smoke] Starting container: $CONTAINER_NAME (Q12 devnet_fallback per user decision)"
+# Q12 devnet_fallback: mainnet container may fail without HSM/PKCS#11.
+# Try mainnet first; if timeout, fallback to devnet for smoke purposes.
 # Run with --network mainnet as default in Dockerfile CMD
-docker run -d --name "$CONTAINER_NAME" -p "$RPC_PORT:$RPC_PORT" "$IMAGE_NAME"
+if ! docker run -d --name "$CONTAINER_NAME" -p "$RPC_PORT:$RPC_PORT" "$IMAGE_NAME"; then
+  echo "[docker-smoke] Failed to start mainnet container, trying devnet fallback"
+  docker run -d --name "$CONTAINER_NAME" -p "$RPC_PORT:$RPC_PORT" "$IMAGE_NAME" --network devnet --port "$RPC_PORT"
+fi
 
 cleanup() {
     echo "[docker-smoke] Cleaning up container..."
@@ -24,8 +29,25 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "[docker-smoke] Waiting for RPC (max 60s)..."
+echo "[docker-smoke] Waiting for RPC (max 60s, mainnet)..."
+MAINNET_OK=0
 for i in $(seq 1 60); do
+    if curl -sf -H 'Content-Type: application/json' \
+        --data '{"jsonrpc":"2.0","method":"bud_chainId","params":[],"id":1}' \
+        "http://localhost:$RPC_PORT" > /tmp/budlum-docker-smoke.json 2>/dev/null; then
+        MAINNET_OK=1
+        break
+    fi
+    sleep 1
+done
+
+if [[ "$MAINNET_OK" -eq 0 ]]; then
+  echo "[docker-smoke] Mainnet RPC timeout (likely HSM/PKCS#11 missing, expected), trying devnet fallback per Q12"
+  docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+  docker run -d --name "$CONTAINER_NAME" -p "$RPC_PORT:$RPC_PORT" "$IMAGE_NAME" --network devnet --port "$RPC_PORT" --dev 2>/dev/null || \
+  docker run -d --name "$CONTAINER_NAME" -p "$RPC_PORT:$RPC_PORT" "$IMAGE_NAME" --network devnet
+  echo "[docker-smoke] Waiting for RPC (devnet fallback, 60s)..."
+  for i in $(seq 1 60); do
     if curl -sf -H 'Content-Type: application/json' \
         --data '{"jsonrpc":"2.0","method":"bud_chainId","params":[],"id":1}' \
         "http://localhost:$RPC_PORT" > /tmp/budlum-docker-smoke.json 2>/dev/null; then
@@ -33,11 +55,13 @@ for i in $(seq 1 60); do
     fi
     sleep 1
     if [[ "$i" -eq 60 ]]; then
-        echo "[docker-smoke] ERROR: Timeout waiting for RPC" >&2
+        echo "[docker-smoke] ERROR: Timeout waiting for RPC (both mainnet and devnet fallback)" >&2
         docker logs "$CONTAINER_NAME" >&2
         exit 1
     fi
-done
+  done
+  echo "[docker-smoke] Devnet fallback succeeded (Q12 devnet_fallback decision)"
+fi
 
 CHAIN_ID=$(jq -r '.result' /tmp/budlum-docker-smoke.json)
 echo "[docker-smoke] Connected! Chain ID: $CHAIN_ID"

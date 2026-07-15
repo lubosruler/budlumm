@@ -2202,7 +2202,10 @@ mod tests {
         let receipt = vm.run_receipt(&program);
         assert!(receipt.success);
         assert_eq!(vm.trace.len(), 3);
-        let program_bytes: Vec<u8> = program.iter().flat_map(|&inst| inst.to_le_bytes().to_vec()).collect();
+        let program_bytes: Vec<u8> = program
+            .iter()
+            .flat_map(|&inst| inst.to_le_bytes().to_vec())
+            .collect();
         let mut hasher = Keccak::v256();
         hasher.update(&program_bytes);
         let mut program_hash = [0u8; 32];

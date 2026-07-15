@@ -1,8 +1,8 @@
-use crate::nft::types::{Nft, NftError};
 use crate::core::address::Address;
+use crate::nft::types::{Nft, NftError};
 use crate::storage::content_id::ContentId;
-use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NftRegistry {
@@ -18,7 +18,13 @@ impl NftRegistry {
         Self::default()
     }
 
-    pub fn mint(&mut self, owner: Address, cid: ContentId, epoch: u64, name: Option<String>) -> u64 {
+    pub fn mint(
+        &mut self,
+        owner: Address,
+        cid: ContentId,
+        epoch: u64,
+        name: Option<String>,
+    ) -> u64 {
         let id = self.next_id;
         let nft = Nft {
             id,
@@ -54,15 +60,15 @@ impl NftRegistry {
         if &nft.owner != owner {
             return Err(NftError::NotOwner);
         }
-        
+
         let cid = nft.content_id;
-        
+
         // Remove from everywhere
         self.nfts.remove(&id);
         if let Some(list) = self.ownership.get_mut(owner) {
             list.retain(|&x| x != id);
         }
-        
+
         Ok(cid)
     }
 

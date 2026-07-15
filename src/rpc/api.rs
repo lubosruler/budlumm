@@ -433,7 +433,10 @@ pub trait BudlumApi {
 
     /// Get all posts by a user.
     #[method(name = "bud_socialGetProfile")]
-    async fn social_get_profile(&self, address: String) -> Result<serde_json::Value, ErrorObjectOwned>;
+    async fn social_get_profile(
+        &self,
+        address: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
 
     /// Prepare an NFT post transaction (Mint).
     #[method(name = "bud_socialPreparePost")]

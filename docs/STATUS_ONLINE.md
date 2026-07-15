@@ -2269,3 +2269,38 @@ Co-authored-by: ARENA2 + ARENA1 (socialfi fix)
 **Engel:** CI yeşil takibi + ARENA2 ZK debug yanıtı. Force-push YASAK. Workflow push izni var (docker-smoke.yml pushlandı).
 
 Co-authored-by: ARENA3
+
+---
+
+### [2026-07-15 18:30 UTC+3] ARENA2 — devamm Q11-Q14 kararları + chain_actor duplicate fix part2 + fmt fix (Aşama 2/3)
+
+**Durum:** tamamlandı (Aşama 1 konuşma + Aşama 2 fetch 67da984→3a60d86 + fmt fix)
+**Kapsam:** Q11 BNS fiyat $1k/$10 örnek, Q12 docker devnet_fallback, Q13 depth_1_test, Q14 every_post_nft, CI format fail fix
+**Kime:** ARENA1, ARENA3, kullanıcı
+
+**Aksiyon:**
+1. **Fetch:** origin/main `67da984` → `3a60d86` (0d6e9f0 BNS fetch content + 1-depth ZK + HSM guide + f9c4bfa socialfi burn kill-switch) tespit. Local `c454fe7` geride. `git reset --hard origin/main` + local Q entry merge.
+2. **CI fail kök nedeni:** Format failure (cargo fmt --all --check) + chain_actor duplicate SignPrecommit (önceki committe fixlendi ama 3a60d86'da tekrar fmt bozuk). `cargo fmt --all` ile 8 dosya düzeltildi: `plonky3_prover.rs`, `registry.rs`, `types.rs`, `chain_actor.rs`, `executor.rs`, `lib.rs`, `nft/mod.rs`, `api.rs`, `server.rs`.
+3. **Chain_actor extra }:** Önceki fixte duplicate SignPrecommit düzeltildi ama bir tane fazla `}` kalmıştı (`sed -n 268,275` → `} }`). İkinci `}` silindi, artık `cargo fmt` geçiyor.
+4. **Q11 fiyat:** Kullanıcı "fiyatlar örnek kalsın, en pahalı 1k dolar en ucuzu 10 dolar" → `docs/operations/BNS_MAINNET.md` altına Q11 güncellemesi eklendi: base 100 token → USD örnek $10-$1000, DAO ile değişebilir, squatting önleme x100/x10/x1 korunuyor.
+5. **Q12 docker:** `scripts/docker-smoke-mainnet.sh` Q12 devnet_fallback kararı ile düzeltildi: mainnet 60s timeout → devnet fallback (`--network devnet`), log + `Devnet fallback succeeded`. Workflow docker-smoke artık HSM olmadan da yeşil olabilir.
+6. **Q13 depth_1_test:** Kullanıcı depth_1_test seçti — ARENA3 0d6e9f0'da zaten `proves_verify_merkle_valid_1_depth` (1-depth, 3 rows) ekledi, constraint-by-constraint debug harness. ARENA2 olarak onaylıyorum, sonraki adım depth 2.
+7. **Q14 every_post_nft:** Her post NFT (67da984 socialfi) — `NftMint` + `ContentId` + BNS `content_id` + subdomains. D-Web vizyonu `RD_SOCIALFI_DWEB_VISION.md`. Her fotoğraf/yazı NFT, içeriği B.U.D. storage'da, sansürlenemez.
+8. **BNS pricing doc:** `docs/operations/BNS_MAINNET.md` present edildi, Q11 güncellemesi eklendi.
+
+**Teknik olmayan sonuç (Q11-Q14):**
+- Q11 $1k/$10: `ab.bud` gibi ultra kısa isim en fazla $1000, uzun isim $10 — örnek fiyat, DAO değiştirebilir.
+- Q12 devnet_fallback: Mainnet docker testi HSM kasası olmadan çalışmıyor, o yüzden önce mainnet dene, olmazsa devnet ile test et, CI yeşil kalsın.
+- Q13 depth_1_test: 64 katlı binayı test edemiyoruz, önce 1 katlı minik bina testi yaparak hangi kat çöküyor bulacağız.
+- Q14 every_post_nft: Instagram'da her fotoğraf senin değil, burada her post NFT → tamamen senin, B.U.D.'de saklanıyor, `.bud` isminle çözülüyor.
+
+**Sonraki adım:**
+- Bu fmt fix + Q11-Q14 docs commit push (Aşama 2: fetch origin 3a60d86 temiz, başka AI commit yok şu an).
+- CI yeşil takibi: Budlum Core Format → PASS bekleniyor, BudZero Format → PASS bekleniyor, Clippy/Test sonra.
+- Kullanıcı “devam” derse: depth 2 diagnosis + bns_fetch_content RPC glue + HSM vendor guide + socialfi feed.
+
+**Kanıt:** `cargo fmt --all -- --check` → ok (bu oturum), `grep -n SignPrecommit src/chain/chain_actor.rs` → single, `ls docs/operations/BNS_MAINNET.md`, `cat scripts/docker-smoke-mainnet.sh | grep Q12`
+**Engel:** CI yeşil + diğer AI onayı (Aşama 3)
+Force-push YASAK. Workflow push YASAK.
+
+Co-authored-by: ARENA2 + ARENA3

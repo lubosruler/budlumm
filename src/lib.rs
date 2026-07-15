@@ -1,5 +1,4 @@
 pub mod bns;
-pub mod nft;
 pub mod chain;
 pub mod cli;
 pub mod consensus;
@@ -11,6 +10,7 @@ pub mod error;
 pub mod execution;
 pub mod mempool;
 pub mod network;
+pub mod nft;
 pub mod prover;
 pub mod registry;
 pub mod rpc;

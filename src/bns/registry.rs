@@ -67,8 +67,11 @@ impl BnsRegistry {
                 return Err(BnsError::NameTaken);
             }
         }
-        let record = NameRecord::new(name.clone(), owner, current_epoch + duration)
-            .with_storage(storage_root, storage_domain_id, current_epoch);
+        let record = NameRecord::new(name.clone(), owner, current_epoch + duration).with_storage(
+            storage_root,
+            storage_domain_id,
+            current_epoch,
+        );
         self.names.insert(name, record);
         Ok(())
     }
@@ -80,7 +83,10 @@ impl BnsRegistry {
         owner: Address,
         caller: &Address,
     ) -> Result<(), BnsError> {
-        let parent = self.names.get_mut(parent_name).ok_or(BnsError::InvalidName)?;
+        let parent = self
+            .names
+            .get_mut(parent_name)
+            .ok_or(BnsError::InvalidName)?;
         if &parent.owner != caller {
             return Err(BnsError::NotOwner);
         }
@@ -88,7 +94,12 @@ impl BnsRegistry {
         Ok(())
     }
 
-    pub fn resolve_subdomain(&self, parent_name: &str, sub_label: &str, current_epoch: u64) -> Option<Address> {
+    pub fn resolve_subdomain(
+        &self,
+        parent_name: &str,
+        sub_label: &str,
+        current_epoch: u64,
+    ) -> Option<Address> {
         let parent = self.names.get(parent_name)?;
         if parent.expires_at > current_epoch {
             parent.subdomains.get(sub_label).cloned()
@@ -97,7 +108,12 @@ impl BnsRegistry {
         }
     }
 
-    pub fn set_content(&mut self, name: &str, owner: &Address, cid: ContentId) -> Result<(), BnsError> {
+    pub fn set_content(
+        &mut self,
+        name: &str,
+        owner: &Address,
+        cid: ContentId,
+    ) -> Result<(), BnsError> {
         let record = self.names.get_mut(name).ok_or(BnsError::InvalidName)?;
         if &record.owner != owner {
             return Err(BnsError::NotOwner);
@@ -127,18 +143,25 @@ impl BnsRegistry {
     }
 
     pub fn resolve_full(&self, name: &str, current_epoch: u64) -> Option<BnsResolved> {
-        self.names.get(name).map(|record| {
-            let expired = record.expires_at <= current_epoch;
-            BnsResolved {
-                name: record.name.clone(),
-                owner: record.owner,
-                address: if expired { None } else { record.address },
-                storage_root: if expired { None } else { record.storage_root },
-                storage_domain_id: if expired { None } else { record.storage_domain_id },
-                content_id: if expired { None } else { record.content_id },
-                is_expired: expired,
-            }
-        }).filter(|r| !r.is_expired)
+        self.names
+            .get(name)
+            .map(|record| {
+                let expired = record.expires_at <= current_epoch;
+                BnsResolved {
+                    name: record.name.clone(),
+                    owner: record.owner,
+                    address: if expired { None } else { record.address },
+                    storage_root: if expired { None } else { record.storage_root },
+                    storage_domain_id: if expired {
+                        None
+                    } else {
+                        record.storage_domain_id
+                    },
+                    content_id: if expired { None } else { record.content_id },
+                    is_expired: expired,
+                }
+            })
+            .filter(|r| !r.is_expired)
     }
 
     pub fn set_storage(

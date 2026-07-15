@@ -1784,7 +1784,10 @@ impl BudlumApiServer for RpcServer {
         parent_name: String,
         sub_label: String,
     ) -> Result<Option<String>, ErrorObjectOwned> {
-        let addr = self.chain.bns_resolve_subdomain(parent_name, sub_label).await;
+        let addr = self
+            .chain
+            .bns_resolve_subdomain(parent_name, sub_label)
+            .await;
         Ok(addr.map(|a| Self::to_0x_hash(a.to_hex())))
     }
 
@@ -1885,7 +1888,11 @@ impl BudlumApiServer for RpcServer {
             ErrorObjectOwned::owned(-32602, format!("Invalid CID hex: {}", e), None::<()>)
         })?;
         if cid_bytes.len() != 32 {
-            return Err(ErrorObjectOwned::owned(-32602, "CID must be 32 bytes", None::<()>));
+            return Err(ErrorObjectOwned::owned(
+                -32602,
+                "CID must be 32 bytes",
+                None::<()>,
+            ));
         }
         let mut cid_arr = [0u8; 32];
         cid_arr.copy_from_slice(&cid_bytes);
@@ -1932,7 +1939,11 @@ impl BudlumApiServer for RpcServer {
         })?;
         let clean_root = storage_root.strip_prefix("0x").unwrap_or(&storage_root);
         let root_bytes = hex::decode(clean_root).map_err(|e| {
-            ErrorObjectOwned::owned(-32602, format!("Invalid storage_root hex: {}", e), None::<()>)
+            ErrorObjectOwned::owned(
+                -32602,
+                format!("Invalid storage_root hex: {}", e),
+                None::<()>,
+            )
         })?;
         if root_bytes.len() != 32 {
             return Err(ErrorObjectOwned::owned(
@@ -1947,7 +1958,13 @@ impl BudlumApiServer for RpcServer {
         self.chain
             .bns_set_storage(name.clone(), owner_addr, root_arr, storage_domain_id)
             .await
-            .map_err(|e| ErrorObjectOwned::owned(-32602, format!("BNS set_storage failed: {}", e), None::<()>))?;
+            .map_err(|e| {
+                ErrorObjectOwned::owned(
+                    -32602,
+                    format!("BNS set_storage failed: {}", e),
+                    None::<()>,
+                )
+            })?;
 
         Ok(serde_json::json!({
             "name": name,
@@ -2061,20 +2078,26 @@ impl BudlumApiServer for RpcServer {
         }
     }
 
-    async fn social_get_profile(&self, address: String) -> Result<serde_json::Value, ErrorObjectOwned> {
+    async fn social_get_profile(
+        &self,
+        address: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
         let clean_addr = address.strip_prefix("0x").unwrap_or(&address);
         let addr = Address::from_hex(clean_addr).map_err(|e| {
             ErrorObjectOwned::owned(-32602, format!("Invalid address: {}", e), None::<()>)
         })?;
         let nfts = self.chain.nft_get_by_owner(addr).await;
-        let list: Vec<_> = nfts.into_iter().map(|nft| {
-            serde_json::json!({
-                "id": nft.id,
-                "content_id": format!("0x{}", hex::encode(nft.content_id.0)),
-                "minted_at": nft.minted_at_epoch,
-                "author": nft.author_name,
+        let list: Vec<_> = nfts
+            .into_iter()
+            .map(|nft| {
+                serde_json::json!({
+                    "id": nft.id,
+                    "content_id": format!("0x{}", hex::encode(nft.content_id.0)),
+                    "minted_at": nft.minted_at_epoch,
+                    "author": nft.author_name,
+                })
             })
-        }).collect();
+            .collect();
         Ok(serde_json::Value::Array(list))
     }
 
@@ -2094,7 +2117,11 @@ impl BudlumApiServer for RpcServer {
             ErrorObjectOwned::owned(-32602, format!("Invalid CID hex: {}", e), None::<()>)
         })?;
         if cid_bytes.len() != 32 {
-            return Err(ErrorObjectOwned::owned(-32602, "CID must be 32 bytes", None::<()>));
+            return Err(ErrorObjectOwned::owned(
+                -32602,
+                "CID must be 32 bytes",
+                None::<()>,
+            ));
         }
         let mut cid_arr = [0u8; 32];
         cid_arr.copy_from_slice(&cid_bytes);
