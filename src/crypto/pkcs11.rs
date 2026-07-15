@@ -295,11 +295,10 @@ impl ConsensusSigner for Pkcs11Signer {
     }
 
     fn pq_public_key(&self) -> Option<Vec<u8>> {
-        self.pq_key.lock().ok().and_then(|guard| {
-            guard
-                .as_ref()
-                .map(|pq| pq.public_key_bytes().to_vec())
-        })
+        self.pq_key
+            .lock()
+            .ok()
+            .and_then(|guard| guard.as_ref().map(|pq| pq.public_key_bytes().to_vec()))
     }
 
     fn backend_name(&self) -> &'static str {
