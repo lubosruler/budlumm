@@ -2125,3 +2125,38 @@ Force-push YASAK.
 **Engel:** CI yeşil takibi + ARENA2 ZK debug yanıtı. Force-push YASAK.
 
 Co-authored-by: ARENA3
+
+---
+
+### [2026-07-15 16:30 UTC+3] ARENA2 — ADIM4 Devralma + org roadmap teyiti + B.U.D. server forge push analizi (Aşama 1/2/3)
+
+**Durum:** tamamlandı (Aşama 1 konuşma + Aşama 2 fetch + Aşama 3 push)
+**Kapsam:** ADIM4 TUR4_PLAN.md + budlumdevnet/devnet2 roadmap + B.U.D. server + BNS Q10 + token
+**Kime:** ARENA1, ARENA3, kullanıcı
+
+**Aksiyon:**
+- budlumdevnet 332 + devnet2 452 docs clone → multi-consensus settlement, settlement matrix, paradigma, PQ hybrid → main 557 test fazlasıyla kapalı (StorageAttestationFinalityAdapter cert.verify 49b6b46/65d0446, bridge sweep, finality_live_path, pq feature gates, PKCS#11)
+- B.U.D. server budzero/bud-node store.rs/bitswap.rs/discovery.rs/sharding.rs hayatta, kaybolan sadece ADIM3_PLAN (b43a502'de kurtarıldı). Kullanıcının attığı belge bu sohbette yok, TUR4_PLAN.md incelendi; ek belge varsa upload et.
+- ADIM4: 4.1 test gate InvalidProof (matrix yeşil STARK kırmızı aux CTL şüphesi), 4.2 prod gate fail-closed kapalı doğru (4aa5079), 4.3/4.4 merkle_proof Option + storage_root V3 OK, BNS Q10 full_impl 7482dd7+51dbaf9 onaylandı (NameRecord storage_root binding + lifecycle Transaction->Executor->RPC)
+- CI: Budlum Core + BudZero SUCCESS (f9f5b9a run 29423197422), docker-smoke FAIL mainnet HSM (beklenen)
+- Aşama 2: origin/main 51dbaf9 tespit, rebase, STATUS_ONLINE conflict çözüldü (her iki entry korundu), force-push YOK, workflow push YOK
+
+**ARENA1'e:**
+- BlockHeader V3 storage_root + GlobalBlockHeader storage_root final settlement nasıl birleşiyor? BNS binding çakışma var mı?
+- M4 E2E permissionless empty-set bilinçli mi?
+
+**ARENA3'e:**
+- 7482dd7+51dbaf9 Q10 merge onaylandı, prod gate fail-closed mutabık mıyız?
+- VerifyMerkle aux CTL için sonraki hipotezin nedir — depth 1 minimal mi LogUp bus mı?
+
+**Kullanıcıya (yeni gidişat — her devam sonrası soru):**
+- Q1: VerifyMerkle minimal depth 1-2 isolation mu yoksa doğrudan aux CTL constraint-by-constraint mi?
+- Q2: B.U.D. server ek kayıp parça var mı? bud-node dışında path varsa upload eder misin?
+- Q3: BNS pricing/resolver governance ADIM5'e mi kalsın yoksa ADIM4 minimal docs mu?
+- Q4: TLA+ iskeleti ADIM4'te başlasın mı yoksa bug bounty ADIM5'e mi?
+
+**Sonraki:** Bu commit push + kullanıcı devam + diğer AI yanıtı → depth isolation veya BNS docs
+
+**Kanıt:** HEAD 51dbaf9, `ls budzero/bud-node/src/` 5 file, `grep is_experimental budzero/bud-isa/src/lib.rs` → true fail-closed, `ls docs/ADIM4_ARENA2_ANALIZ`
+**Engel:** devam + AI yanıtı
+Force-push YASAK.
