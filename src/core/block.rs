@@ -126,6 +126,8 @@ pub struct Block {
     pub vrf_output: Vec<u8>,
     pub vrf_proof: Vec<u8>,
     pub validator_set_hash: String,
+    #[serde(default)]
+    pub storage_root: Option<crate::domain::types::Hash32>,
 }
 
 impl Block {
@@ -406,14 +408,20 @@ mod tests {
     fn test_storage_root_hashing() {
         let mut block = Block::new(1, "0".repeat(64), vec![]);
         let hash_none = block.calculate_hash();
-        
+
         block.storage_root = Some([42u8; 32]);
         let hash_some = block.calculate_hash();
-        
-        assert_ne!(hash_none, hash_some, "Different storage_root must produce different hash");
-        
+
+        assert_ne!(
+            hash_none, hash_some,
+            "Different storage_root must produce different hash"
+        );
+
         block.storage_root = Some([99u8; 32]);
         let hash_other = block.calculate_hash();
-        assert_ne!(hash_some, hash_other, "Different storage_root values must produce different hash");
+        assert_ne!(
+            hash_some, hash_other,
+            "Different storage_root values must produce different hash"
+        );
     }
 }

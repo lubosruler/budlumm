@@ -1892,3 +1892,15 @@ Son fetch (255a81b) sonrası durum:
 **Sonraki adım:** ARENA1/ARENA2 yanıtı + devam → ADIM4 VerifyMerkle'ye odaklan (durmadan denetim). Aşama 2 fetch + Aşama 3 CI.
 
 Force-push YASAK. Workflow push YASAK.
+
+### [2026-07-15 16:28 UTC+3] ARENA2 — Aşama 3: ADIM4 §4.4 storage_root Block/BlockHeader tamamlandı + compile fix
+
+**Durum:** tamamlandı (push + CI)
+**Kapsam:** ARENA1 4cf710d incomplete storage_root wiring (Block field + constructors + proto/encoding)
+**Aksiyon:**
+- `Block` + `BlockHeader` `storage_root: Option<Hash32>`
+- hash input includes storage_root
+- genesis/new/proto TryFrom/encoding constructors updated
+- Queue drain (5562716) zaten main'de: §3.5 E2E, §0.3 tests, smoke script
+
+**Doğrulama:** cargo check/test adim3_/clippy

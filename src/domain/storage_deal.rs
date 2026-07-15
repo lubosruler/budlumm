@@ -772,7 +772,19 @@ mod tests {
         let mut econ = good_econ();
         econ.operator_bond = 1; // way below min_operator_bond
         let err = reg
-            .open_deal(42, &m, shard_id, operator(), 0, 100, 200, econ, &params(), None, None)
+            .open_deal(
+                42,
+                &m,
+                shard_id,
+                operator(),
+                0,
+                100,
+                200,
+                econ,
+                &params(),
+                None,
+                None,
+            )
             .unwrap_err();
         assert!(matches!(err, StorageError::InsufficientBond { .. }));
     }

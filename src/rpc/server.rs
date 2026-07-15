@@ -1561,11 +1561,7 @@ impl BudlumApiServer for RpcServer {
     ) -> Result<serde_json::Value, ErrorObjectOwned> {
         // ADIM3 §0.2 + H1 fix (ARENA3 sürekli denetim): opener zorunlu ve non-zero olmalı
         let opener = request.opener.ok_or_else(|| {
-            ErrorObjectOwned::owned(
-                -32602,
-                "opener is required (ADIM3 §0.2 / H1)",
-                None::<()>,
-            )
+            ErrorObjectOwned::owned(-32602, "opener is required (ADIM3 §0.2 / H1)", None::<()>)
         })?;
         if opener == crate::core::address::Address::zero() {
             return Err(ErrorObjectOwned::owned(

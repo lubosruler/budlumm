@@ -119,6 +119,7 @@ impl GenesisConfig {
             vrf_output: Vec::new(),
             vrf_proof: Vec::new(),
             validator_set_hash: self.validator_set_hash(),
+            storage_root: None,
         };
 
         block.tx_root = block.calculate_tx_root();

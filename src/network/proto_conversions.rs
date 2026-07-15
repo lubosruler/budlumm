@@ -178,6 +178,7 @@ impl TryFrom<pb::ProtoBlockHeader> for BlockHeader {
             vrf_output: proto.vrf_output,
             vrf_proof: proto.vrf_proof,
             validator_set_hash: proto.validator_set_hash,
+            storage_root: None,
         })
     }
 }
@@ -270,6 +271,7 @@ impl TryFrom<pb::ProtoBlock> for Block {
             vrf_output: proto.vrf_output,
             vrf_proof: proto.vrf_proof,
             validator_set_hash: proto.validator_set_hash,
+            storage_root: None,
         })
     }
 }
