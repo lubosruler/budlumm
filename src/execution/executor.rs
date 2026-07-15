@@ -472,6 +472,22 @@ impl Executor {
                     "AI Data Marketplace: Successful purchase"
                 );
             }
+            TransactionType::HubRegisterApp { name, category, website_url, manifest_id } => {
+                state.hub.register_app(
+                    name.clone(),
+                    tx.from,
+                    category.clone(),
+                    website_url.clone(),
+                    *manifest_id,
+                    state.epoch_index,
+                );
+
+                let sender = state.get_or_create(&tx.from);
+                sender.balance = sender.balance.saturating_sub(tx.fee);
+                sender.nonce = sender.nonce.saturating_add(1);
+                
+                tracing::info!(developer = %tx.from, app_name = %name, "Budlum Hub: New dApp registered");
+            }
         }
 
         Ok(())

@@ -2387,6 +2387,65 @@ impl BudlumApiServer for RpcServer {
         }))
     }
 
+    async fn hub_get_apps(&self) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let apps = self.chain.hub_get_apps().await;
+        Ok(serde_json::json!(apps))
+    }
+
+    async fn hub_prepare_register(
+        &self,
+        developer: String,
+        name: String,
+        category: crate::hub::types::AppCategory,
+        website_url: String,
+        manifest_id: Option<String>,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let clean_dev = developer.strip_prefix("0x").unwrap_or(&developer);
+        let dev_addr = Address::from_hex(clean_dev).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid developer address: {}", e), None::<()>)
+        })?;
+
+        let m_id = if let Some(m_str) = manifest_id {
+            let clean_m = m_str.strip_prefix("0x").unwrap_or(&m_str);
+            let m_bytes = hex::decode(clean_m).map_err(|e| {
+                ErrorObjectOwned::owned(-32602, format!("Invalid manifest hex: {}", e), None::<()>)
+            })?;
+            let mut m_arr = [0u8; 32];
+            m_arr.copy_from_slice(&m_bytes);
+            Some(crate::storage::content_id::ContentId(m_arr))
+        } else {
+            None
+        };
+
+        let tx = crate::core::transaction::Transaction {
+            from: dev_addr,
+            to: Address::zero(),
+            amount: 0,
+            fee: 500,
+            nonce: self.chain.get_nonce(&dev_addr).await,
+            data: Vec::new(), // In real-world, bincode the HubRegisterApp data here
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis(),
+            hash: String::new(),
+            signature: None,
+            chain_id: self.chain.get_chain_id().await,
+            tx_type: crate::core::transaction::TransactionType::HubRegisterApp {
+                name: name.clone(),
+                category: category.clone(),
+                website_url: website_url.clone(),
+                manifest_id: m_id,
+            },
+        };
+
+        Ok(serde_json::json!({
+            "developer": developer,
+            "name": name,
+            "tx_template": tx,
+        }))
+    }
+
     async fn social_prepare_boost(
         &self,
         booster: String,

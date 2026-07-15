@@ -12,6 +12,7 @@ pub mod mempool;
 pub mod network;
 pub mod nft;
 pub mod marketplace;
+pub mod hub;
 pub mod prover;
 pub mod registry;
 pub mod rpc;

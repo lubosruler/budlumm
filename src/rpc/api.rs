@@ -486,6 +486,21 @@ pub trait BudlumApi {
         offer_id: u64,
     ) -> Result<serde_json::Value, ErrorObjectOwned>;
 
+    /// Budlum Hub: Get all registered dApps.
+    #[method(name = "bud_hubGetApps")]
+    async fn hub_get_apps(&self) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Budlum Hub: Prepare a dApp registration transaction.
+    #[method(name = "bud_hubPrepareRegister")]
+    async fn hub_prepare_register(
+        &self,
+        developer: String,
+        name: String,
+        category: crate::hub::types::AppCategory,
+        website_url: String,
+        manifest_id: Option<String>,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
     /// B.U.D. SocialFi: Prepare an NFT boost transaction.
     #[method(name = "bud_socialPrepareBoost")]
     async fn social_prepare_boost(

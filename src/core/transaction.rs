@@ -100,6 +100,13 @@ pub enum TransactionType {
     AiPurchaseData {
         offer_id: u64,
     },
+    /// ADIM 5 §4: Budlum Hub - Register a dApp to the ecosystem
+    HubRegisterApp {
+        name: String,
+        category: crate::hub::types::AppCategory,
+        website_url: String,
+        manifest_id: Option<crate::storage::content_id::ContentId>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
