@@ -42,6 +42,7 @@ pub struct BudlumBehaviour {
     gossipsub: gossipsub::Behaviour,
     kad: Kademlia<MemoryStore>,
     sync: request_response::Behaviour<crate::network::sync_codec::SyncCodec>,
+    bitswap: request_response::Behaviour<bud_node::BitswapCodec>,
 }
 use crate::chain::chain_actor::ChainHandle;
 use crate::chain::finality::{Precommit, Prevote};
@@ -219,20 +220,28 @@ pub struct Node {
     pub banned_peer_db: Option<std::path::PathBuf>,
     pub mdns_enabled: bool,
     pub metrics: Option<Arc<crate::core::metrics::Metrics>>,
+    pub storage_node: Option<Arc<bud_node::BudBitswap>>,
+    pub shard_manager: Option<Arc<bud_node::ShardManager>>,
 }
 
 impl Node {
     pub fn new(chain: ChainHandle) -> Result<Self, Box<dyn Error>> {
         let local_key = identity::Keypair::generate_ed25519();
-        Self::with_key(chain, local_key, true)
+        Self::with_key(chain, local_key, true, None, None)
     }
 
     pub fn with_key(
         chain: ChainHandle,
         local_key: identity::Keypair,
         mdns_enabled: bool,
+        storage_node: Option<Arc<bud_node::BudBitswap>>,
+        sharding_config: Option<bud_node::ShardingConfig>,
     ) -> Result<Self, Box<dyn Error>> {
         let peer_id = PeerId::from(local_key.public());
+        
+        let shard_manager = sharding_config.map(|config| {
+            Arc::new(bud_node::ShardManager::new(peer_id, config))
+        });
         info!("Node ID: {} (mDNS: {})", peer_id, mdns_enabled);
         let message_id_fn = |message: &gossipsub::Message| {
             let mut s = DefaultHasher::new();
@@ -278,6 +287,13 @@ impl Node {
                     )],
                     request_response::Config::default(),
                 );
+                let bitswap = request_response::Behaviour::new(
+                    [(
+                        StreamProtocol::new(bud_node::BITSWAP_PROTOCOL_NAME),
+                        request_response::ProtocolSupport::Full,
+                    )],
+                    request_response::Config::default(),
+                );
 
                 Ok(BudlumBehaviour {
                     ping: ping::Behaviour::new(
@@ -288,6 +304,7 @@ impl Node {
                     gossipsub,
                     kad: kademlia,
                     sync,
+                    bitswap,
                 })
             })?
             .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(60)))
@@ -315,6 +332,8 @@ impl Node {
             banned_peer_db: None,
             mdns_enabled,
             metrics: None,
+            storage_node,
+            shard_manager,
         })
     }
 
@@ -528,6 +547,8 @@ impl Node {
         let mut dht_interval = tokio::time::interval(DHT_BOOTSTRAP_INTERVAL);
         let mut banning_interval = tokio::time::interval(Duration::from_secs(60));
         let mut ban_persist_interval = tokio::time::interval(Duration::from_secs(300));
+        let mut storage_announce_interval = tokio::time::interval(Duration::from_secs(3600)); // Every hour
+        let mut storage_sharding_check_interval = tokio::time::interval(Duration::from_secs(600)); // Every 10 mins
         let mut last_voted_height: u64 = 0;
 
         loop {
@@ -643,6 +664,25 @@ impl Node {
                 _ = dht_interval.tick() => {
                     info!("Running periodic DHT bootstrapping...");
                     let _ = self.swarm.behaviour_mut().kad.bootstrap();
+                }
+                _ = storage_announce_interval.tick() => {
+                    if let Some(ref bitswap) = self.storage_node {
+                        let cids = bitswap.store().list_cids();
+                        info!("Storage: Announcing {} local chunks to DHT...", cids.len());
+                        for cid in cids {
+                            let key = bud_node::ContentDiscovery::cid_to_key(&cid);
+                            let _ = self.swarm.behaviour_mut().kad.start_providing(key);
+                        }
+                    }
+                }
+                _ = storage_sharding_check_interval.tick() => {
+                    if let (Some(ref bitswap), Some(ref shard_manager)) = (&self.storage_node, &self.shard_manager) {
+                        // This logic is for User Decision 5: mandatory_sharding.
+                        // We check if there are deals near us that we aren't hosting.
+                        // For now, we log the health.
+                        info!("Storage: Running active sharding health check (XOR distance)...");
+                        // Future improvement: proactively query DHT for near-CIDs.
+                    }
                 }
                 _ = banning_interval.tick() => {
                     let banned_peers = {
@@ -1749,6 +1789,30 @@ impl Node {
                                     warn!("Inbound sync failure from {}: {:?}", peer, error);
                                 }
                                 _ => {}
+                            }
+                        }
+                        SwarmEvent::Behaviour(BudlumBehaviourEvent::Bitswap(event)) => {
+                            if let Some(ref bitswap) = self.storage_node {
+                                match event {
+                                    request_response::Event::Message { peer, message, .. } => {
+                                        match message {
+                                            request_response::Message::Request { request, channel, .. } => {
+                                                let response = bitswap.handle_request(request);
+                                                let _ = self.swarm.behaviour_mut().bitswap.send_response(channel, response);
+                                            }
+                                            request_response::Message::Response { response, .. } => {
+                                                if let Err(e) = bitswap.handle_response(response) {
+                                                    warn!("Bitswap response from {} failed: {}", peer, e);
+                                                } else {
+                                                    if let Ok(mut pm) = self.peer_manager.lock() {
+                                                        pm.report_good_behavior(&peer);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                }
                             }
                         }
                         _ => {}

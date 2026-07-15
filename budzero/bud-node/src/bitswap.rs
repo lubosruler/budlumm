@@ -53,6 +53,71 @@ pub struct BitswapResponse {
 #[derive(Debug, Clone, Default)]
 pub struct BitswapCodec;
 
+#[async_trait::async_trait]
+impl libp2p::request_response::Codec for BitswapCodec {
+    type Protocol = libp2p::StreamProtocol;
+    type Request = BitswapRequest;
+    type Response = BitswapResponse;
+
+    async fn read_request<T>(
+        &mut self,
+        _protocol: &Self::Protocol,
+        io: &mut T,
+    ) -> std::io::Result<Self::Request>
+    where
+        T: futures::AsyncRead + Unpin + Send,
+    {
+        use futures::AsyncReadExt;
+        let mut buf = Vec::new();
+        io.take(MAX_MESSAGE_SIZE as u64).read_to_end(&mut buf).await?;
+        decode_request(&buf).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+    }
+
+    async fn read_response<T>(
+        &mut self,
+        _protocol: &Self::Protocol,
+        io: &mut T,
+    ) -> std::io::Result<Self::Response>
+    where
+        T: futures::AsyncRead + Unpin + Send,
+    {
+        use futures::AsyncReadExt;
+        let mut buf = Vec::new();
+        io.take(MAX_MESSAGE_SIZE as u64).read_to_end(&mut buf).await?;
+        decode_response(&buf).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+    }
+
+    async fn write_request<T>(
+        &mut self,
+        _protocol: &Self::Protocol,
+        io: &mut T,
+        req: Self::Request,
+    ) -> std::io::Result<()>
+    where
+        T: futures::AsyncWrite + Unpin + Send,
+    {
+        use futures::AsyncWriteExt;
+        let bytes = encode_request(&req).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        io.write_all(&bytes).await?;
+        io.close().await
+    }
+
+    async fn write_response<T>(
+        &mut self,
+        _protocol: &Self::Protocol,
+        io: &mut T,
+        resp: Self::Response,
+    ) -> std::io::Result<()>
+    where
+        T: futures::AsyncWrite + Unpin + Send,
+    {
+        use futures::AsyncWriteExt;
+        let bytes = encode_response(&resp).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        io.write_all(&bytes).await?;
+        io.close().await
+    }
+}
+
 /// Maximum message size: 16 MiB + overhead for CID and metadata.
 const MAX_MESSAGE_SIZE: usize = 16 * 1024 * 1024 + 256;
 

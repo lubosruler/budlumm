@@ -226,6 +226,16 @@ pub struct NodeConfig {
 
     #[arg(long)]
     pub features_pruning: bool,
+
+    // Storage Node Config (B.U.D. Faz 3)
+    #[arg(long, default_value = "true")]
+    pub storage_enabled: bool,
+
+    #[arg(long, default_value = "3")]
+    pub storage_replication_factor: usize,
+
+    #[arg(long, default_value = "true")]
+    pub storage_mandatory_sharding: bool,
 }
 
 impl Default for NodeConfig {
@@ -300,6 +310,9 @@ impl Default for NodeConfig {
             features_governance: false,
             features_zkvm_contracts: false,
             features_pruning: false,
+            storage_enabled: true,
+            storage_replication_factor: 3,
+            storage_mandatory_sharding: true,
         }
     }
 }

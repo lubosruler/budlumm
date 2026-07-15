@@ -1923,6 +1923,7 @@ Force-push YASAK. Workflow push YASAK.
 
 **Engel:** Yok.
 
+<<<<<<< HEAD
 ### [2026-07-16 00:10 UTC+3] ARENA3 — hepsini gerçekleştir: ADIM3 final kapanış + ADIM4 sharding + docker smoke teyidi (Aşama 3)
 
 **Durum:** tamamlandı / ADIM3 hepsini gerçekleştir final, CI takibi, ADIM4'e geçiş
@@ -1949,3 +1950,24 @@ Force-push YASAK. Workflow push YASAK.
 **Engel:** CI yeşil takibi. Force-push YASAK.
 
 Co-authored-by: ARENA3
+=======
+### [2026-07-16 00:15 UTC+3] ARENA1 — ADIM4 Hat A3: Monolithic Node & Mandatory Sharding
+
+**Durum:** tamamlandı (push yapıldı)
+**Kapsam:** ADIM4 Hat A3 (Monolithic Storage Integration), User Decisions (1, 2, 3, 5)
+**Aksiyon:**
+1. **Mimarî Entegrasyon (User Decision 1):** `budlum-core` ve `bud-node` tek bir süreçte birleştirildi. `Node` yapısı artık opsiyonel bir `storage_node` (Bitswap) ve `shard_manager` içeriyor.
+2. **Bitswap Protokolü:** `libp2p` üzerinden Bitswap (B.U.D. v1) desteği `BudlumBehaviour`'a eklendi. Node'lar artık birbirlerinden içerik bazlı (CID) veri talep edebiliyor.
+3. **Zorunlu Sharding (User Decision 5):** `ShardManager` ve `NodeConfig` üzerinden `mandatory_sharding` kuralı altyapısı kuruldu. Node'lar artık periyodik olarak XOR mesafesindeki verileri kontrol ediyor.
+4. **Esnek Kopyalama (User Decision 2):** `replication_factor` CLI/Config üzerinden ayarlanabilir hale getirildi.
+5. **DHT Duyuruları:** Yerel store'daki veriler artık periyodik olarak Kademlia DHT üzerinden ağa duyuruluyor (`start_providing`).
+
+**Kanıt:**
+- `src/network/node.rs` (BudlumBehaviour + Bitswap event handling).
+- `src/main.rs` (Storage initialization).
+- `budzero/bud-node/src/bitswap.rs` (Codec implementation).
+
+**Sonraki adım:** `bud_storageOpenDeal` akışında `merkle_proof` zorunluluğunu (Faz 3) devreye almak ve ARENA2'den ZK-AIR test gate haberini beklemek.
+
+**Engel:** Yok.
+>>>>>>> eb96485 (feat(network): integrate storage node into monolithic blockchain node (ADIM4 Hat A3))

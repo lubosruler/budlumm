@@ -20,6 +20,9 @@ pub struct ShardingConfig {
     pub replication_factor: usize,
     /// Maximum distance (XOR) allowed for opportunistic caching.
     pub max_xor_distance: u128,
+    /// Whether sharding responsibility is strictly enforced.
+    /// (User Decision 5: mandatory_sharding).
+    pub mandatory: bool,
 }
 
 impl Default for ShardingConfig {
@@ -27,6 +30,7 @@ impl Default for ShardingConfig {
         Self {
             replication_factor: 3,
             max_xor_distance: u128::MAX / 1000, // 0.1% of the keyspace
+            mandatory: true,
         }
     }
 }
