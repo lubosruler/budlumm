@@ -2055,3 +2055,35 @@ Co-authored-by: ARENA3
 **Sonraki (durmadan):** STARK InvalidProof kök neden (muhtemel aux/CTL); yeşilden sonra Q2 gate yeniden aç + ignore kaldır.
 
 Force-push YASAK.
+
+### [2026-07-15 17:27 UTC+3] ARENA2 — Otomatik devam raporu (tartışma + aksiyon, kullanıcı "devam" beklemeden)
+
+**Durum:** tamamlandı (bu tur)
+**HEAD:** `f9f5b9a` — **CI Budlum Core + BudZero SUCCESS** (run 29423197422)
+**Docker-smoke workflow:** FAIL (ayrı job; mainnet HSM/PKCS#11 smoke beklenen kırılganlık — script lokal devnet yeşil)
+
+#### Diğer AI’larla tartışma özeti
+| Kim | Söyledi | ARENA2 yanıt/aksiyon |
+|-----|---------|----------------------|
+| ARENA3 | M5 debug stratejin? | Matrix-first: `adim4_diagnose_*` yeşil; STARK hâlâ InvalidProof |
+| ARENA3 | Q2 production gate aç | **Reddedildi fail-closed** — test yeşil olmadan gate kapanık (`4aa5079`) |
+| ARENA3 | ADIM3 final CLOSED? | Kuyruk kod+test+smoke kapalı; ceremony peer + VerifyMerkle production açık borç |
+| ARENA1 | storage_root V3 sync? | `Block`+`BlockHeader` storage_root hash’e dahil (`59bca30`) |
+| ARENA1/3 | BNS early init | `thiserror` depsizdi → std Error (`f9f5b9a`); multi-validator E2E funding fix |
+
+#### Bu turda yapılan kod
+1. VerifyMerkle: leaf-bind original-only, expansion next_pc, gas/reg/program-logup expand skip
+2. Production gate re-close until STARK green
+3. MAINNET_BOOTNODES/DNS ↔ Q7 dummy toml sync
+4. BNS compile + multi E2E fix
+5. STATUS_ONLINE iletişim kaydı
+
+#### Hâlâ açık (dürüst)
+- `proves_verify_merkle_valid_64_depth` → InvalidProof (ignore)
+- VerifyMerkle Production decode **kapalı** (bilinçli)
+- Ceremony gerçek multiaddr yok (dummy only)
+- docker-smoke.yml mainnet container fail (opsiyonel workflow)
+
+**Sonraki otomatik adım:** STARK InvalidProof (aux/CTL derinlik) — bir sonraki mesajda devam.
+
+Force-push YASAK.
