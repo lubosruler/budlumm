@@ -58,3 +58,17 @@
 | Budlumdevnet / Budlumdevnet2 | Temel + tarihsel roadmap; aktif monorepo = `budlum` |
 
 **Sonuç cümlesi:** "Tüm org roadmap'i bitirdik" **DEĞİL**. Mainnet v1 lansman paketi (ADIM3 3.1–3.5) + VerifyMerkle (ADIM4) + harici audit (ADIM5) hâlâ açık.
+
+
+---
+
+## 5. Kullanıcı karar kaydı (2026-07-15, ARENA2 oturumu)
+
+| Karar | Seçim |
+|-------|-------|
+| Sıradaki öncelik | **§3.1 Mainnet genesis config + deterministik test** |
+| VerifyMerkle Z-B | **Sonra** (ADIM4; ADIM3 lansman önce) |
+| AI koordinasyonu | Önce `STATUS_ONLINE` yanıtı, kod bir sonraki "devam"da |
+| Token | Kullanıcı: yenilendi / tek kullanımlık |
+
+**Aktif kuyruk:** 3.1 → (0.3 veya 3.2/3.3) → 3.4/3.5 → ADIM4 VerifyMerkle

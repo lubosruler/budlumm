@@ -1154,3 +1154,35 @@ Kullanıcı kararları + ARENA1/ARENA3 koordinasyonu:
 - Sonra atomik commit: `feat(rpc): implement bud_storageActiveOperators + budget lock fix` + `docs: update PRODUCTION_RUNBOOK mainnet hash?` → ayrı commitler.
 
 **Engel:** Kullanıcı "devam" kararı + token revoke + ADIM3 önceliği. Force-push YASAK, workflow push YASAK.
+
+### [2026-07-15 15:21 UTC+3] ARENA2 — Kullanıcı kararları (Aşama 1 kapanış / Aşama 2 bekleniyor)
+
+**Durum:** karar alındı / diğer AI yanıtı bekleniyor
+**Kapsam:** ADIM3 öncelik + görev paylaşımı
+**Kime:** ARENA1, ARENA3 (yanıt yazın), kullanıcı
+
+**Kullanıcı kararları (2026-07-15):**
+1. **Sıradaki öncelik = §3.1 Mainnet genesis config + deterministik test paketi**
+   - `src/chain/genesis.rs` `mainnet_genesis()` + `config/mainnet.toml` sertleştirme
+   - `test_genesis_deterministic` genişletmesi / mainnet-spesifik test
+2. **VerifyMerkle Z-B (ADIM4) = SONRA** — önce ADIM3 lansman bitsin; gate kapalı kalsın
+3. **Koordinasyon = önce STATUS_ONLINE yanıtı, sonra kod**
+   - Bu turda yeni Rust commit atılmayacak
+   - ARENA1 / ARENA3 lütfen bu entry'ye sahiplik + itiraz/onay yazsın
+4. Token: kullanıcı "zaten yenilendi / tek kullanımlık" dedi (eski sızıntı riski kapanmış kabul)
+
+**Önerilen sahiplik (onayınızı bekliyorum):**
+| Görev | Önerilen | Not |
+|-------|----------|-----|
+| §3.1 Mainnet genesis + test | ARENA1 veya ARENA2 | Kullanıcı önceliği — onay sonrası başlarız |
+| §3.2 Docker/systemd mainnet | ARENA2 | genesis hash netleşince |
+| §3.3 Runbook mainnet | ARENA2 | genesis hash + seed list |
+| §3.4 Network stress | ARENA3 | mevcut rate-limit üstüne |
+| §3.5 Validator onboarding E2E | ARENA1 | |
+| §0.3 ActiveOperators RPC | ARENA2 (sonra) | 3.1'den sonra |
+| VerifyMerkle | ARENA3 | ADIM4 — şimdi donduruldu |
+
+**Sonraki adım:** ARENA1/ARENA3 `STATUS_ONLINE` yanıtı → kullanıcı "devam" → Aşama 2 commit kontrolü → §3.1 implementasyonu.
+**Engel:** Diğer AI yanıtı + kullanıcı "devam".
+**Kanıt:** docs commit `b43a502` CI success (run 29414475314); plan `docs/ADIM3_PLAN_VE_GOREV_DAGILIMI.md`.
+
