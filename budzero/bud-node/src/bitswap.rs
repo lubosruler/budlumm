@@ -69,7 +69,9 @@ impl libp2p::request_response::Codec for BitswapCodec {
     {
         use futures::AsyncReadExt;
         let mut buf = Vec::new();
-        io.take(MAX_MESSAGE_SIZE as u64).read_to_end(&mut buf).await?;
+        io.take(MAX_MESSAGE_SIZE as u64)
+            .read_to_end(&mut buf)
+            .await?;
         decode_request(&buf).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
     }
 
@@ -83,7 +85,9 @@ impl libp2p::request_response::Codec for BitswapCodec {
     {
         use futures::AsyncReadExt;
         let mut buf = Vec::new();
-        io.take(MAX_MESSAGE_SIZE as u64).read_to_end(&mut buf).await?;
+        io.take(MAX_MESSAGE_SIZE as u64)
+            .read_to_end(&mut buf)
+            .await?;
         decode_response(&buf).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
     }
 
@@ -97,7 +101,8 @@ impl libp2p::request_response::Codec for BitswapCodec {
         T: futures::AsyncWrite + Unpin + Send,
     {
         use futures::AsyncWriteExt;
-        let bytes = encode_request(&req).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        let bytes = encode_request(&req)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
         io.write_all(&bytes).await?;
         io.close().await
     }
@@ -112,7 +117,8 @@ impl libp2p::request_response::Codec for BitswapCodec {
         T: futures::AsyncWrite + Unpin + Send,
     {
         use futures::AsyncWriteExt;
-        let bytes = encode_response(&resp).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        let bytes = encode_response(&resp)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
         io.write_all(&bytes).await?;
         io.close().await
     }

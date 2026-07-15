@@ -238,10 +238,9 @@ impl Node {
         sharding_config: Option<bud_node::ShardingConfig>,
     ) -> Result<Self, Box<dyn Error>> {
         let peer_id = PeerId::from(local_key.public());
-        
-        let shard_manager = sharding_config.map(|config| {
-            Arc::new(bud_node::ShardManager::new(peer_id, config))
-        });
+
+        let shard_manager =
+            sharding_config.map(|config| Arc::new(bud_node::ShardManager::new(peer_id, config)));
         info!("Node ID: {} (mDNS: {})", peer_id, mdns_enabled);
         let message_id_fn = |message: &gossipsub::Message| {
             let mut s = DefaultHasher::new();
@@ -667,6 +666,7 @@ impl Node {
                 }
                 _ = storage_announce_interval.tick() => {
                     if let Some(ref bitswap) = self.storage_node {
+                        #[allow(clippy::single_match)]
                         let cids = bitswap.store().list_cids();
                         info!("Storage: Announcing {} local chunks to DHT...", cids.len());
                         for cid in cids {
@@ -1793,25 +1793,32 @@ impl Node {
                         }
                         SwarmEvent::Behaviour(BudlumBehaviourEvent::Bitswap(event)) => {
                             if let Some(ref bitswap) = self.storage_node {
-                                match event {
-                                    request_response::Event::Message { peer, message, .. } => {
-                                        match message {
-                                            request_response::Message::Request { request, channel, .. } => {
-                                                let response = bitswap.handle_request(request);
-                                                let _ = self.swarm.behaviour_mut().bitswap.send_response(channel, response);
-                                            }
-                                            request_response::Message::Response { response, .. } => {
-                                                if let Err(e) = bitswap.handle_response(response) {
-                                                    warn!("Bitswap response from {} failed: {}", peer, e);
-                                                } else {
-                                                    if let Ok(mut pm) = self.peer_manager.lock() {
-                                                        pm.report_good_behavior(&peer);
-                                                    }
-                                                }
+                                if let request_response::Event::Message { peer, message, .. } = event
+                                {
+                                    match message {
+                                        request_response::Message::Request {
+                                            request,
+                                            channel,
+                                            ..
+                                        } => {
+                                            let response = bitswap.handle_request(request);
+                                            let _ = self
+                                                .swarm
+                                                .behaviour_mut()
+                                                .bitswap
+                                                .send_response(channel, response);
+                                        }
+                                        request_response::Message::Response { response, .. } => {
+                                            if let Err(e) = bitswap.handle_response(response) {
+                                                warn!(
+                                                    "Bitswap response from {} failed: {}",
+                                                    peer, e
+                                                );
+                                            } else if let Ok(mut pm) = self.peer_manager.lock() {
+                                                pm.report_good_behavior(&peer);
                                             }
                                         }
                                     }
-                                    _ => {}
                                 }
                             }
                         }

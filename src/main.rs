@@ -695,10 +695,10 @@ async fn main() {
     )
     .unwrap()
     .with_identity(config.p2p_identity_file.clone())
-        .with_dns_seeds(config.dns_seeds.clone())
-        .with_banned_peer_db(config.banned_peer_db.clone())
-        .with_bootstrap_peers(bootstraps.clone())
-        .with_metrics(metrics.clone());
+    .with_dns_seeds(config.dns_seeds.clone())
+    .with_banned_peer_db(config.banned_peer_db.clone())
+    .with_bootstrap_peers(bootstraps.clone())
+    .with_metrics(metrics.clone());
     node.apply_network_security(network);
 
     for addr in &bootstraps {

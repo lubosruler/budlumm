@@ -36,8 +36,8 @@ pub mod discovery;
 pub mod sharding;
 pub mod store;
 
+pub use bitswap::BITSWAP_PROTOCOL_NAME;
 pub use bitswap::{BitswapCodec, BitswapRequest, BitswapResponse, BudBitswap};
 pub use discovery::ContentDiscovery;
 pub use sharding::{ShardManager, ShardingConfig};
 pub use store::{ContentStore, MemoryContentStore};
-pub use bitswap::BITSWAP_PROTOCOL_NAME;
