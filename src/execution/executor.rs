@@ -407,6 +407,41 @@ impl Executor {
                 sender.balance = sender.balance.saturating_sub(tx.fee);
                 sender.nonce = sender.nonce.saturating_add(1);
             }
+            TransactionType::AiOfferData { cid, price } => {
+                state.marketplace.create_offer(tx.from, *cid, *price);
+
+                let sender = state.get_or_create(&tx.from);
+                sender.balance = sender.balance.saturating_sub(tx.fee);
+                sender.nonce = sender.nonce.saturating_add(1);
+            }
+            TransactionType::AiPurchaseData { offer_id } => {
+                let offer = state.marketplace.get_offer(*offer_id).cloned().ok_or("Offer not found")?;
+                if !offer.active {
+                    return Err(BudlumError::validation("marketplace_offer_inactive", "Offer is no longer active"));
+                }
+
+                // Transfer funds from buyer to seller
+                let total_cost = offer.price.saturating_add(tx.fee);
+                if state.get_balance(&tx.from) < total_cost {
+                    return Err(BudlumError::validation("insufficient_funds", "Buyer cannot afford data and fee"));
+                }
+
+                // Execute Payment
+                let buyer = state.get_or_create(&tx.from);
+                buyer.balance = buyer.balance.saturating_sub(total_cost);
+                buyer.nonce = buyer.nonce.saturating_add(1);
+
+                let seller = state.get_or_create(&offer.seller);
+                seller.balance = seller.balance.saturating_add(offer.price);
+
+                tracing::info!(
+                    offer_id = %offer_id,
+                    buyer = %tx.from,
+                    seller = %offer.seller,
+                    cid = %offer.cid,
+                    "AI Data Marketplace: Successful purchase"
+                );
+            }
         }
 
         Ok(())

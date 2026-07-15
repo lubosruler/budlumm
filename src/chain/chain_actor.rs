@@ -263,6 +263,9 @@ pub enum ChainCommand {
         duration: u64,
         response: oneshot::Sender<u64>,
     },
+    MarketGetOffers {
+        response: oneshot::Sender<Vec<crate::marketplace::DataOffer>>,
+    },
     NftGet {
         id: u64,
         response: oneshot::Sender<Option<crate::nft::types::Nft>>,
@@ -1221,6 +1224,12 @@ impl ChainHandle {
         rx.await.unwrap_or(0)
     }
 
+    pub async fn market_get_offers(&self) -> Vec<crate::marketplace::DataOffer> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self.tx.send(ChainCommand::MarketGetOffers { response: tx }).await;
+        rx.await.unwrap_or_default()
+    }
+
     pub async fn nft_get(&self, id: u64) -> Option<crate::nft::types::Nft> {
         let (tx, rx) = oneshot::channel();
         let _ = self
@@ -1894,6 +1903,10 @@ impl ChainActor {
                             .bns_registry
                             .calculate_cost(&name, duration),
                     );
+                }
+                ChainCommand::MarketGetOffers { response } => {
+                    let offers: Vec<_> = self.blockchain.state.marketplace.offers.values().cloned().collect();
+                    let _ = response.send(offers);
                 }
                 ChainCommand::NftGet { id, response } => {
                     let _ = response.send(self.blockchain.state.nft_registry.get_nft(id).cloned());

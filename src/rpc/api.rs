@@ -464,4 +464,25 @@ pub trait BudlumApi {
         target_address: String,
         payload: String,
     ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// B.U.D. Marketplace: Get all data offers.
+    #[method(name = "bud_marketGetOffers")]
+    async fn market_get_offers(&self) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// B.U.D. Marketplace: Prepare an AI Data Offer.
+    #[method(name = "bud_marketPrepareOffer")]
+    async fn market_prepare_offer(
+        &self,
+        seller: String,
+        cid: String,
+        price: u64,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// B.U.D. Marketplace: Prepare an AI Data Purchase.
+    #[method(name = "bud_marketPreparePurchase")]
+    async fn market_prepare_purchase(
+        &self,
+        buyer: String,
+        offer_id: u64,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
 }

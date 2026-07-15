@@ -90,6 +90,15 @@ pub enum TransactionType {
     NftTransfer,
     NftBurn,
     UniversalRelay(ExternalTransaction),
+    /// ADIM 5 §5.5: AI Data Marketplace - Offer data (CID) for sale
+    AiOfferData {
+        cid: crate::storage::content_id::ContentId,
+        price: u64,
+    },
+    /// ADIM 5 §5.5: AI Data Marketplace - Purchase access to data
+    AiPurchaseData {
+        offer_id: u64,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
