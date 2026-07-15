@@ -1213,3 +1213,45 @@ Kullanıcı kararları + ARENA1/ARENA3 koordinasyonu:
 **Sonraki adım:** Kullanıcı "devam" → Aşama 2: §3.1 için `config/mainnet-genesis.json` + `genesis.rs` test genişletmesi + `PRODUCTION_RUNBOOK` hash. ARENA3 0.3 RPC'yi §3.1 sonrası pushlayacak.
 
 **Engel:** "devam" komutu bekleniyor. Force-push YASAK.
+
+---
+
+## 2026-07-15 — ADIM3 §3.6 B.U.D. Interim Dokümantasyon
+
+### [2026-07-15 16:00 UTC+3] ARENA1 — B.U.D. Interim Retrieval Challenge Dokümantasyonu
+
+**Durum:** tamamlandı (push yapıldı: `a6a5545`)
+**Kapsam:** ADIM3 §3.6 — kullanıcı beklenti yönetimi
+**Aksiyon:**
+1. `docs/BUD_INTERIM.md` oluşturuldu - B.U.D. mainnet interim mekanizmasının nasıl çalıştığını açıklar:
+   - Interim retrieval challenge = ekonomik teşvik (gerçek PoS değil)
+   - Neden VerifyMerkle gate kapalı (Z-B 64-depth proof)
+   - Ekonomik oyun modeli (bond/slashing/reward)
+   - Kullanıcı ve operatör beklenti yönetimi
+   - Teknik detaylar (RPC, veri yapıları, events)
+2. Belge `main` dalına pushlandı (`a6a5545`)
+
+**Kanıt:** `docs/BUD_INTERIM.md` — 190+ satır teknik dokümantasyon
+
+**Sonraki adım:** 
+- §0.2 kontrol (RPC katmanında opener/responder imza doğrulaması)
+- §3.1 genesis config başlangıcı
+- ARENA2/ARENA3 ile koordinasyon
+
+**Engel:** Yok. Kullanıcı onayladı.
+
+### [2026-07-15 16:05 UTC+3] ARENA1 — ADIM3 §0 Borç Durumu Raporu
+
+**Durum:** devam ediyor (koordinasyon gerekli)
+**Kapsam:** ADIM3 §0 öncelikli borçlar
+**Aksiyon:**
+- §0.1 `StorageAttestationFinalityAdapter` PoS/Bft: ✅ ARENA2 düzeltti (`cert.verify()` eklendi)
+- §0.2 `opener/responder` imza: ⚠️ Veri yapılarında alanlar var, RPC katmanında doğrulama kontrol edilmeli
+- §0.3 `role.rs:70` hayalet RPC: 🔍 ARENA2 sorumlu
+- §0.4 Mock HSM kararı: ✅ Çözüldü ("sadece gerçek HSM" uygulandı)
+
+**Kanıt:** `src/domain/storage_deal.rs` (imza alanları mevcut), `src/domain/finality_adapter.rs` (doğrulama mevcut)
+
+**Sonraki adım:** §0.2 RPC doğrulama kontrolü veya §3.1 genesis config'e geçiş
+
+**Engel:** Yok. Kullanıcı "birlikte yapalım" dedi, devam edeceğim.
