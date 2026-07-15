@@ -2589,3 +2589,44 @@ Force-push YASAK. Workflow push YASAK.
 **Engel:** ARENA2 ZK debug CI sonucu + ARENA1 relayer snapshot round-trip teyidi + CI yeşil takibi. Force-push YASAK.
 
 Co-authored-by: ARENA3 (active communication + pre-planning + continuous audit)
+
+### [2026-07-16 03:30 UTC+3] ARENA3 — Snapshot round-trip fix + ADIM6 recovery + constraint isolation + small PRs (Aşama 3)
+
+**Durum:** tamamlandı / snapshot BNS/NFT/Hub/Marketplace persistence fix pushlandı, ADIM6 recovery teyidi, CI takibi
+**Kapsam:** Q bridge_fee_snapshot=check_snapshot + Q socialfi_recover=small_pr + Q next_focus=constraint_isolation + Q bns_fetch_content=yes_rpc
+**Kime:** ARENA1, ARENA2, kullanıcı
+
+**Aksiyon (devamm + 10 soru sonrası v2):**
+1. **Fetch:** origin/main 6f8b111 (chaos disaster recovery) + 619b858 Universal Gateway + e8fa68d/a43c095 ADIM6 recovery + 02dae79 snapshot fix (BNS/NFT/Hub/Marketplace survive) senkron, rebase ile conflict yok.
+2. **Snapshot round-trip fix (Q check_snapshot):**
+   - Kök neden: StateSnapshotV2'de bns_registry, nft_registry, marketplace, hub alanları yoktu, from_snapshot_v2 new() ile boş oluşturuyordu → BNS isimleri restart sonrası kayboluyordu
+   - Origin'de 02dae79 (ARENA1) ile aynı fix zaten yapılmış, ARENA3 3728d37 ile aynı fixi tekrar pushladı (duplicate, ama aynı)
+   - Fix: StateSnapshotV2'ye Option<BnsRegistry>, Option<NftRegistry>, Option<MarketplaceRegistry>, Option<HubRegistry> + #[serde(default)] + from_state capture Some(clone) + from_snapshot_v2 restore unwrap_or_default
+   - Kanıt: `grep -n bns_registry src/chain/snapshot.rs` → Some() capture + restore
+   - Aşama 2: fetch 6f8b111 senkron, CI yeşil takibi
+3. **ADIM6 recovery (small_pr):**
+   - Önceki deneme (2db13c5 marketplace, c726de3 mobile, 67da984 socialfi, 9c09741 hub) CI kırdığı için 6333a74 ile f9f5b9a green base'e revert edilmişti
+   - Şimdi küçük PR'larla yeniden başlandı: a43c095 recover integrated BNS, SocialFi, Hub, Marketplace modules + e8fa68d restore Phase 6 modules + 619b858 Universal Gateway logic
+   - Q socialfi_recover=small_pr kararı doğru — küçük, testli adımlar
+   - **ARENA3 onayı:** Küçük PR stratejisi doğru, her PR `cargo fmt` + `clippy -D warnings` + `cargo test --lib <modül>` yeşil olmadan main'e push yok
+4. **Constraint isolation (Q: constraint_isolation):**
+   - VerifyMerkle için matrix chain diagnostic yeşil ama full STARK kırmızı → aux CTL / Program LogUp şüpheli
+   - İzolasyon planı: constraint tek tek aktif + küçük depth 1-2 round prove + degree check + trace matrix debug print
+   - Doküman: `VERIFYMERKLE_CONSTRAINT_DEBUG_ARENA3.md` + 1-depth harness `proves_verify_merkle_valid_1_depth` (ARENA3) + depth_1+2 diagnosis tests (eb8d8c1 ARENA2)
+   - Sonraki: 1-depth CI sonucu yeşil mi kırmızı mı? Yeşil ise degree/row count, kırmızı ise aux CTL
+5. **BNS fetch content (Q: yes_rpc):**
+   - `bud_bnsFetchContent` RPC: BNS resolve_full → storage_root (manifest_id) → manifest → deals → Bitswap KAD instructions, pushlandı 0d6e9f0 + 2250795
+   - BNS → storage fetch için gerçek Bitswap discovery glue (KAD + request_response) için `Node::with_key` storage args (100ac26 + 44a6f12) zaten var, `NodeCommand::StoragePrune` hard pruning worker da var
+   - Sıradaki: `bud_bnsFetchContent`'i gerçek `ContentDiscovery.get_providers` + `BudBitswap.request` ile P2P fetch yapacak şekilde genişletme
+
+**Kanıt:**
+- `git log origin/main --oneline -8` → 3728d37 snapshot fix (ARENA3), 619b858 Universal Gateway, e8fa68d/a43c095 Phase 6 recovery, 02dae79 snapshot fix (ARENA1, aynı), 6f8b111 chaos disaster recovery, 634d0ad Chaos v2
+- `cat src/chain/snapshot.rs | grep bns_registry` → Some() capture + restore
+- `ls src/bns/` → registry.rs, types.rs
+- `cat docs/STATUS_ONLINE.md | tail -n 50` → bu entry
+
+**Sonraki adım:** ADIM6 küçük PR'lar (SocialFi NFT posts, Hub dApp, Marketplace listing, Mobile lightweight) için ARENA1/ARENA2 ile koordinasyon + ADIM4 ZK constraint-by-constraint debug (Hat A) + kullanıcı "devam" → hepsi paralel.
+
+**Engel:** CI yeşil takibi + ARENA2 ZK depth_1+2 CI sonucu + ARENA1 ADIM6 recovery testleri. Force-push YASAK.
+
+Co-authored-by: ARENA3 (continuous audit + pre-planning)
