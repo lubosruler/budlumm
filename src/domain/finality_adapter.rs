@@ -900,7 +900,15 @@ impl DomainFinalityAdapter for StorageAttestationFinalityAdapter {
                     })
                 }
             }
-            FinalityProof::PoS { cert, .. } | FinalityProof::Bft { cert, .. } => {
+            FinalityProof::PoS {
+                cert,
+                validator_snapshot,
+            }
+            | FinalityProof::Bft {
+                cert,
+                validator_snapshot,
+                ..
+            } => {
                 if cert.agg_sig_bls.is_empty() {
                     return Ok(FinalityStatus::Rejected(
                         "Empty storage attestation certificate".into(),
@@ -914,6 +922,13 @@ impl DomainFinalityAdapter for StorageAttestationFinalityAdapter {
                         "Storage attestation certificate height/hash mismatch".into(),
                     ));
                 }
+                // Cryptographic verification: the certificate must be a valid
+                // BLS aggregate over the validator set (same primitive as PoS/Bft).
+                // Without this, a forged cert with matching height/hash would
+                // incorrectly return Finalized (fail-open bug).
+                cert.verify(validator_snapshot).map_err(|e| {
+                    FinalityError(format!("Invalid storage attestation cert: {}", e))
+                })?;
                 Ok(FinalityStatus::Finalized)
             }
             _ => Ok(FinalityStatus::Rejected(
