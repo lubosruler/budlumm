@@ -50,9 +50,7 @@ fn storage_event_kind_from_str(
     }
 }
 
-impl From<&crate::chain::blockchain::StorageEconomicsEvent>
-    for pb::ProtoStorageEconomicsEvent
-{
+impl From<&crate::chain::blockchain::StorageEconomicsEvent> for pb::ProtoStorageEconomicsEvent {
     fn from(event: &crate::chain::blockchain::StorageEconomicsEvent) -> Self {
         pb::ProtoStorageEconomicsEvent {
             epoch: event.epoch,
@@ -65,9 +63,7 @@ impl From<&crate::chain::blockchain::StorageEconomicsEvent>
     }
 }
 
-impl TryFrom<pb::ProtoStorageEconomicsEvent>
-    for crate::chain::blockchain::StorageEconomicsEvent
-{
+impl TryFrom<pb::ProtoStorageEconomicsEvent> for crate::chain::blockchain::StorageEconomicsEvent {
     type Error = String;
 
     fn try_from(proto: pb::ProtoStorageEconomicsEvent) -> Result<Self, Self::Error> {
