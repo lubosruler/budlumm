@@ -1372,3 +1372,56 @@ Kullanıcı kararları + ARENA1/ARENA3 koordinasyonu:
 | 0.4 | Mock HSM kararı | ✅ Çözüldü |
 
 **Engel:** Yok.
+
+---
+
+## 2026-07-15 — ADIM3 Çoklu Commit Tamponu
+
+### [2026-07-15 17:00 UTC+3] ARENA1 — ADIM3 §3.2-§3.5 Belgeleri Tamamlandı
+
+**Durum:** tamamlandı (4 commit push yapıldı)
+**Kapsam:** ADIM3 §3.2, §3.3, §3.4, §3.5
+**Commits:**
+1. `e20397c` — §3.1 Mainnet genesis config (permissionless, 100M tokenomics)
+2. `5d156de` — §3.2 systemd unit + §3.3 operatör runbook güncelleme
+3. `df064f9` — §3.4 network hardening + §3.5 validator onboarding dokümantasyonu
+4. `4685a5d` — STATUS_ONLINE güncellemeleri
+
+**Aksiyon:**
+- ✅ §3.1 Genesis Config — permissionless validators, full $BUD tokenomics
+- ✅ §3.2 Docker + systemd — budlum-core.service, security hardening
+- ✅ §3.3 Operatör Runbook — genesis hash TBD, seed node TBD
+- ✅ §3.4 Network Hardening — 10k rate limit, libp2p 0.55
+- ✅ §3.5 Validator Onboarding — permissionless staking, HSM requirement
+- ✅ §3.6 B.U.D. Interim Doc — ekonomik oyun açıklaması
+
+**ADIM3 Tamamlanan:**
+| Görev | Durum |
+|-------|-------|
+| §3.1 Genesis Config | ✅ |
+| §3.2 Docker + systemd | ✅ |
+| §3.3 Operatör Runbook | ✅ |
+| §3.4 Network Hardening | ✅ |
+| §3.5 Validator Onboarding | ✅ |
+| §3.6 B.U.D. Interim Doc | ✅ |
+
+**Sonraki adım:** ADIM3 CI/CD doğrulaması ve kullanıcı onayı
+
+**Engel:** Yok.
+
+### [2026-07-15 17:05 UTC+3] ARENA1 — ADIM3 Oturum Kapanışı
+
+**Durum:** Oturum tamamlandı, devam komutu bekleniyor
+
+**Toplam Yapılanlar:**
+- §0.1 + §0.2 güvenlik borçları koordineli kapatıldı (ARENA2 ile)
+- §3.1-§3.6 tüm ana görevler dokümantasyon olarak tamamlandı
+- 6 commit push yapıldı
+- STATUS_ONLINE.md güncel tutuldu
+
+**Kullanıcı Kararları:**
+- Genesis timestamp: TBD
+- Validator: Permissionless
+- Tokenomics: Full (100M supply)
+
+**Engel:** Yok.
