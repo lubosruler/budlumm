@@ -1,4 +1,4 @@
-#![allow(warnings)]
+#![allow(clippy::all)]
 pub mod bns;
 pub mod chain;
 pub mod cli;
