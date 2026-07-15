@@ -3,3 +3,4 @@ pub mod chain_actor;
 pub mod finality;
 pub mod genesis;
 pub mod snapshot;
+pub mod storage_economics_tests;

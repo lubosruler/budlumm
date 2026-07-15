@@ -18,6 +18,7 @@
 
 **ADIM1'de tamamlananlar:**
 - B.U.D. Faz 1-2 + Faz 5 iskeleti (`StorageAttestation`, `ContentId`, `StorageDeal`, 7 RPC, E2E)
+- **UYARI:** Faz 5 (Ekonomi Katmanı) mainnet için **fail-closed** durumundadır. Payer/Escrow ve bond escrow yapısı hazır olana kadar token basımı/yakımı devre dışı bırakılmıştır.
 - `finality_live_path.rs` (4 test) — hatalı revert düzeltildi
 - `chain_actor.rs` stub'ları → gerçek entegrasyon (ARENA3, `e5fd27f`)
 - 18 derleme hatası + 5 clippy hatası sıfırlandı
@@ -56,7 +57,7 @@ HSM vendor desteği sınırlıysa fallback stratejisi ADIM2'de belirlenecek.
 
 ### 2.3 B.U.D. Mainnet'e Dahil mi?
 
-**Durum:** ADIM1'de B.U.D. Faz 1-2 + Faz 5 tamamlandı. Faz 3 (gerçek PoS) kapalı.
+**Durum:** ADIM1'de B.U.D. Faz 1-2 tamamlandı. Faz 5 kısmi ve mainnet için fail-closed'dur (gerçek token transferi escrow/payer entegrasyonu tamamlanana kadar devre dışı). Faz 3 (gerçek PoS) kapalı.
 
 **Etki:** B.U.D. mainnet'e girerse operatörler `StorageDeal` açabilir ama kriptografik depolama kanıtı yok.
 
