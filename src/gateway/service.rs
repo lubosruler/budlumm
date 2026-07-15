@@ -22,7 +22,7 @@ impl BudGateway {
             .chain
             .bns_resolve_content(name.to_string())
             .await
-            .ok_or_else(|| format!("BNS name '{}' not linked to any content", name))?;
+            .ok_or_else(|| format!("BNS name '{name}' not linked to any content"))?;
 
         // 2. B.U.D. storage content lookup is not yet wired to the local Storage
         //    database. Once Bitswap + ContentStore integration is complete, this

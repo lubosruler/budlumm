@@ -807,14 +807,14 @@ impl Blockchain {
             let last_height = self
                 .domain_registry
                 .get(domain_id)
-                .ok_or_else(|| format!("Domain {} not found", domain_id))?
+                .ok_or_else(|| format!("Domain {domain_id} not found"))?
                 .last_committed_height;
             let next_height = last_height + 1;
             #[cfg(not(test))]
             let last_hash = self
                 .domain_registry
                 .get(domain_id)
-                .ok_or_else(|| format!("Domain {} not found", domain_id))?
+                .ok_or_else(|| format!("Domain {domain_id} not found"))?
                 .last_committed_hash;
 
             if let Some(com) = self
@@ -826,7 +826,7 @@ impl Blockchain {
                     let d_mut = self
                         .domain_registry
                         .get_mut(domain_id)
-                        .ok_or_else(|| format!("Domain {} not found", domain_id))?;
+                        .ok_or_else(|| format!("Domain {domain_id} not found"))?;
                     d_mut.status = DomainStatus::Frozen;
                     return Err(format!(
                         "Domain {} parent hash mismatch at height {}",
@@ -844,7 +844,7 @@ impl Blockchain {
                 let d_mut = self
                     .domain_registry
                     .get_mut(domain_id)
-                    .ok_or_else(|| format!("Domain {} not found", domain_id))?;
+                    .ok_or_else(|| format!("Domain {domain_id} not found"))?;
                 d_mut.last_committed_height = next_height;
                 d_mut.last_committed_hash = com.domain_block_hash;
 
@@ -1199,9 +1199,9 @@ impl Blockchain {
         let domain_ref = self
             .domain_registry
             .get(domain)
-            .ok_or_else(|| format!("Domain {} not found", domain))?;
+            .ok_or_else(|| format!("Domain {domain} not found"))?;
         if !domain_ref.is_active() || !domain_ref.bridge_enabled {
-            return Err(format!("Domain {} is not bridge-enabled", domain));
+            return Err(format!("Domain {domain} is not bridge-enabled"));
         }
         self.bridge_state
             .register_asset(asset_id, domain)
@@ -1231,9 +1231,9 @@ impl Blockchain {
             let domain = self
                 .domain_registry
                 .get(domain_id)
-                .ok_or_else(|| format!("Domain {} not found", domain_id))?;
+                .ok_or_else(|| format!("Domain {domain_id} not found"))?;
             if !domain.is_active() || !domain.bridge_enabled {
-                return Err(format!("Domain {} is not bridge-enabled", domain_id));
+                return Err(format!("Domain {domain_id} is not bridge-enabled"));
             }
         }
         if source_domain == target_domain {

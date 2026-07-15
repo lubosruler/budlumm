@@ -1646,7 +1646,7 @@ impl ChainActor {
                         .domain_registry
                         .get(domain_id)
                         .map(|d| d.last_committed_height)
-                        .ok_or_else(|| format!("Domain {} not found", domain_id));
+                        .ok_or_else(|| format!("Domain {domain_id} not found"));
                     let _ = res_tx.send(res);
                 }
                 ChainCommand::RegisterBridgeAsset {

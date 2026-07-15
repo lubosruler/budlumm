@@ -903,7 +903,7 @@ impl Storage {
                     prev_hash = block.hash.clone();
                 }
                 Ok(None) => {
-                    errors.push(format!("Block {}: missing in index", i));
+                    errors.push(format!("Block {i}: missing in index"));
                 }
                 Err(e) => {
                     errors.push(format!("Block i: read error: e"));

@@ -910,7 +910,7 @@ mod byzantine_settlement_tests {
 
     fn linked_test_block(domain_id: u32, height: u64) -> Block {
         let previous_hash = if height <= 1 {
-            format!("parent_{}_0", domain_id)
+            format!("parent_{domain_id}_0")
         } else {
             linked_test_block(domain_id, height - 1).hash
         };

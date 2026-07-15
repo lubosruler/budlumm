@@ -528,7 +528,7 @@ impl QcFaultProof {
                 let entry = blob
                     .pq_signatures
                     .get(*leaf_index as usize)
-                    .ok_or_else(|| format!("Leaf index {} out of range", leaf_index))?;
+                    .ok_or_else(|| format!("Leaf index {leaf_index} out of range"))?;
                 if entry.validator_index != self.validator_index
                     || entry.validator_address != self.validator_address
                     || entry.dilithium_signature != *dilithium_signature
