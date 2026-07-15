@@ -467,11 +467,6 @@ impl From<&NetworkMessage> for pb::ProtoNetworkMessage {
                     pb::ProtoSlashingEvidence::from(evidence),
                 )
             }
-            NetworkMessage::StorageEconomicsEvent { data } => {
-                pb::proto_network_message::Payload::StorageEconomicsEvent(
-                    pb::ProtoStorageEconomicsEvent { data: data.clone() },
-                )
-            }
             NetworkMessage::GlobalHeader(header) => {
                 pb::proto_network_message::Payload::GlobalHeader(pb::ProtoGlobalHeader {
                     data: serialize_payload_or_log("GlobalHeader", header),
@@ -638,9 +633,6 @@ impl TryFrom<pb::ProtoNetworkMessage> for NetworkMessage {
             pb::proto_network_message::Payload::SlashingEvidence(e) => Ok(
                 NetworkMessage::SlashingEvidence(SlashingEvidence::try_from(e)?),
             ),
-            pb::proto_network_message::Payload::StorageEconomicsEvent(e) => {
-                Ok(NetworkMessage::StorageEconomicsEvent { data: e.data })
-            }
             pb::proto_network_message::Payload::GlobalHeader(h) => {
                 let header = serde_json::from_slice(&h.data)
                     .map_err(|e| format!("Invalid global header payload: {}", e))?;
@@ -846,20 +838,6 @@ mod tests {
         match decoded_msg {
             NetworkMessage::GlobalHeader(decoded) => assert_eq!(decoded, header),
             _ => panic!("Expected GlobalHeader message"),
-        }
-    }
-
-    #[test]
-    fn test_storage_economics_event_message_conversion() {
-        let data = br#"{"kind":"OperatorBondSlashed","dealId":7}"#.to_vec();
-        let msg = NetworkMessage::StorageEconomicsEvent { data: data.clone() };
-        let proto_msg = pb::ProtoNetworkMessage::from(&msg);
-        let decoded_msg = NetworkMessage::try_from(proto_msg)
-            .expect("Failed to decode StorageEconomicsEvent");
-
-        match decoded_msg {
-            NetworkMessage::StorageEconomicsEvent { data: decoded } => assert_eq!(decoded, data),
-            _ => panic!("Expected StorageEconomicsEvent"),
         }
     }
 

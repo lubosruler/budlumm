@@ -96,7 +96,6 @@ message ProtoNetworkMessage {
         ProtoCrossDomainMessage cross_domain_message = 23;
         ProtoVerifiedDomainCommitment verified_domain_commitment = 24;
         ProtoSlashingEvidence slashing_evidence = 25;
-        ProtoStorageEconomicsEvent storage_economics_event = 26;
     }
 }
 
@@ -208,10 +207,6 @@ message ProtoQcBlobResponse {
 
 message ProtoQcFaultProof {
     bytes proof_data = 1;
-}
-
-message ProtoStorageEconomicsEvent {
-    bytes data = 1;
 }
 
 message ProtoDomainCommitment {

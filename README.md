@@ -184,8 +184,7 @@ bağımsız audit yapılmadığı için “audited” iddiası yoktur.
 ADIM 2 devamında B.U.D. Faz 5 için ChainActor storage commands, otomatik
 B.U.D. storage maintenance (challenge issuance + missed-challenge finalization)
 ve storage economics accounting (operator reward accrual + slashed-bond ledger +
-event report) yolu eklenmiştir. Storage economics event'leri ayrıca P2P
-`NetworkMessage::StorageEconomicsEvent` olarak gossip edilmeye hazırdır. Faz 3+ gerçek Proof-of-Storage ise BudZKVM `VerifyMerkle`
+event report) yolu eklenmiştir. Faz 3+ gerçek Proof-of-Storage ise BudZKVM `VerifyMerkle`
 64-depth production gate’ine bağlı olarak sonraki adımlarda takip edilir.
 
 ### Personas (same binary)

@@ -31,7 +31,7 @@ PR #10 üzerine eklenen sonraki görev: storage economics gerçek muhasebe yüze
 |------|-------|-------|
 | Operator reward accrual | ✅ | `Blockchain::accrue_storage_operator_rewards` operatör bakiyesini ve per-operator ledger'ı günceller |
 | Slashed bond accounting | ✅ | `finalize_missed_storage_challenges` slashed bond toplamını ve actual burned amount'u kaydeder |
-| Event report / gossip adapter yüzeyi | ✅ | `StorageEconomicsEvent` + `ChainHandle::get_storage_economics_events/summary` + `NetworkMessage::StorageEconomicsEvent` |
+| Event report / gossip adapter yüzeyi | ✅ | `StorageEconomicsEvent` + `ChainHandle::get_storage_economics_events/summary` |
 | ChainActor otomatik bakım | ✅ | Blok üretim/doğrulama sonrası reward accrual + challenge issuance + missed finalization çalışır |
 
 

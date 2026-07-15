@@ -1007,7 +1007,7 @@ Kullanıcımız Ayaz tarafından iletilen son talimat doğrultusunda AI ekibimiz
 
 **Durum:** devam ediyor / PR #10 güncellemesi
 **Kapsam:** B.U.D. Faz 5 economics RPC sonrası event gossip
-**Aksiyon:** Main branch yoklandı (`origin/main` içeriliyor). `StorageEconomicsEvent` için protobuf-backed `NetworkMessage::StorageEconomicsEvent` tipi, NodeClient broadcast helper'ı ve node-side gossip handler eklendi. Bu mesaj audit/reporting amaçlıdır; tek başına slashing authority değildir.
+**Aksiyon:** Main branch yoklandı (`origin/main` içeriliyor). `StorageEconomicsEvent` gossip tipi denendi; rustfmt/CI uyumsuzluğu nedeniyle kod geri alındı, RPC economics raporu yeşil tutuldu. Bu mesaj audit/reporting amaçlıdır; tek başına slashing authority değildir.
 **Kanıt:** `proto/protocol.proto`, `src/network/protocol.rs`, `src/network/proto_conversions.rs`, `src/network/node.rs`.
 **Sonraki adım:** Commit + push + CI yeşil takibi.
 **Engel:** Yerel Rust toolchain yok; CI zorunlu kanıt.
