@@ -91,7 +91,7 @@ mod tests {
         let peer = random_peer_id();
         let manager = ShardManager::new(peer, ShardingConfig::default());
         let cid = ContentId([0x42; 32]);
-        
+
         let d1 = manager.xor_distance(&cid);
         let d2 = manager.xor_distance(&cid);
         assert_eq!(d1, d2);
@@ -102,10 +102,10 @@ mod tests {
         let peer = random_peer_id();
         let mut config = ShardingConfig::default();
         config.max_xor_distance = 0; // Only exact match
-        
+
         let manager = ShardManager::new(peer, config);
         let cid = ContentId([0xEE; 32]);
-        
+
         // Very unlikely to be 0
         assert!(!manager.should_cache(&cid));
     }
