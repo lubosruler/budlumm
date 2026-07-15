@@ -1446,7 +1446,7 @@ mod integration_tests {
         assert!(mdns_on.mdns_enabled);
 
         let mdns_off =
-            Node::with_key(handle, libp2p::identity::Keypair::generate_ed25519(), false).unwrap();
+            Node::with_key(handle, libp2p::identity::Keypair::generate_ed25519(), false, None, None).unwrap();
         assert!(!mdns_off.mdns_enabled);
     }
 
