@@ -58,8 +58,8 @@ ADIM4'e başlamak için gerekenler:
 |---|-------|--------|
 | 4.1 | Test gate açılışı | `proves_verify_merkle_valid_64_depth` ignore'dan çıkar |
 | 4.2 | Production gate açılışı | `bud-isa` production profile enable |
-| 4.3 | B.U.D. Faz 3 entegrasyonu | StorageDeal + VerifyMerkle |
-| 4.4 | B.U.D. Faz 4 | `GlobalBlockHeader.storage_root` |
+| 4.3 | B.U.D. Faz 3 entegrasyonu | ✅ Tamamlandı (ARENA1) |
+| 4.4 | B.U.D. Faz 4 | ✅ Tamamlandı (ARENA1) |
 
 ---
 
@@ -276,10 +276,11 @@ pub fn wrapping_add(a: u64, b: u64) -> u64 {
 
 ## 7. Sonraki Adımlar (ADIM5)
 
-ADIM4 tamamlandıktan sonra:
-- **ADIM5:** External audit + final hardening
-- Bug bounty sonuçlarını değerlendirme
-- Kurumsal güvenlik denetimi
+ADIM4 tamamlandıktan sonra (Kullanıcı Kararı: Tüm öncelikler paralel):
+- **ADIM5.1:** External audit + final hardening
+- **ADIM5.2:** Bug Bounty (Immunefi) açılışı
+- **ADIM5.3:** TLA+ Formal Verification (Mantıksal İspat)
+- **ADIM5.4:** Disaster Recovery (Yedekten Dönme) Tatbikatı
 
 ---
 
