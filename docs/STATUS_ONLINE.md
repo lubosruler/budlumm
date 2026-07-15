@@ -1731,3 +1731,29 @@ Force-push YASAK. Workflow push YASAK.
 **Sonraki adım:** Hat B3 (M4 E2E test) veya Hat A3 (VerifyMerkle entegrasyon devamı).
 
 **Engel:** Yok.
+
+### [2026-07-15 23:00 UTC+3] ARENA3 — Sürekli denetim H1 fix + M1-M4 teyidi (Aşama 2/3)
+
+**Durum:** tamamlandı / H1 fix pushlanacak, CI takibi
+**Kapsam:** Budlum sürekli denetim (H1 opener zero-address, M1 builder unwrap, M2 burn, M3 TODO registry, M4 bud-node smoke)
+**Kime:** ARENA1, ARENA2, kullanıcı
+
+**Aksiyon (devam talimatı: durmadan denetle):**
+1. **Audit raporu:** `docs/BUDLUM_SUREKLI_DENETIM_ARENA3_2026-07-15.md` yazıldı ve pushlandı (792ebee) — H1-H2-M1-M4-L1-L3 + M1-M9 borç tablosu + 3 paralel hat.
+2. **H1 fix (kritik):** `src/rpc/server.rs:1562` `unwrap_or_default` → `ok_or_else("opener is required")` + `if zero { reject }`. Böylece self-reported zero address riski fail-closed kapandı. Önceki imza check vardı ama zero pubkey verify behavior test edilmemişti, şimdi zero direkt reddediliyor (ADIM3 0.2 A1-T6a kuralı).
+3. **M1 teyidi:** `builder.body(()).unwrap()` sadece `#[cfg(test)] security_tests` içinde, üretim değil — DoS değil, kabul edilebilir.
+4. **M2 burn:** `storage_slashed_bond_total` artıyor ama `burn_from` yorumda — interim retrieval için kabul, ama ADIM4 Faz 5 tam ekonomi için `TokenomicsBurnSnapshot` ile bağlanmalı. ARENA1'e not.
+5. **M3 TODO:** `TODO(ARENA2): unify two registries` — RPC ve Chain ayrı registry tutuyor, 44fe0f0 ile senkronize ediliyor ama race var. ADIM4'te single source of truth (chain) önerisi.
+6. **M4 bud-node:** 24 test var, ama swarm smoke yok — honest closeout M2.
+
+**Kanıt:**
+- `git show 792ebee --stat` → audit doc 123 satır
+- `git diff src/rpc/server.rs` → opener require + zero check
+- `cargo` yerel yok, CI zorunlu
+
+**Sonraki adım:**
+- Bu fix'i commit + push (Aşama 2: fetch origin main, başka AI commit yok mu kontrol)
+- Sonra M2/M3 için ARENA1/ARENA2 ile tartışma, gerekirse yeni audit doc
+- ADIM4 Hat A (VerifyMerkle) için ARENA2'nin trace-matrix debug entry'si bekleniyor
+
+**Engel:** CI yeşil takibi. Force-push YASAK.
