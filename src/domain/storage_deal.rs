@@ -38,6 +38,12 @@ use serde::{Deserialize, Serialize};
 /// `opener` as the resolved `Address` and `opener_bond` already debited
 /// from the caller's stake) from the request (which is the raw caller
 /// intent).
+///
+/// **Security (ADIM3 §0.2):** `opener_signature` is mandatory on Mainnet.
+/// The RPC layer verifies that the `opener` address has signed the
+/// challenge intent; without this, any caller could self-report any
+/// address as the opener, making the `opener_bond` anti-spam gate
+/// economically meaningless.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RetrievalChallengeRequest {
     pub deal_id: u64,
@@ -48,6 +54,11 @@ pub struct RetrievalChallengeRequest {
     pub opener_bond: u64,
     #[serde(default)]
     pub opener: Option<crate::core::address::Address>,
+    /// Ed25519 signature over `hash_fields_bytes(["BUD_OPEN_CHALLENGE_V1",
+    /// deal_id, byte_start, byte_end, challenge_epoch, deadline_epoch,
+    /// opener_bond, opener])`. 64 bytes.
+    #[serde(default)]
+    pub opener_signature: Option<Vec<u8>>,
 }
 
 /// Lifecycle status of a `StorageDeal`. Reuses the same enum-tag
@@ -138,12 +149,22 @@ pub struct RetrievalChallenge {
 /// equal `ContentId::of_subrange(shard, byte_start, byte_end)`. The
 /// chain does not hold the shard bytes; verification is done by
 /// whoever inspects the response off-chain.
+///
+/// **Security (ADIM3 §0.2):** `responder_signature` is mandatory on Mainnet.
+/// The RPC layer verifies that the `responder` (the deal's operator)
+/// has signed the response intent; without this, any caller could
+/// self-report the operator address and answer a challenge on their
+/// behalf, bypassing the `NotTheOperator` registry check.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RetrievalResponse {
     pub challenge_id: u64,
     pub _range_hash: ContentId,
     pub responder: Address,
     pub response_epoch: u64,
+    /// Ed25519 signature over `hash_fields_bytes(["BUD_ANSWER_CHALLENGE_V1",
+    /// challenge_id, range_hash, responder, response_epoch])`. 64 bytes.
+    #[serde(default)]
+    pub responder_signature: Option<Vec<u8>>,
 }
 
 /// The outcome of a finalized challenge. `Missed` is the only path that

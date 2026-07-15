@@ -454,7 +454,8 @@ mod rpc_tests {
             .unwrap();
         assert_eq!(get_man["found"], true);
 
-        let op = Address::from([7u8; 32]);
+        let op_keypair = crate::crypto::primitives::KeyPair::generate().unwrap();
+        let op = Address::from(op_keypair.public_key_bytes());
         let deal_res = server
             .storage_open_deal(
                 1,
@@ -474,6 +475,20 @@ mod rpc_tests {
             .unwrap();
         let deal_id = deal_res["dealId"].as_u64().unwrap();
 
+        let watcher_keypair = crate::crypto::primitives::KeyPair::generate().unwrap();
+        let watcher = Address::from(watcher_keypair.public_key_bytes());
+        let open_msg = crate::core::hash::hash_fields_bytes(&[
+            b"BUD_OPEN_CHALLENGE_V1",
+            &deal_id.to_le_bytes(),
+            &0u64.to_le_bytes(),
+            &15u64.to_le_bytes(),
+            &15u64.to_le_bytes(),
+            &25u64.to_le_bytes(),
+            &50u64.to_le_bytes(),
+            watcher.as_bytes(),
+        ]);
+        let open_sig = watcher_keypair.sign(&open_msg).to_vec();
+
         let chal_res = server
             .storage_open_challenge(crate::domain::storage_deal::RetrievalChallengeRequest {
                 deal_id,
@@ -482,11 +497,21 @@ mod rpc_tests {
                 challenge_epoch: 15,
                 deadline_epoch: 25,
                 opener_bond: 50,
-                opener: Some(Address::from([8u8; 32])),
+                opener: Some(watcher),
+                opener_signature: Some(open_sig),
             })
             .await
             .unwrap();
         let challenge_id = chal_res["challengeId"].as_u64().unwrap();
+
+        let answer_msg = crate::core::hash::hash_fields_bytes(&[
+            b"BUD_ANSWER_CHALLENGE_V1",
+            &challenge_id.to_le_bytes(),
+            &[0u8; 32],
+            op.as_bytes(),
+            &18u64.to_le_bytes(),
+        ]);
+        let answer_sig = op_keypair.sign(&answer_msg).to_vec();
 
         let ans_res = server
             .storage_answer_challenge(crate::domain::storage_deal::RetrievalResponse {
@@ -494,6 +519,7 @@ mod rpc_tests {
                 _range_hash: crate::storage::content_id::ContentId([0u8; 32]),
                 responder: op,
                 response_epoch: 18,
+                responder_signature: Some(answer_sig),
             })
             .await
             .unwrap();

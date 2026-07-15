@@ -1526,6 +1526,38 @@ impl BudlumApiServer for RpcServer {
         request: RetrievalChallengeRequest,
     ) -> Result<serde_json::Value, ErrorObjectOwned> {
         let opener = request.opener.unwrap_or_default();
+
+        // ADIM3 §0.2: opener must cryptographically prove ownership of the
+        // declared address. Without this, any caller can self-report any
+        // address as the opener, rendering the opener_bond anti-spam gate
+        // economically meaningless.
+        let opener_sig = request.opener_signature.as_deref().ok_or_else(|| {
+            ErrorObjectOwned::owned(
+                -32602,
+                "opener_signature is required (ADIM3 §0.2)",
+                None::<()>,
+            )
+        })?;
+        let msg = crate::core::hash::hash_fields_bytes(&[
+            b"BUD_OPEN_CHALLENGE_V1",
+            &request.deal_id.to_le_bytes(),
+            &request.byte_start.to_le_bytes(),
+            &request.byte_end.to_le_bytes(),
+            &request.challenge_epoch.to_le_bytes(),
+            &request.deadline_epoch.to_le_bytes(),
+            &request.opener_bond.to_le_bytes(),
+            opener.as_bytes(),
+        ]);
+        crate::crypto::primitives::verify_signature(&msg, opener_sig, opener.as_bytes()).map_err(
+            |e| {
+                ErrorObjectOwned::owned(
+                    -32602,
+                    format!("Invalid opener signature: {e}"),
+                    None::<()>,
+                )
+            },
+        )?;
+
         let mut reg = self.storage.lock().map_err(|e| {
             ErrorObjectOwned::owned(
                 -32602,
@@ -1558,6 +1590,33 @@ impl BudlumApiServer for RpcServer {
         response: RetrievalResponse,
     ) -> Result<serde_json::Value, ErrorObjectOwned> {
         let responder = response.responder;
+
+        // ADIM3 §0.2: responder must cryptographically prove ownership of the
+        // declared address. Without this, any caller can set responder to the
+        // deal's operator address and bypass the NotTheOperator registry check.
+        let responder_sig = response.responder_signature.as_deref().ok_or_else(|| {
+            ErrorObjectOwned::owned(
+                -32602,
+                "responder_signature is required (ADIM3 §0.2)",
+                None::<()>,
+            )
+        })?;
+        let msg = crate::core::hash::hash_fields_bytes(&[
+            b"BUD_ANSWER_CHALLENGE_V1",
+            &response.challenge_id.to_le_bytes(),
+            &response._range_hash.0,
+            responder.as_bytes(),
+            &response.response_epoch.to_le_bytes(),
+        ]);
+        crate::crypto::primitives::verify_signature(&msg, responder_sig, responder.as_bytes())
+            .map_err(|e| {
+                ErrorObjectOwned::owned(
+                    -32602,
+                    format!("Invalid responder signature: {e}"),
+                    None::<()>,
+                )
+            })?;
+
         let mut reg = self.storage.lock().map_err(|e| {
             ErrorObjectOwned::owned(
                 -32602,

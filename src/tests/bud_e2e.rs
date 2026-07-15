@@ -111,6 +111,7 @@ fn e2e_three_actor_manifest_to_challenge_flow() {
         deadline_epoch: 200,
         opener_bond: 50_000,
         opener: Some(Address::from([3u8; 32])),
+        opener_signature: None,
     };
     let challenge_id = reg
         .open_challenge(
