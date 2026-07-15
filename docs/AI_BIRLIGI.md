@@ -95,7 +95,7 @@ Bu tablo **N AI'lı** çalışmayı destekler. Yeni AI eklendikçe satır ekleni
 | Karar | Kim karar verir | Nerede kayıtlı |
 |-------|------------------|-----------------|
 | Vizyon §3 vs §8.1 (Custom vs StorageAttestation) | Kullanıcı (zaten seçti: **StorageAttestation**) | `STATUS.md` §5 + `AI_BIRLIGI.md` §5 |
-| BLS/PQ HSM kapsamı (mock vs tam) | Kullanıcı (zaten seçti: **mock backend**) | `STATUS.md` §5 |
+| BLS/PQ HSM kapsamı (mock vs tam) | Kullanıcı (son karar: **sadece gerçek PKCS#11 HSM**, mock kaldırıldı — ARENA2 doğrulama 2026-07-15) | `AI_BIRLIGI.md` §5 |
 | B.U.D. mainnet launch'a dahil mi | Kullanıcı (Tur 15 §1.2 sonunda değerlendirilecek) | `STATUS.md` §5 |
 | Force-push? | **KESIN YASAK** — her iki AI uyar (STATUS.md §4.2) | `STATUS.md` §4.2 + `AI_BIRLIGI.md` §6 |
 | Workflow dosyası push? | **YAPMA** — bot token kısıtı (`workflows: write` permission YOK) | `STATUS.md` §4.3 + `AI_BIRLIGI.md` §6 |
@@ -266,8 +266,16 @@ git ls-tree -r HEAD -- src/ | grep -E 'storage_deal|content_id|manifest|bud_e2e'
 | Karar | § | Seçildi mi? | Kaynak |
 |-------|---|--------------|--------|
 | Vizyon §3 vs §8.1 (Custom vs StorageAttestation) | Tur 14 Faz 1 | ✅ **StorageAttestation** (yeni enum varyantı) | `STATUS.md` §5 + `AI_BIRLIGI.md` §4.6 |
-| BLS/PQ HSM kapsamı (tam vs mock) | Tur 15 §1.1 | ✅ **Mock backend** (~600 satır) | `STATUS.md` §5 |
+| BLS/PQ HSM kapsamı (tam vs mock) | ADIM2 §2.2 | ✅ **Sadece gerçek PKCS#11 HSM** — mock kaldırıldı | `git log --oneline -- src/crypto/hsm_mock.rs` (ARENA2 doğrulama, 2026-07-15) |
 | B.U.D. mainnet launch'a dahil mi | Tur 15 §1.2 sonu | ⏳ değerlendirilecek | `STATUS.md` §5 |
+
+> **🔒 SON KARAR — Mock HSM (ADIM3 §0.4, ARENA2 doğrulama 2026-07-15):**
+>
+> Mock HSM backend (`src/crypto/hsm_mock.rs`) **kesin olarak kaldırılmıştır.**
+> Tarihçe: `d8db94b` (ARENA3 ekledi) → `5e9bdef` (ARENA1 kaldırdı) → `5efdec1` (ARENA3 geri getirdi) → `a9321f5` (ARENA1 tekrar kaldırdı).
+> HEAD `4e6d382` itibarıyla: dosya YOK, `mod.rs`'de referans YOK, `grep -rn hsm_mock src/` → sıfır sonuç.
+> `src/cli/commands.rs`'deki `hsm_socket_path` alanı PKCS#11 gerçek HSM iletişimi için korunmuştur (default: `./data/hsm/socket.sock`).
+> **Karar: Sadece gerçek PKCS#11 HSM. Mock YOK.**
 
 ---
 
