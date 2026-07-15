@@ -383,6 +383,23 @@ name = "bud-isa"
 version = "0.1.0"
 
 [[package]]
+name = "bud-node"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bincode",
+ "futures",
+ "hex",
+ "libp2p",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "bud-proof"
 version = "0.1.0"
 dependencies = [
@@ -428,6 +445,7 @@ dependencies = [
  "bitvec",
  "bls12_381",
  "bud-isa",
+ "bud-node",
  "bud-proof",
  "bud-vm",
  "bytes",

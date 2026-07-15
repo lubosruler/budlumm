@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+futures = { version = "0.3", features = ["std"] }
+async-trait = "0.1"
 # Async runtime
 tokio = { version = "1", features = ["full"] }
 
