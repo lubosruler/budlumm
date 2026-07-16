@@ -96,9 +96,18 @@ pub enum TransactionType {
     NftMint,
     NftTransfer,
     NftBurn,
-    NftBoost { nft_id: u64, amount: u64 },
-    NftUpdateLight { nft_id: u64, delta_mcd: i64 },
-    NftTag { nft_id: u64, tag: String },
+    NftBoost {
+        nft_id: u64,
+        amount: u64,
+    },
+    NftUpdateLight {
+        nft_id: u64,
+        delta_mcd: i64,
+    },
+    NftTag {
+        nft_id: u64,
+        tag: String,
+    },
     UniversalRelay(ExternalTransaction),
     RelayerResult(RelayerExternalResult),
     AiOfferData {
