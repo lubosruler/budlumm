@@ -27,14 +27,11 @@ fi
 
 # 2. SBOM üret
 SBOM_FILE="$REPO_ROOT/sbom.cdx.json"
-cargo cyclonedx --format json
-# cargo-cyclonedx writes bom.json to current directory by default
-if [ -f bom.json ]; then
-    mv bom.json "$SBOM_FILE"
-elif [ -f bom.cdx.json ]; then
-    mv bom.cdx.json "$SBOM_FILE"
+cargo cyclonedx --format json --override-filename sbom.cdx.json
+if [ -f sbom.cdx.json ]; then
+    mv sbom.cdx.json "$SBOM_FILE"
 else
-    echo "[generate-sbom] HATA: cargo-cyclonedx çıktı dosyası bulunamadı."
+    echo "[generate-sbom] HATA: cargo-cyclonedx sbom.cdx.json üretemedi."
     exit 1
 fi
 
