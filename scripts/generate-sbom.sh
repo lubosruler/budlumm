@@ -27,7 +27,16 @@ fi
 
 # 2. SBOM üret
 SBOM_FILE="$REPO_ROOT/sbom.cdx.json"
-cargo cyclonedx --format json > "$SBOM_FILE"
+cargo cyclonedx --format json
+# cargo-cyclonedx writes bom.json to current directory by default
+if [ -f bom.json ]; then
+    mv bom.json "$SBOM_FILE"
+elif [ -f bom.cdx.json ]; then
+    mv bom.cdx.json "$SBOM_FILE"
+else
+    echo "[generate-sbom] HATA: cargo-cyclonedx çıktı dosyası bulunamadı."
+    exit 1
+fi
 
 # 3. JSON validasyon
 if ! python3 -c "import json; json.load(open('$SBOM_FILE'))" 2>/dev/null; then
