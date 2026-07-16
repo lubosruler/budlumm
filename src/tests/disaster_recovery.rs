@@ -23,20 +23,23 @@ mod tests {
             let storage = Storage::new(db_path_str).expect("failed to open storage");
             let consensus = Arc::new(PoWEngine::new(0));
             let mut bc = Blockchain::new(consensus, Some(storage), 1337, None);
+            bc.state.base_fee = 0;
+            bc.mempool.set_min_fee(0);
 
             // Fund Alice
             bc.state.add_balance(&alice, 1_000_000);
 
-            // Register a BNS name directly via state
-            bc.state
-                .bns_registry
-                .register("ayaz.bud".to_string(), alice, 0, 100)
-                .unwrap();
+            // Register a BNS name
+            let bns_data = bincode::serialize(&("ayaz.bud".to_string(), 100u64)).unwrap();
+            let mut bns_tx = Transaction::new(alice, Address::zero(), 10000, bns_data);
+            bns_tx.tx_type = TransactionType::BnsRegister;
+            bc.mempool.add_transaction(bns_tx).unwrap();
 
-            // Mint an NFT directly via state
-            bc.state
-                .nft_registry
-                .mint(alice, cid, 0, Some("ayaz.bud".to_string()));
+            // Mint an NFT (SocialFi)
+            let nft_data = bincode::serialize(&(cid, Some("ayaz.bud".to_string()))).unwrap();
+            let mut nft_tx = Transaction::new(alice, Address::zero(), 0, nft_data);
+            nft_tx.tx_type = TransactionType::NftMint;
+            bc.mempool.add_transaction(nft_tx).unwrap();
 
             // Produce a block to persist state
             bc.produce_block(Address::zero());
@@ -95,10 +98,14 @@ mod tests {
             let storage = Storage::new(db_path_str).unwrap();
             let consensus = Arc::new(PoWEngine::new(0));
             let mut bc = Blockchain::new(consensus, Some(storage), 1337, None);
+            bc.state.base_fee = 0;
+            bc.mempool.set_min_fee(0);
             bc.state.add_balance(&alice, 1000);
 
-            // Mint NFT directly via state
-            bc.state.nft_registry.mint(alice, cid, 0, None);
+            let nft_data = bincode::serialize(&(cid, None::<String>)).unwrap();
+            let mut nft_tx = Transaction::new(alice, Address::zero(), 0, nft_data);
+            nft_tx.tx_type = TransactionType::NftMint;
+            bc.mempool.add_transaction(nft_tx).unwrap();
             bc.produce_block(Address::zero());
         }
 
@@ -107,13 +114,15 @@ mod tests {
             let storage = Storage::new(db_path_str).unwrap();
             let consensus = Arc::new(PoWEngine::new(0));
             let mut bc = Blockchain::new(consensus, Some(storage), 1337, None);
+            bc.state.base_fee = 0;
+            bc.mempool.set_min_fee(0);
 
             let burn_data = bincode::serialize(&0u64).unwrap(); // nft_id 0
             let mut burn_tx = Transaction::new(alice, Address::zero(), 0, burn_data);
             burn_tx.tx_type = TransactionType::NftBurn;
 
             // The executor emits a tracing signal here
-            bc.add_transaction(burn_tx).unwrap();
+            bc.mempool.add_transaction(burn_tx).unwrap();
             bc.produce_block(Address::zero());
 
             assert_eq!(
@@ -138,13 +147,6 @@ mod tests {
     }
 }
 
-use crate::chain::blockchain::Blockchain;
-use crate::consensus::pow::PoWEngine;
-use crate::core::address::Address;
-use crate::core::transaction::{Transaction, TransactionType};
-use crate::storage::db::Storage;
-use std::sync::Arc;
-use tempfile::tempdir;
 use tracing::info;
 
 #[tokio::test]
@@ -161,6 +163,8 @@ async fn test_chaos_v2_heavy_network_partition_with_forks() {
     {
         let storage = Storage::new(db_a.to_str().unwrap()).unwrap();
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
+        bc.state.base_fee = 0;
+        bc.mempool.set_min_fee(0);
         for _ in 0..10 {
             bc.produce_block(producer_a);
         }
@@ -171,6 +175,8 @@ async fn test_chaos_v2_heavy_network_partition_with_forks() {
     {
         let storage = Storage::new(db_b.to_str().unwrap()).unwrap();
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
+        bc.state.base_fee = 0;
+        bc.mempool.set_min_fee(0);
         for _ in 0..15 {
             bc.produce_block(producer_b);
         }
@@ -208,6 +214,8 @@ async fn test_chaos_v2_ultimate_byzantine_recovery() {
     {
         let storage = Storage::new(db_path_str).unwrap();
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
+        bc.state.base_fee = 0;
+        bc.mempool.set_min_fee(0);
         bc.state.add_balance(&alice, 1_000_000);
 
         // Relayer Result for an external tx
@@ -227,7 +235,7 @@ async fn test_chaos_v2_ultimate_byzantine_recovery() {
             1337,
             TransactionType::RelayerResult(res),
         );
-        bc.add_transaction(tx).unwrap();
+        bc.mempool.add_transaction(tx).unwrap();
         bc.produce_block(Address::zero());
     }
 
@@ -235,12 +243,14 @@ async fn test_chaos_v2_ultimate_byzantine_recovery() {
     {
         let storage = Storage::new(db_path_str).unwrap();
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
+        bc.state.base_fee = 0;
+        bc.mempool.set_min_fee(0);
 
         for _i in 0..100 {
             let mut tx = Transaction::new(alice, bob, 1, vec![]);
             tx.nonce = bc.state.get_nonce(&alice);
             tx.fee = 1;
-            let _ = bc.add_transaction(tx);
+            let _ = bc.mempool.add_transaction(tx);
         }
         // Block production interrupted! (Simulation: Process Exit)
         info!("INTERRUPTED: System crash during block processing.");
@@ -250,6 +260,8 @@ async fn test_chaos_v2_ultimate_byzantine_recovery() {
     {
         let storage = Storage::new(db_path_str).unwrap();
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
+        bc.state.base_fee = 0;
+        bc.mempool.set_min_fee(0);
 
         // Node sees a much longer chain from the network
         let mut longer_chain = Vec::new();
