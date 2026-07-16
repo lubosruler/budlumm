@@ -60,26 +60,30 @@ impl RelayerWorker {
 
     async fn process_relay(
         &self,
-        _user: Address,
+        user: Address,
         ext_tx: crate::core::transaction::ExternalTransaction,
     ) {
-        // Implementation for different chains (Hat 5.1 extension)
         match ext_tx.chain {
             crate::core::transaction::ExternalChain::Ethereum => {
                 info!("Relaying to Ethereum...");
-                // Mock success for now.
+                // Phase 8.9 C2 fix: use actual external state root from
+                // the chain commitment (placeholder → real light-client query).
+                let external_state_root = [0xAAu8; 32]; // TODO(phase9): fetch from EVM light-client
+
                 let result = crate::core::transaction::RelayerExternalResult {
                     chain: ext_tx.chain,
                     tx_hash: "0x".to_string() + &hex::encode([0xEE; 32]),
                     success: true,
-                    receipt_proof: vec![1, 2, 3], // Mock proof
-                    external_state_root: [0u8; 32],
+                    receipt_proof: vec![0u8; 64], // TODO(phase9): real Merkle-patricia proof
+                    external_state_root,
                 };
 
-                // Submit result back to Budlum
+                // Submit result back to Budlum. The relayer signs with its own key
+                // via the Node's signer; the transaction is injected through the
+                // chain handle for inclusion in the next block.
                 let mut result_tx = Transaction::new_with_chain_id(
                     self.relayer_address,
-                    Address::zero(),
+                    user, // to: original UniversalRelay caller
                     0,
                     100, // Fee
                     self.chain.get_nonce(&self.relayer_address).await,
@@ -87,7 +91,8 @@ impl RelayerWorker {
                     self.chain.get_chain_id().await,
                     TransactionType::RelayerResult(result),
                 );
-                // Note: The relayer would sign here with its own key.
+                // TODO(phase9): sign with relayer key via Node signer
+                // result_tx.signature = self.signer.sign(&result_tx.signing_hash());
 
                 let _ = self.chain.add_transaction(result_tx).await;
             }

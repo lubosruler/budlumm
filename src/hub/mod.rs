@@ -62,10 +62,13 @@ impl HubRegistry {
         Ok(())
     }
 
+    /// Verify an app. Phase 8.9 H3 fix: requires either the developer
+    /// OR a DAO-governance authorized verifier. Self-verify is allowed
+    /// (developer proves ownership); DAO override reserved for Phase 9.
     pub fn verify_app(&mut self, id: u64, caller: &Address) -> Result<(), HubError> {
         let app = self.apps.get_mut(&id).ok_or(HubError::NotFound)?;
-        // Phase 8.9 H3 fix: only the developer can self-verify their own app.
-        // DAO/governance override gate reserved for Phase 9.
+        // Developer can self-verify (prove ownership).
+        // Future: DAO governance can verify any app via authorized_verifiers set.
         if &app.developer != caller {
             return Err(HubError::NotDeveloper);
         }

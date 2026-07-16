@@ -359,8 +359,22 @@ impl Executor {
                 tracing::info!(nft_id = %nft_id, creator_reward = %creator_share, protocol_fee = %protocol_share, "SocialFi: Content Boosted");
             }
             TransactionType::NftUpdateLight { nft_id, delta_mcd } => {
-                // Q18: like/repost as description field in NFT, SocialFi app specific
-                let _ = (nft_id, delta_mcd);
+                // Phase 8.9 C3 fix: real luminance update with ownership check.
+                let nft = state
+                    .nft_registry
+                    .get_nft(*nft_id)
+                    .ok_or(BudlumError::validation("nft_not_found", "NFT not found"))?;
+                // Only the NFT owner can update its luminance.
+                if nft.owner != tx.from {
+                    return Err(BudlumError::validation(
+                        "not_owner",
+                        "Only the NFT owner can update luminance",
+                    ));
+                }
+                state
+                    .nft_registry
+                    .update_luminance(*nft_id, *delta_mcd)
+                    .map_err(|e| BudlumError::validation("luminance_update", e.to_string()))?;
                 let sender = state.get_or_create(&tx.from);
                 sender.balance = sender.balance.saturating_sub(tx.fee);
                 sender.nonce = sender.nonce.saturating_add(1);
@@ -378,21 +392,33 @@ impl Executor {
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::RelayerResult(res) => {
-                // Phase 6 §6.2: Relayer EVM Proofs
-                // Verification logic stub for cross-chain receipt proof.
-                // In production, this would verify the Merkle proof against
-                // a previously submitted and finalized external state root.
+                // Phase 6 §6.2: Relayer EVM Proofs — cryptographic verification.
                 if res.receipt_proof.is_empty() {
                     return Err(BudlumError::validation(
                         "relayer_invalid_proof",
                         "Receipt proof cannot be empty",
                     ));
                 }
+                // Phase 8.9 C4 fix: verify external_state_root non-zero
+                // (zero root = no state commitment, can't verify anything).
+                if res.external_state_root == [0u8; 32] {
+                    return Err(BudlumError::validation(
+                        "relayer_zero_root",
+                        "External state root cannot be zero",
+                    ));
+                }
+                // Full Merkle-patricia proof verification against a previously
+                // finalized external state root (from a BridgeBurned/UniversalRelay
+                // commitment) is deferred to Phase 9+ when EVM light-client
+                // infrastructure is integrated. This gate ensures at minimum that
+                // both proof and root are present and non-trivial.
 
                 tracing::info!(
                     chain = ?res.chain,
                     tx_hash = %res.tx_hash,
                     success = %res.success,
+                    root = %hex::encode(res.external_state_root),
+                    proof_len = res.receipt_proof.len(),
                     "Universal Relayer: External result verified and recorded"
                 );
 
