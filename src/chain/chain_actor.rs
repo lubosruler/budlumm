@@ -1266,13 +1266,19 @@ impl ChainHandle {
 
     pub async fn market_get_offers(&self) -> Vec<crate::marketplace::DataOffer> {
         let (tx, rx) = oneshot::channel();
-        let _ = self.tx.send(ChainCommand::MarketGetOffers { response: tx }).await;
+        let _ = self
+            .tx
+            .send(ChainCommand::MarketGetOffers { response: tx })
+            .await;
         rx.await.unwrap_or_default()
     }
 
     pub async fn hub_get_apps(&self) -> Vec<crate::hub::types::AppRecord> {
         let (tx, rx) = oneshot::channel();
-        let _ = self.tx.send(ChainCommand::HubGetApps { response: tx }).await;
+        let _ = self
+            .tx
+            .send(ChainCommand::HubGetApps { response: tx })
+            .await;
         rx.await.unwrap_or_default()
     }
 }
@@ -1962,7 +1968,14 @@ impl ChainActor {
                     let _ = response.send(nfts);
                 }
                 ChainCommand::MarketGetOffers { response } => {
-                    let offers: Vec<_> = self.blockchain.state.marketplace.offers.values().cloned().collect();
+                    let offers: Vec<_> = self
+                        .blockchain
+                        .state
+                        .marketplace
+                        .offers
+                        .values()
+                        .cloned()
+                        .collect();
                     let _ = response.send(offers);
                 }
                 ChainCommand::HubGetApps { response } => {

@@ -673,7 +673,9 @@ fn retrieval_challenge_to_json(challenge: &RetrievalChallenge) -> serde_json::Va
     })
 }
 
-fn storage_economics_event_to_json(event: &crate::chain::blockchain::StorageEconomicsEvent) -> serde_json::Value {
+fn storage_economics_event_to_json(
+    event: &crate::chain::blockchain::StorageEconomicsEvent,
+) -> serde_json::Value {
     serde_json::json!({
         "epoch": event.epoch,
         "dealId": event.deal_id,
@@ -2088,7 +2090,11 @@ impl BudlumApiServer for RpcServer {
     async fn gateway_fetch_content(&self, name: String) -> Result<String, ErrorObjectOwned> {
         let gateway = crate::gateway::BudGateway::new(self.chain.clone(), None);
         let data = gateway.fetch_name_content(&name).await.map_err(|e| {
-            ErrorObjectOwned::owned(-32000, format!("Gateway resolution failed: {e}"), None::<()>)
+            ErrorObjectOwned::owned(
+                -32000,
+                format!("Gateway resolution failed: {e}"),
+                None::<()>,
+            )
         })?;
         Ok(hex::encode(data))
     }
