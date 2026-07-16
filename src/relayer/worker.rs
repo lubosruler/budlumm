@@ -60,7 +60,7 @@ impl RelayerWorker {
 
     async fn process_relay(
         &self,
-        user: Address,
+        _user: Address,
         ext_tx: crate::core::transaction::ExternalTransaction,
     ) {
         // Implementation for different chains (Hat 5.1 extension)
