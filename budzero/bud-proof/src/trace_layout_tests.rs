@@ -208,7 +208,8 @@ fn trace_layout_reserved_gap_is_documented() {
     // The 8-column gap at 370..378 is intentional and reserved for future
     // public-input / expansion columns. This test ensures it is not silently
     // consumed by an undocumented range.
-    let gap = all_ranges()
+    let ranges = all_ranges();
+    let gap = ranges
         .iter()
         .find(|r| r.name == "reserved_gap")
         .expect("reserved_gap range must be documented");
