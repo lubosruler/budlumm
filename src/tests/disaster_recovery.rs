@@ -24,6 +24,7 @@ mod tests {
             let consensus = Arc::new(PoWEngine::new(0));
             let mut bc = Blockchain::new(consensus, Some(storage), 1337, None);
 
+            bc.state.base_fee = 0;
             // Fund Alice
             bc.state.add_balance(&alice, 1_000_000);
 
@@ -57,6 +58,7 @@ mod tests {
 
             // Reconstruct blockchain from existing storage
             let bc = Blockchain::new(consensus, Some(storage), 1337, None);
+            bc.state.base_fee = 0;
 
             // 3. Verify Integrity of "Universal Consensus Layer"
 
@@ -97,6 +99,7 @@ mod tests {
             let consensus = Arc::new(PoWEngine::new(0));
             let mut bc = Blockchain::new(consensus, Some(storage), 1337, None);
             bc.state.add_balance(&alice, 1000);
+            bc.state.base_fee = 0;
 
             let nft_data = bincode::serialize(&(cid, None::<String>)).unwrap();
             let mut nft_tx = Transaction::new(alice, Address::zero(), 0, nft_data);
@@ -111,6 +114,7 @@ mod tests {
             let consensus = Arc::new(PoWEngine::new(0));
             let mut bc = Blockchain::new(consensus, Some(storage), 1337, None);
 
+            bc.state.base_fee = 0;
             let burn_data = bincode::serialize(&0u64).unwrap(); // nft_id 0
             let mut burn_tx = Transaction::new(alice, Address::zero(), 0, burn_data);
             burn_tx.tx_type = TransactionType::NftBurn;
@@ -131,6 +135,7 @@ mod tests {
             let storage = Storage::new(db_path_str).unwrap();
             let consensus = Arc::new(PoWEngine::new(0));
             let bc = Blockchain::new(consensus, Some(storage), 1337, None);
+            bc.state.base_fee = 0;
 
             assert_eq!(
                 bc.state.nft_registry.nfts.len(),
@@ -164,6 +169,7 @@ async fn test_chaos_v2_heavy_network_partition_with_forks() {
     {
         let storage = Storage::new(db_a.to_str().unwrap()).unwrap();
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
+        bc.state.base_fee = 0;
         for _ in 0..10 {
             bc.produce_block(producer_a);
         }
@@ -174,6 +180,7 @@ async fn test_chaos_v2_heavy_network_partition_with_forks() {
     {
         let storage = Storage::new(db_b.to_str().unwrap()).unwrap();
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
+        bc.state.base_fee = 0;
         for _ in 0..15 {
             bc.produce_block(producer_b);
         }
@@ -184,6 +191,7 @@ async fn test_chaos_v2_heavy_network_partition_with_forks() {
     {
         let storage = Storage::new(db_a.to_str().unwrap()).unwrap();
         let mut bc_a = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
+        bc.state.base_fee = 0;
 
         let storage_b = Storage::new(db_b.to_str().unwrap()).unwrap();
         let bc_b = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage_b), 1337, None);
@@ -211,6 +219,7 @@ async fn test_chaos_v2_ultimate_byzantine_recovery() {
     {
         let storage = Storage::new(db_path_str).unwrap();
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
+        bc.state.base_fee = 0;
         bc.state.add_balance(&alice, 1_000_000);
 
         // Relayer Result for an external tx
@@ -238,6 +247,7 @@ async fn test_chaos_v2_ultimate_byzantine_recovery() {
     {
         let storage = Storage::new(db_path_str).unwrap();
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
+        bc.state.base_fee = 0;
 
         for _i in 0..100 {
             let mut tx = Transaction::new(alice, bob, 1, vec![]);
@@ -253,6 +263,7 @@ async fn test_chaos_v2_ultimate_byzantine_recovery() {
     {
         let storage = Storage::new(db_path_str).unwrap();
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
+        bc.state.base_fee = 0;
 
         // Node sees a much longer chain from the network
         let mut longer_chain = Vec::new();
