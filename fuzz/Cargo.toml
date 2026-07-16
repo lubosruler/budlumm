@@ -8,6 +8,9 @@ publish = false
 [package.metadata]
 cargo-fuzz = true
 
+[workspace]
+members = ["."]
+
 # Fuzz harness'leri. CI'da uzun fuzz run çalıştırılmaz; Phase 2 §1.7 sadece
 # setup/build edilebilir target setini teslim eder.
 # Manuel run: `cargo +nightly fuzz run <target>`.
