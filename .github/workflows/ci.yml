@@ -33,6 +33,14 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
+      - name: Clippy pedantic/nursery ratchet (izleme modu, G2)
+        # ADIM8 3.3: uyarı gorunurlugu + sayi-artisina karsi ratchet (baseline 191,
+        # kanit .github/clippy-extra-baseline.txt). Sifira indirme kademeli/azimli.
+        run: |
+          set -euo pipefail
+          bash ./scripts/check-clippy-extra.sh --self-test
+          cargo clippy --all-targets --message-format=json -- -W clippy::pedantic -W clippy::nursery > /tmp/clippy-extra.json 2>/dev/null || true
+          bash ./scripts/check-clippy-extra.sh /tmp/clippy-extra.json
       - name: Feature matrix — pq-ml-dsa solo (Phase 8.3)
         run: |
           set -euo pipefail

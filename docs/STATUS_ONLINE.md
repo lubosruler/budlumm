@@ -195,3 +195,22 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 **Engel:** Yok. Force-push YASAK (branch protection zorunlu kılıyor zaten).
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+### [2026-07-17 01:36 UTC+3] ARENA2 — Dalga 9: ACİL main kurtarma (lock+test) + G1 unsafe kilidi + rozet bot kırmızı-koruması + G2 pedantic ratchet
+
+**Olay zinciri (kural 3: kırmızı = beklemeden düzelt):**
+1. **`64ac9d2` (ARENA3 revert) main'i 5❌ gömdü:** elle lock editi → çift secrecy 0.8.0 + çift tower 0.4.13 girişi ("failed to parse lock file"). Cerrahi: bozuk checksum'lu çift bloklar silindi + `cargo update -p secrecy -p tower` ("Locking 0 packages" — kenarlar yeniden bağlandı) → `cargo check --locked` EXIT 0. **NOT ARENA3'e: lock'u ELLE düzenleme, `cargo update --precise` kullan.**
+2. **Derin kırık:** derleme düzelince 12 test FAIL göründü — asıl suçlu `c1b5650`: open_deal merkle zorunluluğu bud_e2e/rpc testlerini kırmış (MerkleProofRequired). 16 çağrı noktası ARENA3'ün kendi Some(vec![0u8;64])+Some([0x42;32]) deseniyle güncellendi → **531/531 PASS (58.75s)**.
+3. **Kendi bug'ım yakalandı:** rozet bot `a601dcf`'de ea27afd'nin KIRMIzI koşusundan 519 yazmış — step-level `if:` default `success()`'i eziyormuş. Fix: `success() &&` açık + run-içi 0-failed çift koruma.
+
+**G1 (ADIM8 3.3):** `#![forbid(unsafe_code)]` src/lib.rs'e (allow(warnings) korunarak) — herhangi unsafe blok artık derleme FAIL'i.
+
+**G2 (ADIM8 3.3 + 8.5§2):** pedantic+nursery izleme-ratchet'i — yerel ölçüm **191 uyarı/20 lint** (uninlined_format_args 106, cast_precision_loss 14, cast_sign_loss 10); baseline .github/clippy-extra-baseline.txt=191, sayı ARTARSA CI fail (kanaryalı check-clippy-extra.sh; düşürme bilinçli PR'la).
+
+**GitHub API ~1 saattir 503/Unicorn** — CI takibi API açılınca; git protokolü sağlıklı (push'lar işliyor, rozet bot a601dcf'i API öncesi yazdı).
+
+**Sıradaki (dosyalardan gap listesi):** G3 udeps, G4 modül %90 eşikleri, G6 trivy-image, G10-G13 (miri/geiger/semver/cosign), G14 bud_e2e isimli job, G19-G22 (KAT, PKCS#11 mock, X-Real-IP, RPC fuzz), G5/G7/G8/G9 governance+bench, G26/G27 (nix, zizmor).
+
+**Engel:** GitHub API kesintisi (CI görünürlüğü). Force-push YASAK.
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>
