@@ -110,8 +110,13 @@ pub enum TransactionType {
     },
     UniversalRelay(ExternalTransaction),
     RelayerResult(RelayerExternalResult),
-    AiOfferData { cid: crate::storage::content_id::ContentId, price: u64 },
-    AiPurchaseData { offer_id: u64 },
+    AiOfferData {
+        cid: crate::storage::content_id::ContentId,
+        price: u64,
+    },
+    AiPurchaseData {
+        offer_id: u64,
+    },
     HubRegisterApp {
         name: String,
         category: crate::hub::types::AppCategory,
@@ -279,7 +284,7 @@ impl Transaction {
     }
     pub fn signing_hash(&self) -> [u8; 32] {
         let mut hasher = Sha3_256::new();
-        hasher.update(b"BDLM_TX_V3"); 
+        hasher.update(b"BDLM_TX_V3");
         hasher.update(self.from.as_bytes());
         hasher.update(self.to.as_bytes());
         hasher.update(self.amount.to_le_bytes());
@@ -410,7 +415,7 @@ impl Transaction {
                     return false;
                 }
             }
-            _ => {} 
+            _ => {}
         }
         true
     }
@@ -437,10 +442,12 @@ impl Transaction {
             | TransactionType::NftBoost { .. }
             | TransactionType::NftUpdateLight { .. }
             | TransactionType::NftTag { .. } => schedule.transfer_gas * 2,
-            TransactionType::UniversalRelay(_)
-            | TransactionType::RelayerResult(_) => schedule.contract_call_gas * 3,
-            TransactionType::AiOfferData { .. }
-            | TransactionType::AiPurchaseData { .. } => schedule.transfer_gas * 5,
+            TransactionType::UniversalRelay(_) | TransactionType::RelayerResult(_) => {
+                schedule.contract_call_gas * 3
+            }
+            TransactionType::AiOfferData { .. } | TransactionType::AiPurchaseData { .. } => {
+                schedule.transfer_gas * 5
+            }
             TransactionType::HubRegisterApp { .. } => schedule.contract_call_gas * 2,
         };
         let signature_gas = if self.signature.is_some() {
