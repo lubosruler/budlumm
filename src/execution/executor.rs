@@ -3,8 +3,8 @@ use crate::core::address::Address;
 use crate::core::transaction::{Transaction, TransactionType};
 use crate::error::{BudlumError, BudlumResult};
 use crate::execution::zkvm::{ZkVmExecutor, DEFAULT_CONTRACT_GAS_LIMIT};
-use serde_json;
 use bincode;
+use serde_json;
 
 pub struct Executor;
 
@@ -220,7 +220,11 @@ impl Executor {
                 if tx.amount < cost {
                     return Err(BudlumError::validation(
                         "bns_insufficient_payment",
-                        format!("Required: {cost}, provided: {amount}", cost = cost, amount = tx.amount),
+                        format!(
+                            "Required: {cost}, provided: {amount}",
+                            cost = cost,
+                            amount = tx.amount
+                        ),
                     ));
                 }
 

@@ -8,14 +8,14 @@ use crate::domain::storage_deal::{
 };
 use crate::network::node::NodeClient;
 use crate::storage::content_id::ContentId;
-use hex;
 use bincode;
-use serde_json;
 use futures::future::BoxFuture;
+use hex;
 use hyper::header::{HeaderValue, AUTHORIZATION};
 use hyper::StatusCode;
 use jsonrpsee::server::{HttpBody, HttpRequest, HttpResponse};
 use jsonrpsee::types::error::ErrorObjectOwned;
+use serde_json;
 use std::collections::{HashMap, VecDeque};
 use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
