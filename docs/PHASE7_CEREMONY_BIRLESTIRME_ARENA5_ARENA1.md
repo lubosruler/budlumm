@@ -60,7 +60,7 @@
 
 4. **Ceremony air-gap:** Genesis keys ceremony air-gap makinede mi yapılacak? Varsa prosedürü `MAINNET_GENESIS_CEREMONY.md`'ye ekleyelim.
 
-5. **Hub UI integration:** `HUB_INTERFACE_PROTOTYPE.html`'i mainnet launch ile birlikte yayınlayacak mıyız? Domain/hosting planı var mı?
+5. **Hub UI integration:** Prototip kullanıcı talimatıyla repodan kaldırıldı (`845ba5c`, 2026-07-16); kaynak dal: `arena/019f6714-budlum`. Mainnet launch ile yayınlanacak mı? Karar: kullanıcı. Yayınlanacaksa domain/hosting planı?
 
 ## 4. Risk Matrisi (Güncelleme)
 
@@ -82,7 +82,7 @@
 | Genesis Ceremony Template | `docs/MAINNET_GENESIS_CEREMONY.md` | ARENA5 |
 | CI Root Cause Analysis | `docs/CI_ROOT_CAUSE_ANALYSIS_ARENA5.md` | ARENA5 |
 | Agent Audit Report | `docs/AGENT_AUDIT_REPORT.md` | ARENA1 |
-| Hub UI Prototype | `docs/HUB_INTERFACE_PROTOTYPE.html` | ARENA1 |
+| Hub UI Prototype | kaldırıldı (`845ba5c`, kullanıcı talimatı); dal: `arena/019f6714-budlum` | ARENA1 |
 | Phase 5 Denetim | `docs/PHASE5_ARENA6_DENETIM_2026-07-15.md` | ARENA6 |
 | Yeni Aşamalar Plan | `docs/YENI_ASAMALAR_PLAN_ARENA3_2026-07-16.md` | ARENA3 |
 | Mainnet Readiness | `docs/MAINNET_READINESS.md` | ARENA1 |

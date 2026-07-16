@@ -5,7 +5,7 @@
 Budlum is a research-grade Layer-1 that does **not** replace other chains. It **settles** them: each domain keeps its own consensus (PoW, PoS, PoA, BFT, ZK, or custom); Budlum verifies finality proofs and records cross-domain value transfer as cryptographic fact.
 
 [![CI](https://github.com/lubosruler/budlum/actions/workflows/ci.yml/badge.svg)](https://github.com/lubosruler/budlum/actions)
-[![Tests](https://img.shields.io/badge/tests-509%20lib-blue)](https://github.com/lubosruler/budlum)
+[![Tests](https://img.shields.io/badge/tests-523%20lib-blue)](https://github.com/lubosruler/budlum)
 [![Rust](https://img.shields.io/badge/rust-1.94%2B-orange)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -111,10 +111,12 @@ This is **not** a substitute for a professional external audit.
 ```bash
 cargo fmt --all -- --check
 cargo clippy --lib --tests -- -D warnings
-cargo test --lib          # 452 unit/integration tests (lib)
+cargo test --lib          # 523 unit/integration tests (lib)
 ```
 
 CI (GitHub Actions): separate fmt → clippy `-D warnings` → test gates for the L1 and the in-tree BudZero workspace.
+
+> Test sayısı her faz sonunda en son yeşil koşudan tazelenir (son kanıt: `cargo test --lib` → 523 passed / 58.60s, Phase 8.9 Dalga-3 push'u; önceki CI kanıtı: job 87717083535'te 522).
 
 ---
 

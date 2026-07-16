@@ -1,8 +1,15 @@
-# Mainnet Genesis Ceremony Procedure (Phase 3)
+# Mainnet Genesis Ceremony Procedure (Canonical)
 
 **Status:** procedure only — does **not** claim a ceremony has occurred.  
 **Audience:** release managers, multi-sig holders, node operators.  
-**Related:** `docs/operations/PRODUCTION_RUNBOOK.md` §8, `config/mainnet-genesis.json`.
+**Related:** `docs/operations/PRODUCTION_RUNBOOK.md` §8, `config/mainnet-genesis.json`,
+plan katmanı: `docs/PHASE7_CEREMONY_PLAN.md` (7.1–7.5 görevleri, timeline).
+
+> **2026-07-16 konsolidasyonu (Phase 8.9, kullanıcı kararı Q2):** Bu dosya tek
+> kanonik ceremony prosedürüdür. `docs/MAINNET_GENESIS_CEREMONY.md`'deki
+> (ARENA5, TR) benzersiz içerik — validator key tabloları, treasury havuzları,
+> genesis JSON şablonu, ilk-blok kontrolleri, imza tablosu — buraya taşındı;
+> o dosya artık TR özet + yönlendirmedir. Bayat bilgi sadece bu dosyada düzeltilir.
 
 ---
 
@@ -29,6 +36,11 @@ Until the ceremony completes, operators must treat mainnet profile as
 | Witness / notary | Sign the ceremony minutes (git commit + hash list) |
 | Operators | Publish bootnode multiaddrs only after hash freeze |
 
+TR katılımcı tanımı (konsolide edilen belgeden): Kullanıcı (key holder /
+ceremony master), doğrulama ekibi, validator operatörleri (N-of-M).
+Güvenlik kuralları: **air-gap** üretim, **HSM** (BLS/PQ HSM dışına çıkmaz),
+tercihan ≥2 bağımsız gözlemci.
+
 ---
 
 ## 2. Inputs (prepared offline)
@@ -40,6 +52,35 @@ Until the ceremony completes, operators must treat mainnet profile as
 5. Empty or final `bootnodes` / `dns_seeds` lists for `config/mainnet.toml`.
 
 No private keys on networked machines during generation if policy requires air-gap.
+
+### 2.1 Validator key generation (tooling, evidence-backed)
+
+Ed25519 validator anahtarları binary'deki `keygen` alt komutuyla üretilir
+(Phase 8.9 / Görev 7.1 tooling — bu komut 2026-07-16'da eklendi; öncesinde
+dokümanda olup binary'de OLMAYAN bir adımdı):
+
+```bash
+# Air-gap makinede, her validator için:
+budlum-core keygen --type ed25519 --output validator_N_ed25519.key
+# Secret key: 0600 izinle yazılır, stdout'a ASLA basılmaz.
+# Public key:  validator_N_ed25519.key.pub (hex) + adres stdout'ta gösterilir.
+```
+
+`--type bls|pq` disk üretimi **reddedilir** (exit 1) — BLS/PQ yalnızca HSM
+içinde üretilir; bkz. `docs/operations/HSM_VENDOR_NATIVE_GUIDE.md`.
+HSM donanımı yoksa BLS/PQ anahtarları üretilmez: mainnet PoA/Ed25519-only
+başlar, BLS/PQ post-launch eklenir (M6 bilinçli borcu, §5.1).
+
+| Validator | Ed25519 Pubkey (keygen .pub) | Coğrafi Bölge | BLS Pubkey (HSM) | PQ Pubkey (HSM) | HSM Slot |
+|-----------|------------------------------|---------------|------------------|-----------------|----------|
+| V1 | `___DOLDUR___` | EU | `___DOLDUR___` | `___DOLDUR___` | `___DOLDUR___` |
+| V2 | `___DOLDUR___` | US-East | `___DOLDUR___` | `___DOLDUR___` | `___DOLDUR___` |
+| V3 | `___DOLDUR___` | US-West | `___DOLDUR___` | `___DOLDUR___` | `___DOLDUR___` |
+| V4 | `___DOLDUR___` | AS-Southeast | `___DOLDUR___` | `___DOLDUR___` | `___DOLDUR___` |
+
+Önkoşul kontrol listesi (tören sabahı): `cargo test --lib`, `cargo clippy -- -D warnings`,
+`cargo fmt --check` — hepsi yeşil; M5 raporu ve Phase 7 planı okunmuş;
+HSM donanım kararı (veya Ed25519-only) verilmiş.
 
 ---
 
@@ -62,11 +103,26 @@ Or hand-author JSON matching `GenesisConfig` serde layout (see existing
 placeholder file). Independent builders must not copy each other's output
 files — they recompute from the same public inputs.
 
+Treasury havuzları (konsolide edilen TR belgeden; toplam arz 100 trilyon BUD):
+
+| Havuz | Adres | Miktar (BUD) | Vesting |
+|-------|-------|-------------|---------|
+| Community | `___DOLDUR___` | 10,000,000,000,000 | Yok |
+| Liquidity | `___DOLDUR___` | 10,000,000,000,000 | Yok |
+| Ecosystem | `___DOLDUR___` | 20,000,000,000,000 | Yok |
+| Team | `___DOLDUR___` | 20,000,000,000,000 | Cliff: 52560 epoch (~1 yıl), Vesting: 210240 epoch (~4 yıl) |
+| Burn Reserve | `___DOLDUR___` | 40,000,000,000,000 | Yok (sabit yakım) |
+
+Elle yazım durumunda tam JSON şablonu TR özet belgede
+(`docs/MAINNET_GENESIS_CEREMONY.md` §A) korunur; tek gerçek kaynak
+`GenesisConfig` serde düzenidir.
+
 ### 3.2 Hash freeze
 
 ```bash
 cargo run --example print_genesis_hash
 cargo test --lib chain::genesis::tests::test_mainnet_genesis_json_matches_code
+sha256sum config/mainnet-genesis.json
 ```
 
 Record:
@@ -78,6 +134,13 @@ Record:
 - SHA-256 of `config/mainnet-genesis.json`
 
 All independent builders must match bit-for-bit on the three roots/hashes.
+
+**⚠️ Bu hash bir kez yazıldıktan sonra DEĞİŞTİRİLEMEZ** — değişiklik farklı
+bir zincir demektir ve tüm allocation'ları geçersiz kılar. Freeze sonrası
+`docs/operations/PRODUCTION_RUNBOOK.md` §8.2 tablosuna ve `mainnet.toml`
+yorum satırına işlenir. Genesis testlerindeki `validators.is_empty()`
+asser'ları (placeholder durumu kodlayan) bu adımda güncellenir — bkz.
+Phase 7.4 checklist.
 
 ### 3.3 Update code constructors (if needed)
 
@@ -111,8 +174,23 @@ Deviations / incidents:
 Signatures (N-of-M):
 ```
 
+| Rol | İsim | İmza | Tarih |
+|-----|------|------|-------|
+| Ceremony Master / lead | `___DOLDUR___` | `___DOLDUR___` | `___DOLDUR___` |
+| Validator V1–V4 Operatörleri | `___DOLDUR___` | `___DOLDUR___` | `___DOLDUR___` |
+| Doğrulama (witness) | `___DOLDUR___` | `commit SHA` | `___DOLDUR___` |
+
 Attach minutes as a signed artifact (git-signed tag message or detached
 signatures). Do not store private keys in the repository.
+
+### 3.6 First block (T-0) checks
+
+1. Tüm validator node'ları başlatılır: `budlum-core --config config/mainnet.toml --network mainnet`
+2. İlk prevote/precommit quorum'u gözlenir; FinalityCert üretilir.
+3. İlk blok: `bud_blockNumber` → 1, `bud_finalizedHeight` → 1,
+   Prometheus `budlum_blocks_produced_total` → 1.
+4. Sağlık: `curl -X POST http://localhost:8545 -d '{"jsonrpc":"2.0","method":"bud_health","params":[],"id":1}'`
+   (`bud_health` metodu `src/rpc/api.rs`'de mevcuttur.)
 
 ---
 
@@ -124,6 +202,11 @@ signatures). Do not store private keys in the repository.
 - Mainnet disk BLS/PQ keys → rejected (PKCS#11 required).
 - Placeholder path strings containing `devnet`/`testnet`/`placeholder` on
   mainnet → CLI security failure.
+- **(Phase 8.9 / Q5, 2026-07-16):** Dummy/placeholder marker içeren bootnode
+  veya DNS seed (`dummy`, `placeholder`, `203.0.113.`, `.example`) mainnet'te
+  dial edilmez → CRITICAL exit 1 (`first_placeholder_peer`,
+  `src/core/chain_config.rs`; bağlama noktası `src/main.rs`). Bu guard §3.4
+  tamamlanmadan mainnet başlatılamayacağını garanti eder.
 
 ---
 
@@ -134,6 +217,14 @@ signatures). Do not store private keys in the repository.
 - VerifyMerkle / B.U.D. Faz 3 remains Phase 4; interim retrieval is documented in
   `docs/BUD_INTERIM.md`.
 
+### 5.1 Documented post-launch debts (bilinçli borçlar)
+
+| # | Borç | Aktivasyon Koşulu |
+|---|------|-------------------|
+| M5 | VerifyMerkle Z-B gate | 64-depth STARK yeşil → soft-fork PR |
+| M6 | HSM vendor-native BLS/PQ | Donanım temin → config aktivasyonu |
+| M7 | External audit | Bug bounty launch → firma seçimi |
+| M10 | SocialFi/Hub/Marketplace | Küçük PR'larla post-launch |
 
 ---
 

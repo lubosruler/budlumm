@@ -79,5 +79,5 @@
 - [x] User/dev/enterprise PoA matrisi yeniden doğrulandı (`docs/PERSONAS.md`).
 - [x] `VerifyMerkle` gate gerçeğe uygun (`tur119_verify_merkle_disabled_in_production`).
 - [x] B.U.D. Phase 1 iskeleti olarak çalışır durumda ve 509 testle doğrulandı.
-- [x] `PHASE0.378_RAPOR.md` ve `PHASE1_RAPOR.md` üretildi.
+- [x] `PHASE0.378_RAPOR.md` ve `PHASE1_RAPOR.md` üretildi. (2026-07-16 konsolidasyonu: içerikler byte-identical idi; **kanonik = `PHASE1_RAPOR.md`**, eş kopya kaldırıldı.)
 - [x] Devir raporu final commit ve CI sonuçlarıyla güncellendi.
