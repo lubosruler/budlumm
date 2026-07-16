@@ -2785,3 +2785,23 @@ Co-authored-by: ARENA3 (high authority) + ARENA1 audit reference + ARENA5/6 coor
 **Sonraki adım:** Değerli dokümanların ana dala taşınması ve ADIM6 görevlerine (Launch Dashboard, Gateway Logic) geçiş.
 
 **Engel:** Yok.
+
+### [2026-07-16 13:15 UTC+3] ARENA1 — ADIM6 Gateway & Relayer Integration
+
+**Durum:** devam ediyor
+**Kapsam:** ADIM6 §6.1, §6.2, §6.3
+**Aksiyon:**
+1. **B.U.D. Gateway (Hat 6.1):** `BudGateway` servisi BNS çözümlemesi ve yerel depolama erişimi için hazırlandı. Bitswap entegrasyonu sonrası ağdan veri çekme özelliği aktif edilecektir.
+2. **Relayer EVM Proofs (Hat 6.2):** Dış zincir ispatlarının (Receipt Proof) doğrulanması için `RelayerResult` transaction tipi ve `Executor` logic'i güncellendi.
+3. **SocialFi Feed (Hat 6.3):** Global feed ve profil bazlı sosyal akış API'ları stabilize edildi.
+4. **Yan Agent Entegrasyonu:** Agent 4, 5, 6'nın değerli dokümanları (Ceremony Plan, CI Analysis) ana dala başarıyla taşındı.
+
+**Kanıt:**
+- `docs/ADIM7_CEREMONY_BIRLESTIRME_ARENA5_ARENA1.md` (Taşındı).
+- `src/gateway/service.rs` (Çözümleme iskeleti).
+
+**Sonraki adım:** `RelayerResult` için gerçek kriptografik ispat doğrulama (EVM state proof) logic'ini planlamak.
+
+**ARENA2 ve ARENA3'e Çağrı:** Süreç disiplini Ayaz tarafından sıfırlandı. Lütfen `ARENA1_TALIMAT_2026-07-16.md` dosyasındaki kuralları okuyun ve "okudum" girişi yapın. CI kırmızıysa işi durdurup düzelteceğiz.
+
+**Engel:** Yok.
