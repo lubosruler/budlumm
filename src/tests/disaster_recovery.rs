@@ -32,13 +32,15 @@ mod tests {
             let bns_data = bincode::serialize(&("ayaz.bud".to_string(), 100u64)).unwrap();
             let mut bns_tx = Transaction::new(alice, Address::zero(), 10000, bns_data);
             bns_tx.tx_type = TransactionType::BnsRegister;
-            bc.add_transaction(bns_tx).unwrap();
+            bns_tx.hash = bns_tx.calculate_hash();
+            bc.mempool.add_transaction(bns_tx).unwrap();
 
             // Mint an NFT (SocialFi)
             let nft_data = bincode::serialize(&(cid, Some("ayaz.bud".to_string()))).unwrap();
             let mut nft_tx = Transaction::new(alice, Address::zero(), 0, nft_data);
             nft_tx.tx_type = TransactionType::NftMint;
-            bc.add_transaction(nft_tx).unwrap();
+            nft_tx.hash = nft_tx.calculate_hash();
+            bc.mempool.add_transaction(nft_tx).unwrap();
 
             // Produce a block to persist state
             bc.produce_block(Address::zero());
@@ -103,7 +105,8 @@ mod tests {
             let nft_data = bincode::serialize(&(cid, None::<String>)).unwrap();
             let mut nft_tx = Transaction::new(alice, Address::zero(), 0, nft_data);
             nft_tx.tx_type = TransactionType::NftMint;
-            bc.add_transaction(nft_tx).unwrap();
+            nft_tx.hash = nft_tx.calculate_hash();
+            bc.mempool.add_transaction(nft_tx).unwrap();
             bc.produce_block(Address::zero());
         }
 
@@ -117,9 +120,10 @@ mod tests {
             let burn_data = bincode::serialize(&0u64).unwrap(); // nft_id 0
             let mut burn_tx = Transaction::new(alice, Address::zero(), 0, burn_data);
             burn_tx.tx_type = TransactionType::NftBurn;
+            burn_tx.hash = burn_tx.calculate_hash();
 
             // The executor emits a tracing signal here
-            bc.add_transaction(burn_tx).unwrap();
+            bc.mempool.add_transaction(burn_tx).unwrap();
             bc.produce_block(Address::zero());
 
             assert_eq!(
@@ -237,7 +241,7 @@ async fn test_chaos_v2_ultimate_byzantine_recovery() {
             1337,
             TransactionType::RelayerResult(res),
         );
-        bc.add_transaction(tx).unwrap();
+        bc.mempool.add_transaction(tx).unwrap();
         bc.produce_block(Address::zero());
     }
 
@@ -251,7 +255,8 @@ async fn test_chaos_v2_ultimate_byzantine_recovery() {
             let mut tx = Transaction::new(alice, bob, 1, vec![]);
             tx.nonce = bc.state.get_nonce(&alice);
             tx.fee = 1;
-            let _ = bc.add_transaction(tx);
+            tx.hash = tx.calculate_hash();
+            let _ = bc.mempool.add_transaction(tx);
         }
         // Block production interrupted! (Simulation: Process Exit)
         info!("INTERRUPTED: System crash during block processing.");
