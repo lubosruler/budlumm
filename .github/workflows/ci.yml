@@ -55,3 +55,159 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo test --workspace
+
+  # ============================ ADIM 8 / Faz 1 (P0) ============================
+  # Strict mod: aşağıdaki tüm job'lar ilk günden FAIL kapısıdır (ADIM 8.5 ruhu).
+  # Kapıların "boş" (vacuous) olmadığı kanarya testleriyle her koşuda kanıtlanır.
+
+  dependency-audit:
+    # ADIM 8.1: cargo audit + SBOM üretimi + SBOM artifact.
+    name: Dependency Audit + SBOM (8.1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.94.0"
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo audit (CVE = fail)
+        run: ./scripts/audit-deps.sh
+      - name: SBOM üret (CycloneDX)
+        run: ./scripts/generate-sbom.sh
+      - name: SBOM artifact yükle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom-${{ github.sha }}
+          path: sbom.cdx.json
+          retention-days: 90
+
+  cargo-deny:
+    # ADIM 8.2: root ve budzero grafikleri ayrı matrix adımlarında denetlenir.
+    name: Cargo Deny (${{ matrix.name }}) (8.2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: root, manifest: "./Cargo.toml" }
+          - { name: budzero, manifest: "budzero/Cargo.toml" }
+    steps:
+      - uses: actions/checkout@v4
+      - name: cargo deny check (advisories, bans, licenses, sources)
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          manifest-path: ${{ matrix.manifest }}
+          command: check
+
+  fuzz-quick:
+    # ADIM 8.5: mevcut 5 fuzz target'ının her biri her push/PR'da 90 sn.
+    # Uzun koşular fuzz-nightly.yml (schedule, 4h/target, corpus cache) işler.
+    name: Fuzz Quick (90s × 5 target) (8.5)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust (nightly — cargo-fuzz gereksinimi)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "29.x"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz
+          shared-key: fuzz
+      - name: Install cargo-fuzz
+        run: cargo install --locked cargo-fuzz
+      - name: Her target 90 saniye fuzz
+        working-directory: fuzz
+        run: |
+          set -euo pipefail
+          targets=(block_deserialize consensus_validate fuzz_blockchain_serialize snapshot_deserialize transaction_deserialize)
+          for t in "${targets[@]}"; do
+            echo "=== fuzz-quick: $t (90s) ==="
+            cargo fuzz run "$t" -- -max_total_time=90 -timeout=25 -print_final_stats=1
+          done
+          echo "Tüm fuzz target'ları temiz."
+      - name: Crash artifact (varsa)
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzz-quick-crashes-${{ github.sha }}
+          path: fuzz/artifacts/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  secret-scan:
+    # ADIM 8.7: TAM git geçmişinde secret taraması (fetch-depth: 0).
+    # gitleaks OSS binary'yi kullanıyoruz: resmi GitHub Action, organizasyon
+    # repolarında GITLEAKS_LICENSE (dış kayıt) ister; binary aynı motoru
+    # lisanssız çalıştırır. Sürüm + sha256 pinlidir. Resmi action'a geçiş,
+    # lisans anahtarı temin edildiğinde değerlendirilebilir (güvenlik çıktısı
+    # birebir aynıdır).
+    name: Secret Scan (gitleaks, tam geçmiş) (8.7)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks v8.30.1 kur (sürüm + sha256 pinli)
+        run: |
+          set -euo pipefail
+          curl -sSfL -o /tmp/gitleaks.tar.gz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tar.gz" | sha256sum -c -
+          sudo tar -xzf /tmp/gitleaks.tar.gz -C /usr/local/bin gitleaks
+          gitleaks version
+      - name: Kanarya — gitleaks alarmının çalıştığının kanıtı
+        run: |
+          set -euo pipefail
+          # DİKKAT: Sahte token asla tek parça olarak bu dosyaya yazılmaz;
+          # parçalar çalışma zamanında birleştirilir. Aksi halde repo'nun
+          # kendi geçmiş taraması bu kalıbı sızıntı sanıp FAIL eder.
+          PFX="gh""p_"
+          S1="xK9mQ2vR7pL4nT8w"
+          S2="Y3zB6cF1hJ5sD0gE42uI"
+          mkdir -p /tmp/gitleaks-canary
+          cd /tmp/gitleaks-canary
+          git init -q .
+          printf 'example_key = "%s%s%s"\n' "$PFX" "$S1" "$S2" > canary.txt
+          git add .
+          git -c user.email=ci@budlum.xyz -c user.name=ci commit -qm canary
+          if gitleaks detect --source . --redact --no-banner; then
+            echo "HATA: gitleaks kanaryayı yakalayamadı → tarama güvenilmez (vacuous gate)!"
+            exit 1
+          fi
+          echo "Kanarya yakalandı → gitleaks alarmı çalışıyor."
+      - name: Tam geçmiş taraması (bulgu = fail)
+        run: gitleaks detect --source . --config .gitleaks.toml --redact --verbose
+
+  timing-safe:
+    # ADIM 8.6: RPC/crypto'da ham-eşitlik statik taraması + dudect-tarzı
+    # istatistiksel zamanlama regresyon testi (cargo bench).
+    name: Timing-Safe Regression (8.6)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.94.0"
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "29.x"
+      - uses: Swatinem/rust-cache@v2
+      - name: Statik tarama + kanarya
+        run: |
+          ./scripts/check-timing-safe.sh
+          ./scripts/check-timing-safe.sh --self-test
+      - name: Dudect-tarzı istatistiksel zamanlama testi
+        run: cargo bench --bench timing_safe

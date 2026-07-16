@@ -1,0 +1,70 @@
+# deny.toml — Budlum Core supply-chain kapısı (ADIM 8.2 / Faz 1)
+#
+# Bu dosya `cargo deny check` ile CI'da zorunlu kapıdır (strict mod:
+# ilk günden fail kapısı; gevşetme YOK). BudZero tarafındaki karşılığı
+# budzero/deny.toml'dur; iki graf ayrı matrix adımında denetlenir.
+#
+# Şema: cargo-deny 0.20+ (eski anahtarlar PR #611 ile kaldırıldı).
+# Modern semantikte `allow` listesinde OLMAYAN her lisans otomatik FAIL'dir
+# (eski `unlicensed = "deny"` + copyleft yasağı davranışı böylece korunur;
+# GPL/AGPL ailesi allow'da olmadığından reddedilir).
+#
+# Lisans eklemeleri KANITSIZ yapılmaz: CI kırmızı verirse yalnızca permissive
+# lisanslı (OSI/FSF-free) crate'ler için, gerekçesi commit mesajında yazılarak
+# allow listesi genişletilir (ratchet ruhu).
+
+[graph]
+targets = []
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "BSD-2-Clause",
+    "CC0-1.0",
+    "ISC",
+    "OpenSSL",
+    "Zlib",
+    # Gerekçeli ekleme (Faz 1 ilk koşu, kanıtlı): icu_* crate ailesi
+    # (idna_adapter ← url ← libp2p zinciri) Unicode-3.0 lisanslı.
+    # Unicode-3.0 OSI-onaylı permissive lisanstır (kopyalayaz DEĞİL);
+    # SPDX: Unicode-3.0. Yerel cargo-deny 0.20.2 koşusunda 19 reddin
+    # tamamının tek sebebi bu lisanstı (başka lisans ihlali yok).
+    "Unicode-3.0",
+]
+confidence-threshold = 0.8
+
+[bans]
+multiple-versions = "warn"
+deny = []
+skip = []
+skip-tree = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
+
+[advisories]
+# unmaintained = "none": eski davranışla aynı ("warn, fail yok"). Uyarı
+# görünürlüğü kaybolmuyor: CI dependency-audit job'ındaki cargo audit her
+# koşuda unmaintained uyarılarını raporlar. Bincode/pqcrypto-* gibi bilinen
+# öğeler org roadmap'te izleniyor; doğrudan kaynaklı yeni unmaintained
+# keşiflerde bu karar yeniden gözden geçirilir.
+unmaintained = "none"
+# unsound: doğrudan bağımlılıklarımızda unsound danışması = FAIL (sıkı).
+unsound = "workspace"
+ignore = [
+    # Kanıtlı skip-listesi (kapı: kullanıcı onaylı "gerçek fix veya kanıtlı
+    # skip-listesi" politikası). Her iki danışma da yalnızca şu zincirden gelir:
+    # hickory-proto 0.25.0-alpha.5 ← libp2p-mdns 0.47.0 ← libp2p 0.55.
+    # Yükseltme İMKÂNSIZ (kanıt: `cargo update -p libp2p-mdns --dry-run` →
+    # "Locking 0 packages"; `cargo update -p hickory-proto --precise 0.26.1`
+    # → libp2p-mdns `^0.25.0-alpha.4` gereksinimi 0.26.1'i reddeder).
+    # Çözüm, libp2p'nin mdns 0.48+/hickory 0.26+ kullanan sürümüne geçişle
+    # gelecek → libp2p yükseltmesi ayrı izlenecek bir iş kalemidir.
+    { id = "RUSTSEC-2026-0118", reason = "NSEC3 DoS yalnızca DNSSEC doğrulaması yapan DnssecDnsHandle yolunda tetiklenebilir; libp2p-mdns DNSSEC doğrulaması YAPMAZ (mDNS LAN keşfi), budlum kodunda DnssecDnsHandle hiç kullanılmaz (grep kanıtı) → ULAŞILAMAZ. Yükseltme libp2p 0.55 hattında imkânsız." },
+    { id = "RUSTSEC-2026-0119", reason = "O(n²) name-compression DoS; tetikleme için saldırganın aynı L2 multicast domain'inden (UDP 5353) paket gönderebilmesi gerekir. Mainnet zincir config'lerinde mdns_enabled=false (src/core/chain_config.rs:158,166); datacenter validator topolojisinde mdns multicast yüzeyi yoktur. Etki: yalnızca DoS, yalnızca LAN komşuluğunda, mdns açık devnet ortamlarında. libp2p yükseltmesiyle kapanacak." },
+]

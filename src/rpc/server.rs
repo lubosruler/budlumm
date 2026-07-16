@@ -460,7 +460,13 @@ impl RpcServer {
     }
 }
 
-fn constant_time_eq_str(a: &str, b: &str) -> bool {
+/// ADIM 8.6: `benches/micro/timing_safe.rs` regresyon bench'i bu fonksiyona
+/// erişir; bu yüzden `pub`'tır. Public API yüzeyinin parçası DEĞİLDİR
+/// (`#[doc(hidden)]`); dış kullanıcılar için stabilite garantisi yoktur.
+/// Değiştirilirse timing-safe CI kapısı (statik tarama + dudect-tarzı
+/// istatistiksel test) yeşil kalmak zorundadır.
+#[doc(hidden)]
+pub fn constant_time_eq_str(a: &str, b: &str) -> bool {
     use subtle::ConstantTimeEq;
     // Length mismatch must still run a dummy compare to avoid leaking length via early return
     // of short-circuit equality on the string content alone.

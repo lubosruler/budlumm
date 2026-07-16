@@ -2984,3 +2984,41 @@ Co-authored-by: ARENA3
 **Co-authored-by:** ARENA3 — Kayıp/Uçmuş Commit Geri Getirici & Çekirdek Kodlayıcı (süreç sıfırlama tamamlandı, ADIM6 devam başlıyor)
 
 Force-push YASAK. Workflow push YASAK.
+
+### [2026-07-16 20:30 UTC+3] ARENA2 — ADIM 8 Faz 1 (CI Sertleştirme P0) push + ADIM 8.9 CLAIM
+
+**Durum:** push aşaması (push sonrası CI takibi → kullanıcı onayı bekleme modu)
+**Kapsam:** ADIM8-TALIMAT-1.md Faz 1/P0 (8.1, 8.2, 8.5, 8.6, 8.7) + ADIM 8.9 (Adım 6/7 süreç bitirme) CLAIM
+
+**Kullanıcı kararları (bu oturum):**
+1. Paralel yürütme: Faz 1 push → CI beklerken ADIM 8.9 analizi.
+2. ADIM 8.9 bitiş tanımı: "Geriye dönük hiçbir boşluğun ya da çalışmayan kodun kalmaması"; sonra ADIM 9 diğer AI'larla.
+3. Kullanıcı-taraflı kalemler (7.1 genesis keys, 7.2 bootnodes, 7.3 HSM, M7 audit): hepsi süreç İÇİNDE bitirilecek; dışarıdan teminat gelmeyecek.
+
+**Aksiyon (Faz 1, 16 dosya):**
+1. `ci.yml` +5 zorunlu job: dependency-audit (8.1: cargo audit + SBOM + artifact), cargo-deny matrix root+budzero (8.2), fuzz-quick 5×90s (8.5), secret-scan gitleaks tam geçmiş + kanarya (8.7), timing-safe statik grep + dudect bench (8.6).
+2. `.github/workflows/fuzz-nightly.yml` YENİ: schedule 03:17 UTC, matrix 5 target × 4 saat, corpus cache + crash artifact (8.5).
+3. `deny.toml` root YENİ + `budzero/deny.toml` cargo-deny 0.20 şemasına taşındı (eski anahtarlar PR #611 ile kalkmıştı; davranış korundu: allow dışı lisans = FAIL, unknown source = FAIL). `Unicode-3.0` gerekçeli allow (icu_* ailesi, OSI-onaylı, 19 reddin tek sebebi). RUSTSEC-2026-0118/0119 kanıtlı skip-listesi.
+4. Lisans metadata ön koşulu: root `license = "MIT"` + 7 budzero crate'i `license.workspace = true`.
+5. `benches/micro/timing_safe.rs` YENİ: dudect-tarzı Welch t-testi, batch-min robust istatistik, pozitif kontrol ZORUNLU (kontrol sızıntıyı gösteremezse exit 2 → boş kapı reddi). `[[bench]] harness = false` ile stable'da `cargo bench`.
+6. `scripts/check-timing-safe.sh` YENİ: src/rpc + src/crypto'da secret-ish isimlerle ham `==`/`!=` taraması + `--self-test` kanaryası.
+7. secret-scan: resmi gitleaks-action organizasyon lisansı istediği için gitleaks OSS binary kullanıldı (v8.30.1, sürüm + sha256 pinli; aynı motor, aynı güvenlik çıktısı). Kanarya token'ı parçalar halinde çalışma zamanında üretiliyor — tam kalıp asla repoya yazılmıyor.
+8. `src/rpc/server.rs` `constant_time_eq_str` → `pub` + `#[doc(hidden)]` (bench erişimi; stabil API yüzeyi sayılmaz).
+
+**Kanıt (tamamı bu oturumda yerel koşuldu, tek komut tekrarlanabilir):**
+- `cargo fmt --all -- --check` PASS; `cargo clippy -j 1 --lib --tests -- -D warnings` PASS (18.98s); `cargo check --bench timing_safe` PASS (1.94.0).
+- dudect bench mini-koşu (24×2048): kontrol (naif) |t|=188.18 → sızıntıyı YAKALIYOR; constant_time_eq_str |t|=0.82 < 4.5 → PASS exit 0 (23ns vs 45ns sınıf farkı kontrolde, 124ns/123.6ns ct'de).
+- `scripts/check-timing-safe.sh` gerçek tarama TEMİZ; `--self-test` kanarya 2/2 YAKALANDI.
+- `cargo deny check` (0.20.2): root → advisories/bans/licenses/sources hepsi OK exit 0; budzero → hepsi OK exit 0.
+- gitleaks v8.30.1: repo tam geçmiş taraması 0 bulgu; sahte PAT kanaryası YAKALANDI (kapı vacuous değil). Tarihteki `ghp_` şüphelileri incelendi: hepsi `ghp_6aXY...` biçimi REDAKTE işaretçi; gerçek token hiç commit'lenmemiş → allowlist GEREKMİYOR (config allowlist'siz, extend-useDefault).
+- hickory-proto skip kanıtları: `cargo update -p libp2p-mdns --dry-run` → "Locking 0 packages"; `cargo update -p hickory-proto --precise 0.26.1` → libp2p-mdns `^0.25.0-alpha.4` reddi; `grep -rniE 'DnssecDnsHandle|dnssec' src budzero` → 0 eşleşme; `src/core/chain_config.rs:152` (Network::Mainnet) mdns_enabled=false.
+- YAML parse OK (ci.yml 7 job, fuzz-nightly.yml 1 job); `bash -n` OK.
+- SHA pinleri: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a (v7.0.1), EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 (v2.1.1 → cargo-deny 0.20.2), actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 (v4.3.0), gitleaks v8.30.1 sha256=551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb.
+
+**Sonraki adım:** push → 7 job + budzero + docker-smoke CI takibi (hepsi yeşil şart) → kullanıcı onayı BEKLENİYOR (işlem kapatılmayacak). CI beklerken ADIM 8.9 Aşama 1 başlıyor: ADIM 6/7 iddia-vs-kanıt matrisi + 4 ceremony belgesinin tek kanonik belgeye indirgenmesi + "çalışmayan kod" envanteri.
+
+**Engel:** api.github.com bu token'la 401 "Bad credentials" dönüyor (git protokolü aynı token'la ÇALIŞIYOR: fetch/ls-remote OK). CI takibi alternatif kanaldan (actions badge / sayfa) yapılacak; 8.12 branch protection öncesi REST erişimi çözülmeli (kullanıcıya raporlanacak).
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+Force-push YASAK.

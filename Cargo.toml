@@ -3,6 +3,9 @@ name = "budlum-core"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.94.0"
+# ADIM 8.2: root cargo-deny `unlicensed = "deny"` kuralı kendi crate'imizi de
+# reddetmesin diye zorunlu. Repo kökündeki LICENSE (MIT) ile aynı.
+license = "MIT"
 
 [features]
 default = ["pq-dilithium"]
@@ -96,3 +99,10 @@ path = "benches/micro/merkle_scaling.rs"
 [[bin]]
 name = "bench_internal_pipeline_tps"
 path = "benches/single_node/internal_pipeline_tps.rs"
+
+# ADIM 8.6: dudect-tarzı timing-safe regresyon testi. harness=false ile
+# stable toolchain'de `cargo bench --bench timing_safe` çalışır; CI kapısıdır.
+[[bench]]
+name = "timing_safe"
+path = "benches/micro/timing_safe.rs"
+harness = false

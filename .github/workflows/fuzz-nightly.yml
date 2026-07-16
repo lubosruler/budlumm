@@ -1,0 +1,72 @@
+name: Fuzz Nightly
+
+# ADIM 8.5 (Faz 1): uzun fuzz koşuları. Her gece 03:17 UTC'de her target
+# 4 saat fuzz'lanır; her target ayrı matrix job'ında koşar (GitHub job
+# üst sınırı 6 saat → tek job'da 5×4h imkânsızdır, matrix zorunludur).
+# Corpus her koşuda cache'lenir ve sonraki koşuda geri yüklenir (büyüyen
+# corpus = derinleşen kapsam). Crash bulunursa artifact olarak yüklenir
+# ve job FAIL eder.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz-deep:
+    name: Fuzz Deep — ${{ matrix.target }} (4h)
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - block_deserialize
+          - consensus_validate
+          - fuzz_blockchain_serialize
+          - snapshot_deserialize
+          - transaction_deserialize
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust (nightly — cargo-fuzz gereksinimi)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "29.x"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz
+          shared-key: fuzz
+      - name: Install cargo-fuzz
+        run: cargo install --locked cargo-fuzz
+      - name: Corpus cache (target bazlı, yuvarlanan)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            fuzz/corpus/${{ matrix.target }}
+            fuzz/artifacts/${{ matrix.target }}
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: |
+            fuzz-corpus-${{ matrix.target }}-
+      - name: Fuzz 4 saat — ${{ matrix.target }}
+        working-directory: fuzz
+        run: |
+          set -euo pipefail
+          cargo fuzz run "${{ matrix.target }}" -- \
+            -max_total_time=14400 \
+            -timeout=25 \
+            -print_final_stats=1
+      - name: Crash artifact (varsa)
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzz-nightly-${{ matrix.target }}-${{ github.run_id }}
+          path: fuzz/artifacts/${{ matrix.target }}/
+          if-no-files-found: ignore
+          retention-days: 30
