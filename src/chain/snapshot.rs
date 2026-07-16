@@ -381,6 +381,8 @@ pub struct StateSnapshotV2 {
     pub marketplace: Option<crate::marketplace::MarketplaceRegistry>,
     #[serde(default)]
     pub hub: Option<crate::hub::HubRegistry>,
+    #[serde(default)]
+    pub external_roots: Option<BTreeMap<crate::domain::types::DomainId, crate::domain::types::Hash32>>,
 
     pub snapshot_hash: String,
 }
@@ -453,6 +455,7 @@ impl StateSnapshotV2 {
             nft_registry: Some(account_state.nft_registry.clone()),
             marketplace: Some(account_state.marketplace.clone()),
             hub: Some(account_state.hub.clone()),
+            external_roots: Some(account_state.external_roots.clone()),
             // Tur 2: `registry`, `liveness`, and `invalid_votes` are no longer
             // fields on `AccountState` (ghost-hunted). The struct fields were
             // already removed above; the live state is recovered by routing

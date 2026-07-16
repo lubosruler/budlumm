@@ -76,7 +76,10 @@ pub struct RelayerExternalResult {
     pub chain: ExternalChain,
     pub tx_hash: String,
     pub success: bool,
+    /// Merkle proof of the transaction receipt on the external chain.
     pub receipt_proof: Vec<u8>,
+    /// The state root of the external chain that anchors this proof.
+    pub external_state_root: [u8; 32],
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
