@@ -82,8 +82,8 @@ fn e2e_three_actor_manifest_to_challenge_flow() {
             300,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .expect("A deal-open");
 
@@ -99,8 +99,8 @@ fn e2e_three_actor_manifest_to_challenge_flow() {
             300,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .expect("B deal-open");
     assert_ne!(deal_a, deal_b);
@@ -169,8 +169,8 @@ fn e2e_missed_challenge_slashes_only_the_target_deal() {
             300,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .unwrap();
     let deal_b = reg
@@ -184,8 +184,8 @@ fn e2e_missed_challenge_slashes_only_the_target_deal() {
             300,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .unwrap();
     let cid = reg
@@ -216,8 +216,8 @@ fn e2e_deal_queries_return_replica_set() {
             300,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .unwrap();
     }
@@ -260,8 +260,8 @@ fn invariant_1_no_whitelist_for_deal_or_challenge() {
             10,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .expect("stranger opens a deal without any prior approval");
     let _ = reg
@@ -313,8 +313,8 @@ fn invariant_3_any_account_can_challenge_any_deal() {
             10,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .unwrap();
 
@@ -352,8 +352,8 @@ fn invariant_4_any_account_meeting_bond_can_open_deal() {
             10,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .expect("any account with bond can open a deal");
     }
@@ -380,8 +380,8 @@ fn invariant_5_opener_bond_must_be_positive() {
             10,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .unwrap();
     assert_eq!(
@@ -411,8 +411,8 @@ fn invariant_6_slash_only_via_missed_deadline() {
             10,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .unwrap();
     let cid = reg.open_challenge(deal, 0, 1, 1, 2, addr(2), 5).unwrap();
@@ -434,8 +434,8 @@ fn invariant_6_slash_only_via_missed_deadline() {
             10,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .unwrap();
     let cid2 = reg.open_challenge(deal2, 0, 1, 1, 2, addr(2), 5).unwrap();
@@ -464,8 +464,8 @@ fn invariant_7_slashed_deal_rejects_new_challenges() {
             10,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .unwrap();
     let cid = reg.open_challenge(deal, 0, 1, 1, 2, addr(2), 5).unwrap();
@@ -497,8 +497,8 @@ fn invariant_8_deal_requires_shard_to_be_in_manifest() {
             10,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .unwrap_err();
     assert!(matches!(err, StorageError::UnknownShard { .. }));
@@ -529,8 +529,8 @@ fn invariant_9_manifest_id_is_deterministic_across_nodes() {
             10,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .unwrap();
     let d2 = r2
@@ -544,8 +544,8 @@ fn invariant_9_manifest_id_is_deterministic_across_nodes() {
             10,
             good_econ(),
             &dp,
-            None,
-            None,
+            Some(vec![0u8; 64]),
+            Some([0x42u8; 32]),
         )
         .unwrap();
     let leaf1 = crate::domain::storage_deal::storage_deal_leaf_hash(r1.get_deal(d1).unwrap());

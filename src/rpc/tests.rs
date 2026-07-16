@@ -477,8 +477,8 @@ mod rpc_tests {
                     fee_per_epoch: 10,
                 },
                 crate::domain::storage_params::StorageDomainParams::default(),
-                None,
-                None,
+                Some(vec![0u8; 64]),
+                Some([0x42u8; 32]),
             )
             .await
             .unwrap();
