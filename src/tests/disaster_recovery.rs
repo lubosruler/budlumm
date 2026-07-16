@@ -33,12 +33,18 @@ mod tests {
             let bns_data = bincode::serialize(&("ayaz.bud".to_string(), 100u64)).unwrap();
             let mut bns_tx = Transaction::new(alice, Address::zero(), 10000, bns_data);
             bns_tx.tx_type = TransactionType::BnsRegister;
+            bns_tx.fee = 1;
+            bns_tx.hash = bns_tx.calculate_hash();
             bc.mempool.add_transaction(bns_tx).unwrap();
 
             // Mint an NFT (SocialFi)
             let nft_data = bincode::serialize(&(cid, Some("ayaz.bud".to_string()))).unwrap();
             let mut nft_tx = Transaction::new(alice, Address::zero(), 0, nft_data);
             nft_tx.tx_type = TransactionType::NftMint;
+            nft_tx.fee = 1;
+            nft_tx.hash = nft_tx.calculate_hash();
+            nft_tx.fee = 1;
+            nft_tx.hash = nft_tx.calculate_hash();
             bc.mempool.add_transaction(nft_tx).unwrap();
 
             // Produce a block to persist state
@@ -105,6 +111,8 @@ mod tests {
             let nft_data = bincode::serialize(&(cid, None::<String>)).unwrap();
             let mut nft_tx = Transaction::new(alice, Address::zero(), 0, nft_data);
             nft_tx.tx_type = TransactionType::NftMint;
+            nft_tx.fee = 1;
+            nft_tx.hash = nft_tx.calculate_hash();
             bc.mempool.add_transaction(nft_tx).unwrap();
             bc.produce_block(Address::zero());
         }
@@ -120,6 +128,8 @@ mod tests {
             let burn_data = bincode::serialize(&0u64).unwrap(); // nft_id 0
             let mut burn_tx = Transaction::new(alice, Address::zero(), 0, burn_data);
             burn_tx.tx_type = TransactionType::NftBurn;
+            burn_tx.fee = 1;
+            burn_tx.hash = burn_tx.calculate_hash();
 
             // The executor emits a tracing signal here
             bc.mempool.add_transaction(burn_tx).unwrap();
