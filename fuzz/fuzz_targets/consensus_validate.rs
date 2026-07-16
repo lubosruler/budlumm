@@ -1,5 +1,10 @@
 #![no_main]
 
+// NOT: BlockHeader struct'ına yeni alan eklendiğinde bu hedef E0063 ile
+// derlenemez. Alanlar burada TAM olarak doldurulmalıdır — CI'daki
+// "Fuzz Quick (Phase 8.5)" kapısı bunu yakalar. (2026-07-16'da
+// chain_id/nonce/epoch/slot/vrf_* eklendiğinde hedef çürümüştü.)
+
 use budlum_core::core::address::Address;
 use budlum_core::core::block::BlockHeader;
 use libfuzzer_sys::fuzz_target;
@@ -39,8 +44,14 @@ fn hex32(bytes: [u8; 32]) -> String {
 }
 
 fuzz_target!(|data: &[u8]| {
-    let producer = if data.first().copied().unwrap_or_default() & 1 == 1 {
+    let flag = data.first().copied().unwrap_or_default();
+    let producer = if flag & 1 == 1 {
         Some(Address::from(take_32(data, 97)))
+    } else {
+        None
+    };
+    let storage_root = if flag & 2 == 2 {
+        Some(take_32(data, 273))
     } else {
         None
     };
@@ -53,6 +64,15 @@ fuzz_target!(|data: &[u8]| {
         producer,
         state_root: hex32(take_32(data, 129)),
         tx_root: hex32(take_32(data, 161)),
+        chain_id: take_u64(data, 193),
+        nonce: take_u64(data, 201),
+        epoch: take_u64(data, 209),
+        slot: take_u64(data, 217),
+        vrf_output: data.get(225..241).unwrap_or_default().to_vec(),
+        vrf_proof: data.get(241..273).unwrap_or_default().to_vec(),
+        validator_set_hash: hex32(take_32(data, 305)),
+        slashing_evidence: None,
+        storage_root,
     };
 
     let _ = bincode::serialize(&header);

@@ -3069,3 +3069,24 @@ Push öncesi `git fetch` ile paralel bir ARENA2 oturumunun aynı rename görevin
 Co-authored-by: ARENA2 <arena2@budlum.ai>
 
 Force-push YASAK.
+
+### [2026-07-16 22:15 UTC+3] ARENA2 — Fuzz Quick (Phase 8.5) kök neden: BlockHeader bitrot (E0063) — düzeltme; SBOM çözümü ARENA3'te
+
+**Durum:** push ediliyor → CI takibi
+
+**Kapsam:** İlk TAMAMLANAN Fuzz Quick koşuları (52d5dba, 8fa39ba) kırmızı: `error[E0063]: missing fields chain_id, epoch, nonce and 6 other fields in initializer of BlockHeader` (CI job 87715130083 kanıtı). BlockHeader 16 alana evrilirken (chain_id, nonce, epoch, slot, vrf_output, vrf_proof, validator_set_hash, slashing_evidence, storage_root eklendi) fuzz/fuzz_targets/consensus_validate.rs 7 alanla kalmış — Phase 8.9'un tam da hedeflediği "geriye dönük çürümüş kod" sınıfının canlı örneği.
+
+**Aksiyon:**
+1. consensus_validate.rs'e eksik 9 alan eklendi (offset'ler çakışmasız: 193..337; storage_root flag bitiyle Some/None iki yolu da kapsıyor). Hedefin başına bitrot uyarı notu işlendi.
+2. Yerel kanıt: `cargo check --manifest-path fuzz/Cargo.toml --bins` → 5 hedefin TAMAMI derleniyor. consensus_validate'in öne geçip CI'da hiç derlenememiş olan snapshot_deserialize / transaction_deserialize / fuzz_blockchain_serialize de temiz çıktı.
+3. SBOM (Phase 8.1) kök nedeni ARENA3'ün debug çıktısında netleşti: cargo-cyclonedx v0.5.9 `bom.json` DEĞİL `<paket>.cdx.json` (budlum-core.cdx.json, 535 KB) üretiyor (CI job 87716292286 kanıtı) → ARENA3 dae9273 ile düzeltti (`ls -t *.cdx.json`). Benim paralel hazırladığım eşdeğer düzeltme çakışmasın diye düşürüldü; onlarınki kanonik.
+
+**Gözlem (Faz 2 / 8.5 önerisi):** Fuzz hedefleri yalnızca Fuzz Quick job'unda derleniyor → core tipler evrilince sessizce çürüyor. CI'a stable `cargo check --manifest-path fuzz/Cargo.toml --bins` (~2 dk, cache'li) hızlı kapısı eklenirse bu hata sınıfı 30+ dk'lık fuzz koşusunu beklemeden yakalanır.
+
+**Sonraki adım:** Bu push'un CI'ı; Fuzz Quick + Dependency Audit + SBOM yeşillenirse Faz 1 kapıları tamamlanır → kullanıcı onayı. Onayla Phase 8.9 Aşama-1 (iddia-vs-kanıt matrisi + 4 ceremony belgesi konsolidasyonu + HUB html araştırması) başlıyor.
+
+**Engel:** Yok.
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+Force-push YASAK.
