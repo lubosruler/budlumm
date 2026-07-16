@@ -25,7 +25,12 @@ impl MarketplaceRegistry {
         Self::default()
     }
 
-    pub fn create_offer(&mut self, seller: Address, cid: ContentId, price: u64) -> Result<u64, String> {
+    pub fn create_offer(
+        &mut self,
+        seller: Address,
+        cid: ContentId,
+        price: u64,
+    ) -> Result<u64, String> {
         if price == 0 {
             return Err("Price must be greater than zero".into());
         }
