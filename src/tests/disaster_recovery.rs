@@ -30,10 +30,15 @@ mod tests {
             bc.state.add_balance(&alice, 1_000_000);
 
             // Register a BNS name directly in state
-            bc.state.bns_registry.register("ayaz.bud".to_string(), alice, 0, 100).unwrap();
+            bc.state
+                .bns_registry
+                .register("ayaz.bud".to_string(), alice, 0, 100)
+                .unwrap();
 
             // Mint an NFT directly in state
-            bc.state.nft_registry.mint(alice, cid, 0, Some("ayaz.bud".to_string()));
+            bc.state
+                .nft_registry
+                .mint(alice, cid, 0, Some("ayaz.bud".to_string()));
 
             // Produce a block to persist state to storage
             bc.produce_block(Address::zero());
