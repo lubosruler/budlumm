@@ -55,7 +55,7 @@ jobs:
           restore-keys: |
             fuzz-corpus-${{ matrix.target }}-
       - name: Fuzz 4 saat — ${{ matrix.target }}
-        working-directory: fuzz
+        # cargo-fuzz repo kökünden çalışır (bkz. ci.yml fuzz-quick notu).
         run: |
           set -euo pipefail
           cargo fuzz run "${{ matrix.target }}" -- \

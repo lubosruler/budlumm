@@ -125,7 +125,8 @@ jobs:
       - name: Install cargo-fuzz
         run: cargo install --locked cargo-fuzz
       - name: Her target 90 saniye fuzz
-        working-directory: fuzz
+        # cargo-fuzz, fuzz/Cargo.toml'u MEVCUT crate köküne göre çözer;
+        # repo kökünden çalıştırılmalı (fuzz/ altından çağrı = fuzz/fuzz hatası).
         run: |
           set -euo pipefail
           targets=(block_deserialize consensus_validate fuzz_blockchain_serialize snapshot_deserialize transaction_deserialize)

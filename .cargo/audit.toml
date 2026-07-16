@@ -1,0 +1,19 @@
+# .cargo/audit.toml — cargo-audit yapılandırması (ADIM 8.1 / Faz 1)
+#
+# Cargo.lock'taki BİLİNEN danışmaların kanıtlı skip-listesi. cargo-deny
+# tarafındaki karşılık ve tam kanıt zinciri: deny.toml [advisories]
+# bölümü. Burada listelenmeyen herhangi bir YENİ CVE job'u FAIL eder
+# (kural: unmaintained yalnız uyarır, vulnerability fail eder).
+
+[advisories]
+ignore = [
+    # RUSTSEC-2026-0118 — NSEC3 DoS; yalnızca DNSSEC doğrulayan
+    # DnssecDnsHandle yolunda tetiklenir. libp2p-mdns DNSSEC doğrulamaz,
+    # kod tabanında DnssecDnsHandle/dnssec 0 eşleşme → ulaşılamaz.
+    # Yükseltme libp2p 0.55 hattında imkânsız (libp2p-mdns ^0.25.0-alpha.4).
+    "RUSTSEC-2026-0118",
+    # RUSTSEC-2026-0119 — O(n²) name-compression DoS; saldırganın aynı L2
+    # multicast domain'inde olması gerekir. Mainnet/Testnet config'inde
+    # mdns_enabled=false; etki LAN-komşuluğu DoS ile sınırlı.
+    "RUSTSEC-2026-0119",
+]

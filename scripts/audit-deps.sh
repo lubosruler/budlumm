@@ -55,7 +55,12 @@ TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     echo "## Ham çıktı"
     echo ""
     echo "\`\`\`"
-    cargo audit --deny warnings 2>&1 | head -50 || true
+    # Not: çıktıyı doğrudan `| head`e vermek EPIPE'de cargo-audit'i abort
+    # ettirebiliyor (CI'da "core dumped" gürültüsü). Önce dosyaya yaz.
+    RAW_OUT="$(mktemp)"
+    cargo audit --deny warnings > "$RAW_OUT" 2>&1 || true
+    head -50 "$RAW_OUT" || true
+    rm -f "$RAW_OUT"
     echo "\`\`\`"
     echo ""
     echo "## Kabul kriteri"
