@@ -2114,7 +2114,6 @@ mod tests {
     /// This isolates whether InvalidProof is due to row count (64 vs small) — we still do 64 rounds,
     /// but 63 siblings are zero, so Poseidon chain is simple.
     #[test]
-    #[ignore = "Phase 4 Q15: 1-depth still InvalidProof, matrix chain OK → aux CTL suspect"]
     fn proves_verify_merkle_valid_1_depth() {
         let program = vec![
             inst(Opcode::VerifyMerkle, 1, 2, 3, 256),

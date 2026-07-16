@@ -1211,14 +1211,22 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
             let s_prog_cur: AB::ExprEF = perm_cur[2].into();
             let s_prog_nxt: AB::ExprEF = perm_nxt[2].into();
             let cpu_active: AB::Expr = cur[COL_CPU_ACTIVE].into();
-            let cpu_active_ext: AB::ExprEF = cpu_active.into();
+            // Phase 8.10 (ARENA3 aux CTL fix): VerifyMerkle expansion rows
+            // reuse the same (pc, raw_inst) tuple as the original step.
+            // Without this gate, 65 CPU rows (1 original + 64 expansion)
+            // map to 1 preprocessed row → Program CTL LogUp multiplicity
+            // mismatch → InvalidProof. Register LogUp already correctly
+            // skips expansion rows; Program CTL must do the same.
+            let is_expand: AB::Expr = cur[COL_VM_MERKLE_IS_EXPAND].into();
+            let prog_active: AB::Expr = cpu_active.clone() * (one.clone() - is_expand);
+            let prog_active_ext: AB::ExprEF = prog_active.into();
             let pre_active_ext: AB::ExprEF = pre_active.into();
 
             builder.when_transition().assert_zero_ext(
                 (s_prog_nxt.clone() - s_prog_cur.clone())
                     * diff_cpu_prog.clone()
                     * diff_pre_prog.clone()
-                    - (cpu_active_ext * diff_pre_prog - pre_active_ext * diff_cpu_prog),
+                    - (prog_active_ext * diff_pre_prog - pre_active_ext * diff_cpu_prog),
             );
             builder.when_first_row().assert_zero_ext(s_prog_cur.clone());
             builder.when_last_row().assert_zero_ext(s_prog_cur);
