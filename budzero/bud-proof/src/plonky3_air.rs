@@ -1121,7 +1121,7 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
             // exclude VerifyMerkle expansion rows (same multiplicity mismatch
             // as Program CTL). The trace_matrix correctly skips register events
             // for expansion rows, so the CPU side must match.
-            let is_expand_ext_reg: AB::ExprEF = cur[COL_VM_MERKLE_IS_EXPAND].into();
+            let is_expand_ext_reg: AB::ExprEF = cur[COL_VM_MERKLE_IS_EXPAND].into().into();
             let is_reg_active: AB::ExprEF =
                 is_real_op_ext.clone() * (AB::ExprEF::ONE - is_expand_ext_reg);
             builder.when_transition().assert_zero_ext(
