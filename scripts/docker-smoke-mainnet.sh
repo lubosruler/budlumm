@@ -44,7 +44,7 @@ done
 if [[ "$MAINNET_OK" -eq 0 ]]; then
   echo "[docker-smoke] Mainnet RPC timeout (likely HSM/PKCS#11 missing, expected), trying devnet fallback per Q12"
   docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
-  docker run -d --name "$CONTAINER_NAME" -p "$RPC_PORT:$RPC_PORT" "$IMAGE_NAME" --network devnet --port "$RPC_PORT" --rpc-public-listener "0.0.0.0:$RPC_PORT" 2>/dev/null || \
+  docker run -d --name "$CONTAINER_NAME" -p "$RPC_PORT:$RPC_PORT" "$IMAGE_NAME" --network devnet --port 0 --rpc-public-listener "0.0.0.0:$RPC_PORT" 2>/dev/null || \
   docker run -d --name "$CONTAINER_NAME" -p "$RPC_PORT:$RPC_PORT" "$IMAGE_NAME" --network devnet --rpc-public-listener "0.0.0.0:$RPC_PORT"
   echo "[docker-smoke] Waiting for RPC (devnet fallback, 60s)..."
   for i in $(seq 1 60); do
