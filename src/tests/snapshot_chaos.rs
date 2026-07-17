@@ -314,12 +314,16 @@ mod tests {
         assert_eq!(second.balances.values().next().copied(), Some(700));
     }
 
-    // ── 6) Boot entegrasyonu (GAP): bozuk-latest sessiz rollback + self-heal ─
-    // blockchain.rs boot'u load_latest_snapshot_v2 Err'sini `if let Ok(..)`
-    // ile SEFERLİK yutar: eski-geçerli v2 diskte dururken state genesis'e
-    // döner. Dosya karantinaya gittiğinden İKİNCİ boot kendini iyileştirir.
+    // ── 6) Boot entegrasyonu (GAP): bozuk-latest → sessiz, KALICI rollback ─
+    // blockchain.rs boot zinciri (KANITLI DAVRANIŞ):
+    //  a) load_latest_snapshot_v2 Err'i `if let Ok(..)` ile yutulur;
+    //  b) v1 fallback probe'u aynı dizinde kalan geçerli V2 dosyasını v1-hash
+    //     uyuşmazlığından KARANTİNALAR (GAP-4 çapraz-şema, canlı);
+    //  c) sonuç: TEK yarım dosya + TEK boot = İKİ snapshot da imha,
+    //     state genesis'e döner; self-heal YOK (pm-seviyesindeki self-heal
+    //     sadece aynı-API tekrar çağrısında geçerli — boot o yolu yürümez).
     #[test]
-    fn test_boot_corrupt_latest_silent_rollback_then_self_heal() {
+    fn test_boot_corrupt_latest_permanent_rollback_gap() {
         let dir = tempdir().expect("tempdir");
         let db_path = dir.path().join("boot.db");
         let db_str = db_path.to_str().unwrap();
@@ -366,7 +370,8 @@ mod tests {
             std::fs::write(&file_b, &raw[..raw.len() / 2]).expect("truncate B");
         }
 
-        // BOOT 1: bozuk-latest Err'i yutulur → state genesis'e döner (GAP).
+        // BOOT 1 (GAP): bozuk-B Err'i yutulur; v1 probe'u geçerli A dosyasını
+        // da karantinalar → state genesis'e döner (sessiz rollback).
         {
             let storage = open_storage_bounded(db_str);
             let pm = PruningManager::new(10, 10, snap_dir_of(&dir));
@@ -379,7 +384,7 @@ mod tests {
             assert_eq!(
                 bc.state.get_balance(&alice),
                 0,
-                "GAP: bozuk-latest varken eski-geçerli v2 denenmez — sessiz rollback"
+                "GAP: bozuk-latest varken eski-gecerli v2 denenmez (sessiz rollback)"
             );
             assert!(
                 dir.path()
@@ -388,9 +393,17 @@ mod tests {
                     .exists(),
                 "bozuk B karantinada olmali"
             );
+            assert!(
+                dir.path()
+                    .join("snaps")
+                    .join(format!("snapshot_{snap_height_a}.json.corrupted"))
+                    .exists(),
+                "GAP-4 canli: gecerli A da v1 probe'unda karantinalandi"
+            );
         }
 
-        // BOOT 2 (self-heal): karantina sonrası latest=snapshot A → state iyileşir.
+        // BOOT 2 (GAP): self-heal YOK — iki snapshot da imha edildi, zincir
+        // replay'de alice tx'i olmadığından state kalıcı olarak genesis'te.
         {
             let storage = open_storage_bounded(db_str);
             let pm = PruningManager::new(10, 10, snap_dir_of(&dir));
@@ -402,8 +415,8 @@ mod tests {
             );
             assert_eq!(
                 bc.state.get_balance(&alice),
-                700,
-                "ikinci boot eski-geçerli snapshot'tan iyileşir"
+                0,
+                "GAP: kalici kayip — self-heal yok (dokuman pin)"
             );
         }
     }
@@ -451,10 +464,13 @@ mod tests {
 
             assert_eq!(bc.last_block().index, tip3_index, "tip dayanıklı");
             assert_eq!(bc.last_block().hash, tip3_hash, "tip hash dayanıklı");
+            // Bilinen semantik (disaster_recovery.rs notu): doğrudan state
+            // mutasyonları (add_balance) block-replay dışı olduğundan restart'ta
+            // GERİ GELMEZ; yalnızca blok-seviyesi state dayanıklıdır.
             assert_eq!(
                 bc.state.get_balance(&alice),
-                50_000,
-                "state reopen'da dayanıklı"
+                0,
+                "manuel mutasyon replay-disidir (belgelenmis semantik)"
             );
 
             let (b4, _) = bc.produce_block(zero).expect("resume uretimi");

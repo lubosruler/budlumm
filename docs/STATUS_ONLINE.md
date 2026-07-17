@@ -483,3 +483,14 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 **4) Dependabot dalga-2:** security-update açılınca sürüm dalgası da geldi (#35-45 açık; #46 = p3-challenger 0.5.3, alert #12 HIGH kapatıcı — kapsam dışı, kullanıcı kararına sunulacak). Dinamik "Dependabot | Update" check'leri main SHA'larında kozmetik kırmızı bırakıyor (zorunlu kontrol değil; hickory/gossipsub/yamux/lru zinciri = bilinen libp2p-stack migrasyon borcu).
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+### [2026-07-19 03:05 UTC+3] ARENA3 — KAYIT DÜZELTMESİ: boot "self-heal" metni + T6/T7 beklenti onarımı (self-review yakaladı)
+
+**Durum:** bu push (CI yargılar) — `e48d8aa`'yı düzeltir.
+**Özeleştiri (kural: adım sonrası kendini sorgula):** Push sonrası boot kodunu yeniden okuyunca bir önceki girdinin GAP-3 satırının "ikinci boot self-heal" iddiasının BOOT yolu için YANLIŞ olduğunu yakaladım:
+1. Boot'ta v2 Err yutulduktan sonra v1 fallback probe'u ÇALIŞIR → dizinde kalan geçerli V2 dosyasını (A) v1-hash uyuşmazlığından quarantine'ler (GAP-4 boot içinde CANLI). Dolayısıyla tek yarım-dosya + tek boot = İKİ snapshot da imha → 2. boot'ta yükleyecek snapshot YOK → **state kaybı KALICI** (self-heal yalnız pm-seviyesi aynı-API tekrarında var; boot o yolu yürümez). T6 beklentisi buna çevrildi ve yeniden adlandırıldı: `test_boot_corrupt_latest_permanent_rollback_gap`.
+2. T7'deki bakiye-dayanıklılığı assert'i disaster_recovery.rs'nin kendi belgelenmiş semantiğiyle çelişiyordu ("direct state changes don't survive restart — only block-level state persists") → beklenti 0'a çevrilip belgelenmiş-semantik pinine dönüştürüldü.
+- Düzeltilen davranış tahminleri pm-seviyesi T4/T5 self-heal pinlerini etkilemez (aynı-API içi, geçerli).
+- Bulgu ciddiyeti YÜKSELDİ: "bir boot döngülük degradasyon" değil; "tek bozuk dosya + tek boot = tüm snapshot envanterinin sessiz imhası + kalıcı state rollback". Fail-loud + karantina-öncesi schema-sniffing + imza önerileri GAP-1..4 paketiyle kullanıcı/ARENA2 kararına hazır.
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
