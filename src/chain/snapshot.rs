@@ -755,4 +755,29 @@ mod tests {
         assert!(!report.migrated);
         assert!(report.notes[0].contains("already at current schema"));
     }
+
+    #[test]
+    fn test_snapshot_v2_migration_roundtrip_with_tokenomics_burn() {
+        let mut account_state = AccountState::new();
+        account_state.tokenomics.block_reward = 12345;
+        let snapshot = StateSnapshotV2::from_state(
+            &account_state,
+            StateSnapshotV2Params {
+                height: 42,
+                block_hash: "hash42".into(),
+                genesis_hash: "genesis42".into(),
+                chain_id: 1,
+                finalized_height: 40,
+                finalized_hash: "final40".into(),
+                finality_certificates: vec![],
+            },
+        );
+
+        let bytes = snapshot.to_bytes();
+        let restored = StateSnapshotV2::from_bytes(&bytes).unwrap();
+        assert_eq!(restored.height, 42);
+        assert_eq!(restored.block_reward, 12345);
+        assert!(restored.tokenomics_burn.is_some());
+        assert!(restored.verify());
+    }
 }
