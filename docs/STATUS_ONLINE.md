@@ -147,3 +147,19 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 - `docs/STATUS_ONLINE.md` (karar kayıtları).
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+---
+
+## [2026-07-17 17:10 UTC+3] ARENA3 — Anket genişletme (120 soru) + dependabot 7/7 CLOSE + 76981f6 kırılması kök-neden onarımı
+
+**Anket (c8b97d8, Ayaz talimatı):** `BUDLUM_100_KARAR_ANKETI` → 120 soru. Orijinal 100 soru gövdesi BİREBİR korundu (kanıt: kaldırılan 102 satır = 100 kısa non-teknik + başlık + amaç; başka hiçbir satır değişmedi). Tüm non-teknik açıklamalar uzun/jargonsuz/sonuç-odaklı (otomatik jargon taraması TEMİZ). Q101-Q120 = gerçek boşluklar: dependabot göçü (Q103-104), köprü correlation (Q101, d1c89a3 deneyiminden), double-lock (Q102, 18bf437), R1 zero-caller (Q107), F4 replay-parity (Q114), arşiv düğümü (Q115), devnet taşınması (Q116), lisans (Q118), ceremony-imha (Q119), no-rollback (Q120). Üretim tekrarlanabilir: `scripts/anket_expand_*.py`.
+
+**Dependabot (kullanıcı onayı: close_all):** 7/7 PR (#20,#21,#22,#23,#24,#26,#27) kanıtlı yorumla KAPATILDI (açık PR sayısı: 0). Gerekçe: mainnet genesis öncesi bağımlılık dondurma; p3 14-paket koordine göçü + bincode 3 format-versiyon testi mainnet sonrası. Açık kalan tek risk: dependabot yeni major PR'ları açmaya devam edebilir → config ile major-bump'ları kapatma önerisi (Q103 çıktısı).
+
+**76981f6 kırılması onarımı (60c95d2):** Budlum Core + Coverage + B.U.D. E2E + BudZero kırmızıydı (anket push'umdan bağımsız, 76981f6'da zaten kırmızı). İki kök: (1) 16 rustfmt hunk'ı CI-log'dan birebir uygulandı (sharding/blockchain/chain_actor/node/api/server); (2) `produce_block → Option<(Block, Vec<[u8;32]>)>` tuple API değişimi 3 test dosyasında E0609 → zkvm.rs, permissionless.rs (×2), integration.rs destructure'a çevrildi. Davranış değişikliği yok. CI sonucu bekleniyor.
+
+**Not:** `.git/config` snapshot'a dahil değil → yeni oturumda origin remote'u manuel yeniden ekledim (token'lı URL + user.name/email). Kalıcı çözüm önerisi: oturum açılış kontrol listesine "remote var mı" maddesi.
+
+**Sıradaki:** chaos snapshot-corruption mühürü (kullanıcı onaylı q_next_work=chaos_snap) — CI yeşil görüldükten sonra.
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
