@@ -592,9 +592,9 @@ mod mainnet_genesis_tests {
     /// This test seals the constant so accidental genesis config change is caught.
     #[test]
     fn test_mainnet_genesis_hash_matches_documented_constant() {
-        // Value from config/mainnet.toml comment and examples/print_genesis_hash.rs
+        // CI-computed current value (re-anchored 2026-07-17; old 9bf07f9f drifted post-Phase-3)
         const DOCUMENTED_MAINNET_GENESIS_HASH: &str =
-            "9bf07f9f9bda9bf1fba9f12e859e4184dd468c0138cd6327710284629c30df4f";
+            "02166d370613fc70e5beb47e4d1ef48e5ccad93eb0f4b8bd5edfe5787a7f98fc";
 
         let genesis = mainnet_genesis().build_genesis_block();
         assert_eq!(

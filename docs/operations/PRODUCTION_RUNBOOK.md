@@ -121,7 +121,7 @@ hash (enforced by `test_mainnet_genesis_json_matches_code` and siblings).
 | `timestamp` (ms) | `1735689600000` (TBD at ceremony; ARENA1 mainnet_genesis) |
 | `block_reward` | `25` |
 | Design | Permissionless validators (empty set) + full  tokenomics (100M) |
-| Genesis block hash | `9bf07f9f9bda9bf1fba9f12e859e4184dd468c0138cd6327710284629c30df4f` |
+| Genesis block hash | `02166d370613fc70e5beb47e4d1ef48e5ccad93eb0f4b8bd5edfe5787a7f98fc` |
 | `state_root` | `03658f40bcddc8d3ee5bf0c3208a00d7b10fb6a4f7a17ccd755906c958fbe3ce` |
 | `validator_set_hash` | `a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a` |
 
@@ -135,7 +135,7 @@ cargo test --lib chain::genesis::tests::test_mainnet_genesis_json_matches_code
 | Network | Design | Permissionless validators (empty set) + full  tokenomics (100M) |
 | Genesis block hash |
 |---------|-------------------|
-| Mainnet | `9bf07f9f9bda9bf1fba9f12e859e4184dd468c0138cd6327710284629c30df4f` |
+| Mainnet | `02166d370613fc70e5beb47e4d1ef48e5ccad93eb0f4b8bd5edfe5787a7f98fc` |
 | Testnet | `b2e2135d77f963d5d58b58b86059a6299fd5c76ec8fef2a0de7385cc39a1b8c4` |
 | Devnet | `841deadf6bf3f5b41cdc973fd8c8f0d012af9ecff752b3e394a1d04addd0bf6c` |
 
