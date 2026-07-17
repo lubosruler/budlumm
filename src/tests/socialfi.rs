@@ -127,8 +127,10 @@ async fn boost_share_distributes_by_deal_fee_weight_with_dust_to_first() {
     let bob_kp = KeyPair::generate().unwrap();
     let alice = Address::from(alice_kp.public_key_bytes());
     let bob = Address::from(bob_kp.public_key_bytes());
-    let op1 = Address::from([0x01; 32]);
-    let op2 = Address::from([0x02; 32]);
+    // NOT: devnet_genesis'te [0x01;32] 1e9 alokasyonlu, [0x02;32] validator'dur
+    // (genesis.rs:284). Zincir testleri bu özel adreslerden uzak durmalı.
+    let op1 = Address::from([0x51; 32]);
+    let op2 = Address::from([0x52; 32]);
     bc.state.add_balance(&alice, 1000);
     bc.state.add_balance(&bob, 1_000_000);
 
@@ -142,12 +144,16 @@ async fn boost_share_distributes_by_deal_fee_weight_with_dust_to_first() {
 
     // NFT id'si registry'den okunur (id sayacı varsayımı yok).
     let nft_id = *bc.state.nft_registry.nfts.keys().next().unwrap();
+
+    // Dağıtım delta olarak kilitlenir — genesis alokasyonu değişse bile sağlam.
+    let op1_pre = bc.state.get_balance(&op1);
+    let op2_pre = bc.state.get_balance(&op2);
     boost_nft(&mut bc, &bob_kp, nft_id, BOOST_AMOUNT);
 
     // bud_share = 10: op1 = 10*100/400 = 2, op2 = 10*300/400 = 7, dağıtılan 9.
     // dust 1 ilk deal'in operatörüne (deal_id sırası deterministik) -> op1 = 3.
-    assert_eq!(bc.state.get_balance(&op1), 3);
-    assert_eq!(bc.state.get_balance(&op2), 7);
+    assert_eq!(bc.state.get_balance(&op1), op1_pre + 3);
+    assert_eq!(bc.state.get_balance(&op2), op2_pre + 7);
     // %16 creator
     assert_eq!(bc.state.get_balance(&alice), 999 + 40);
     // booster: 1_000_000 - 250 (boost) - 1 (fee)
