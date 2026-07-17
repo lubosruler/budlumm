@@ -1858,11 +1858,21 @@ impl Blockchain {
             MessageKind::BridgeBurn => {
                 // The burn message is a fresh id CORRELATED to the original
                 // lock message; the transfer lives under the lock message id
+                // and unlock must reference the TRANSFER's own source domain
                 // (same resolution as the direct verified-burn path).
                 let transfer_id = message.correlation_id.unwrap_or(message.message_id);
+                let lock_source_domain = self
+                    .state
+                    .bridge_state
+                    .get_transfer(&transfer_id)
+                    .ok_or_else(|| "Unknown bridge transfer".to_string())?
+                    .source_domain;
+                if lock_source_domain != message.target_domain {
+                    return Err("Relayed burn target domain does not match lock source".into());
+                }
                 self.state
                     .bridge_state
-                    .unlock(transfer_id, source_domain)
+                    .unlock(transfer_id, lock_source_domain)
                     .map_err(|e| e.to_string())?;
                 let transfer = self
                     .state
