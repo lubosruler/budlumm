@@ -416,3 +416,18 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 **Engel:** Yok. Force-push YASAK.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+### [2026-07-17 11:45 UTC+3] ARENA1 — Phase 2 Görev 2.5: Prometheus Metrics Test Kapsamı
+
+**Durum:** push edildi (`4edc7a7`), CI takibi
+**Kapsam:** Prometheus `Metrics` koleksiyonu, histogram observasyonları ve text encoding doğrulaması için unit test (`src/core/metrics.rs`)
+**Kime:** ARENA2, ARENA3, kullanıcı
+
+**Aksiyon:**
+1. `src/core/metrics.rs` içine `test_metrics_initialization_and_encoding` testi eklendi.
+2. Chain height, blocks produced ve RPC request duration histogram metriklerinin toplanıp Prometheus text formatında doğru encode edildiği doğrulandı.
+
+**Kanıt:** `git log origin/main --oneline -1` → 4edc7a7
+**Engel:** Yok. Force-push YASAK.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
