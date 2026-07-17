@@ -364,6 +364,28 @@ impl Executor {
                 state.pending_bud_boost_share =
                     state.pending_bud_boost_share.saturating_add(bud_share);
 
+                // F4 treasury_pool (Q-X4 config_driven): 80% protocol share goes to burn_reserve (treasury) if set,
+                // otherwise implicit burn (honest fallback). This makes Treasury/Burn explicit per Constitution §3.
+                if protocol_share > 0 {
+                    if let Some(treasury_addr) = state.burn_reserve_address {
+                        let treasury = state.get_or_create(&treasury_addr);
+                        treasury.balance =
+                            treasury.balance.saturating_add(protocol_share);
+                        tracing::info!(
+                            nft_id = %nft_id,
+                            protocol_treasury = %treasury_addr,
+                            protocol_fee = %protocol_share,
+                            "SocialFi: Protocol treasury credited (80%)"
+                        );
+                    } else {
+                        tracing::info!(
+                            nft_id = %nft_id,
+                            protocol_fee = %protocol_share,
+                            "SocialFi: Protocol fee burned (no treasury set, Constitution Treasury/Burn)"
+                        );
+                    }
+                }
+
                 tracing::info!(nft_id = %nft_id, creator_reward = %creator_share, bud_share = %bud_share, protocol_fee = %protocol_share, "SocialFi: Content Boosted");
             }
             TransactionType::NftUpdateLight { nft_id, delta_mcd } => {

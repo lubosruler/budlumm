@@ -234,6 +234,9 @@ pub struct NodeConfig {
     #[arg(long)]
     pub features_pruning: bool,
 
+    #[arg(long)]
+    pub features_verify_merkle: bool,
+
     // Storage Node Config (B.U.D. Faz 3)
     #[arg(long, default_value = "true")]
     pub storage_enabled: bool,
@@ -319,6 +322,7 @@ impl Default for NodeConfig {
             features_governance: false,
             features_zkvm_contracts: false,
             features_pruning: false,
+            features_verify_merkle: true,
             storage_enabled: true,
             storage_replication_factor: 3,
             storage_mandatory_sharding: true,
@@ -442,6 +446,10 @@ pub struct FeaturesSection {
     pub governance: Option<bool>,
     pub zkvm_contracts: Option<bool>,
     pub pruning: Option<bool>,
+    /// F2 config-driven (ARENAX Q-X2): VerifyMerkle staged rollout gate controlled via config
+    /// true = gate open (MainnetActivation::full()), false = gate closed (default reject)
+    /// Default: true (gate opened in Phase 9, 4e2b920)
+    pub verify_merkle: Option<bool>,
 }
 
 #[derive(Debug, serde::Deserialize, Default, Clone)]
@@ -713,6 +721,9 @@ impl NodeConfig {
             }
             if let Some(pruning) = features.pruning {
                 self.features_pruning = pruning;
+            }
+            if let Some(vm) = features.verify_merkle {
+                self.features_verify_merkle = vm;
             }
         }
 

@@ -455,6 +455,20 @@ async fn main() {
         .and_then(|s| load_signing_key(s))
         .map(|key| Address::from(key.public_key_bytes()));
 
+    // F2 config-driven: set env var for VM VerifyMerkle gate from TOML [features] verify_merkle
+    std::env::set_var(
+        "BUDLUM_VERIFY_MERKLE",
+        config.features_verify_merkle.to_string(),
+    );
+    println!(
+        "   VerifyMerkle: {} (config-driven F2, MainnetActivation)",
+        if config.features_verify_merkle {
+            "enabled (full)"
+        } else {
+            "disabled (staged rollout)"
+        }
+    );
+
     println!("Budlum Node - v0.2.0 (Framework Edition)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("Configuration:");
@@ -482,23 +496,19 @@ async fn main() {
             );
             std::process::exit(1);
         }
-        // F3: wire vendor mechanism IDs from CLI config to signer.
-        let bls_mech = config.pkcs11_bls_mechanism.clone();
-        let pq_mech = config.pkcs11_pq_mechanism.clone();
         match budlum_core::crypto::pkcs11::Pkcs11Signer::new(
             module_path.to_string(),
             slot_id,
             pin_env.to_string(),
         )
-        .map(|s| s.with_vendor_mechanisms(bls_mech, pq_mech))
+        .map(|s| {
+            s.with_vendor_mechanisms(
+                config.pkcs11_bls_mechanism.clone(),
+                config.pkcs11_pq_mechanism.clone(),
+            )
+        })
         {
             Ok(signer) => {
-                // F3 fix (ARENAX): vendor-native BLS/PQ mechanism IDs previously parsed but never wired to signer.
-                // Wire config values via with_vendor_mechanisms() so hardware-native signing path is active when configured.
-                let signer = signer.with_vendor_mechanisms(
-                    config.pkcs11_bls_mechanism.clone(),
-                    config.pkcs11_pq_mechanism.clone(),
-                );
                 if config.network == budlum_core::core::chain_config::Network::Mainnet
                     && config.role == "validator"
                     && (!signer.has_bls_key() || !signer.has_pq_key())

@@ -66,3 +66,5 @@ backend = "pkcs11"
 governance = false
 zkvm_contracts = false
 pruning = false
+# F2 config-driven: VerifyMerkle gate (true = open via MainnetActivation::full(), false = closed)
+verify_merkle = true
