@@ -173,7 +173,6 @@ impl Pkcs11Signer {
         }
     }
 
-
     /// Store a BLS keypair into the HSM as a data object.
     pub fn store_bls_key(&self, keypair: &BlsKeypair) -> Result<(), CryptoError> {
         let guard = self
@@ -323,7 +322,10 @@ impl ConsensusSigner for Pkcs11Signer {
         // cryptoki 0.6 does not support Mechanism::from(MechanismType)
         // for custom vendor IDs; hardware-native path deferred to upgrade.
         if self.bls_mechanism.is_some() {
-            tracing::debug!("BLS vendor mechanism 0x{:08X} configured (cryptoki 0.6 — sw fallback)", self.bls_mechanism.unwrap());
+            tracing::debug!(
+                "BLS vendor mechanism 0x{:08X} configured (cryptoki 0.6 — sw fallback)",
+                self.bls_mechanism.unwrap()
+            );
         }
         // Software fallback
         let guard = self
@@ -340,7 +342,10 @@ impl ConsensusSigner for Pkcs11Signer {
         // Phase 9: vendor-native PQ via configured mechanism.
         // cryptoki 0.6 limitation — deferred to upgrade.
         if self.pq_mechanism.is_some() {
-            tracing::debug!("PQ vendor mechanism 0x{:08X} configured (cryptoki 0.6 — sw fallback)", self.pq_mechanism.unwrap());
+            tracing::debug!(
+                "PQ vendor mechanism 0x{:08X} configured (cryptoki 0.6 — sw fallback)",
+                self.pq_mechanism.unwrap()
+            );
         }
         // Software fallback
         let guard = self
