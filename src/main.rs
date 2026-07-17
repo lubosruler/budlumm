@@ -507,7 +507,8 @@ async fn main() {
                 config.pkcs11_pq_mechanism.clone(),
             )
         }) {
-            Ok(signer) => {                if config.network == budlum_core::core::chain_config::Network::Mainnet
+            Ok(signer) => {
+                if config.network == budlum_core::core::chain_config::Network::Mainnet
                     && config.role == "validator"
                     && (!signer.has_bls_key() || !signer.has_pq_key())
                 {
