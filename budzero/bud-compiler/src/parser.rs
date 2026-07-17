@@ -10,15 +10,32 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(source: &'a str) -> Self {
-        let tokens = Token::lexer(source)
-            .map(|t| t.unwrap_or(Token::Error))
-            .collect();
-        Self {
+    pub fn new(source: &'a str) -> Result<Self, CompileError> {
+        let mut lexer = Token::lexer(source);
+        let mut tokens = Vec::new();
+        while let Some(res) = lexer.next() {
+            match res {
+                Ok(tok) => tokens.push(tok),
+                Err(()) => {
+                    let span = lexer.span();
+                    let line = source[..span.start].lines().count().saturating_add(1);
+                    let snippet = if span.end <= source.len() {
+                        &source[span.start..span.end]
+                    } else {
+                        &source[span.start..]
+                    };
+                    return Err(CompileError::LexerError(format!(
+                        "unexpected token at line {}: `{}` (bytes {}..{})",
+                        line, snippet, span.start, span.end
+                    )));
+                }
+            }
+        }
+        Ok(Self {
             tokens,
             pos: 0,
             _source: source,
-        }
+        })
     }
 
     fn peek(&self) -> &Token {

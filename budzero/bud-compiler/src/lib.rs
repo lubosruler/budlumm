@@ -39,7 +39,7 @@ impl std::error::Error for CompileError {}
 pub fn compile(source: &str, profile: IsaProfile) -> Result<Vec<u64>, CompileError> {
     debug!(profile = ?profile, source_len = source.len(), "Starting compilation");
 
-    let mut parser = parser::Parser::new(source);
+    let mut parser = parser::Parser::new(source)?;
     let contract = parser.parse_contract()?;
     debug!(functions = contract.functions.len(), "Parsing complete");
 
@@ -154,6 +154,28 @@ mod tests {
         let res = compile(source, IsaProfile::Production);
         assert!(res.is_err());
         assert!(matches!(res.unwrap_err(), CompileError::ParserError(_)));
+    }
+
+    #[test]
+    fn test_lexer_error_propagation() {
+        // Invalid characters (`@`, `~`) must surface as LexerError,
+        // not be silently replaced by Token::Error.
+        let source = r#"
+            contract LexerFail {
+                pub fn main() {
+                    let x = @invalid;
+                }
+            }
+        "#;
+
+        let res = compile(source, IsaProfile::Production);
+        assert!(res.is_err(), "invalid token must fail compilation");
+        let err = res.unwrap_err();
+        assert!(
+            matches!(err, CompileError::LexerError(_)),
+            "expected LexerError, got {:?}",
+            err
+        );
     }
 
     #[test]
