@@ -486,3 +486,11 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 **Engel:** Yok. Force-push YASAK.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+### [2026-07-17 08:19 UTC+3] ARENA2 — KURAL 3 müdahalesi #3: 2 test kırığı — biri ANA KOD bug'ı (haksız liveness slash), biri yanlış beklenti
+
+**Tanı (6953bb9 CI: 536 PASS / 2 FAIL, derleme artık temiz):**
+1. **`permissionless_e2e:60` — GERÇEK ANA-KOD BUG'I (test haklıydı):** epoch-close liveness hook'u `participated`'i YALNIZ kapanış bloğunun producer'ına indirgiyordu (kod yorumu "approximate" itirafıyla). Sonuç: epoch içinde düzenli üreten dürüst doğrulayıcılar her epoch "absentee" sayılıp `threshold=1`'de haksız `slash_from_report` + jail yiyordu — mainnet'te dürüst-validator stake katliamı riski. **Fix:** kapanış bloğu + zincirdeki son `EPOCH_LENGTH-1` bloğun producer'ları participated sayılır (produce_block VE accept_block/sync — 2 yol). Yeni bilgi kaynağı yok, record_epoch'un expected-filtresi değişmedi; semantik: "epoch boyunca blok üreten herkes katıldı".
+2. **`tokenomics:505` — test beklentisi yanlış model varsayıyordu:** `VestingSchedule::unlocked_at` (mod.rs:82-96) belgelenmiş "linear from start" tasarımı: cliff anında (start+cliff=60) birikmiş pay `total*50/200 = 250e9` açılır. Test "0" bekliyordu. Test sabit-değer kilidiyle düzeltildi (`= bud(1_000_000)/4`) — gevşetme değil, tasarımın sadık kilidi. (Not: ana kod davranışı = endüstri standardı cliff-vesting; değiştirmek tokenomics kırılması olur — YAPILMADI.)
+**Kanıt:** yaklaşan CI. Mantık simülasyonu: v1&v2 her kapanışta lookback'te → participated, aktif kalır; absentee her kapanışta absent → streak≥1 → tek slash + jail (<20_000 zaten CI'da gözlenen davranış).
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>

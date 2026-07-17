@@ -501,8 +501,11 @@ mod tests {
         assert_eq!(v.unlocked_at(5), 0);
         // During cliff (start + cliff = 60)
         assert_eq!(v.unlocked_at(59), 0);
-        // At start of unlock (60)
-        assert_eq!(v.unlocked_at(60), 0);
+        // Cliff aninda (start+cliff=60): linear-from-start tasarimi
+        // (bkz. unlocked_at doc) — birikmis pay total*50/200 acilir.
+        // (ARENA2 fix 2026-07-17: onceki "0" beklentisi yanlis model
+        // varsayimiydi; mod.rs:82-96 belgelenmis davranis kilidi.)
+        assert_eq!(v.unlocked_at(60), bud(1_000_000) / 4);
         // Mid duration
         assert!(v.unlocked_at(160) > 0);
         // After full duration (10 + 200 = 210)

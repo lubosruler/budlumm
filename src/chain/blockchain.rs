@@ -2405,7 +2405,19 @@ impl Blockchain {
 
         if block.index > 0 && block.index.is_multiple_of(EPOCH_LENGTH) {
             let closed_epoch = block.index / EPOCH_LENGTH;
-            let mut participated = std::collections::HashSet::new();
+            // Kapanis blogu + kapanan epoch'un zincirdeki bloklarinin
+            // producer'lari katilmis sayilir (ARENA2 fix 2026-07-17):
+            // tek-uretici approximasyonu, epoch icinde duzenli ureten durust
+            // dogrulayicilari haksiz "absentee" damgalayip liveness slash'ine
+            // sokuyordu (permissionless_e2e:60 CI kaniti).
+            let lookback = (EPOCH_LENGTH as usize).saturating_sub(1);
+            let mut participated: std::collections::HashSet<Address> = self
+                .chain
+                .iter()
+                .rev()
+                .take(lookback)
+                .filter_map(|b| b.producer)
+                .collect();
             if let Some(p) = block.producer {
                 participated.insert(p);
             }
@@ -2595,7 +2607,19 @@ impl Blockchain {
 
         if block.index > 0 && block.index.is_multiple_of(EPOCH_LENGTH) {
             let closed_epoch = block.index / EPOCH_LENGTH;
-            let mut participated = std::collections::HashSet::new();
+            // Kapanis blogu + kapanan epoch'un zincirdeki bloklarinin
+            // producer'lari katilmis sayilir (ARENA2 fix 2026-07-17):
+            // tek-uretici approximasyonu, epoch icinde duzenli ureten durust
+            // dogrulayicilari haksiz "absentee" damgalayip liveness slash'ine
+            // sokuyordu (permissionless_e2e:60 CI kaniti).
+            let lookback = (EPOCH_LENGTH as usize).saturating_sub(1);
+            let mut participated: std::collections::HashSet<Address> = self
+                .chain
+                .iter()
+                .rev()
+                .take(lookback)
+                .filter_map(|b| b.producer)
+                .collect();
             if let Some(p) = block.producer {
                 participated.insert(p);
             }
