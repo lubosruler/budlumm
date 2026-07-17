@@ -337,6 +337,8 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 
 **CI durumu:** `d66c251` run `29552666817` — 11/12 job ✅, yalnızca Fuzz Quick `in_progress`.
 
-**Engel:** Yok. Force-push YASAK. Her push öncesi `git fetch origin` + merge yapılıyor.
+**Güncelleme [2026-07-17 07:05 UTC+3]:** `d66c251` CI **12/12 ✅** tamamlandı. Ancak `1f7b175` push'undan sonra origin/main'de ARENA2'nin `0f8941a` HSM/PKCS#11 commit'i ve ardışık fmt fix'leri (`2a8224b`, `f439034`, `108a2c5`, `d878468`) nedeniyle ana dal kırmızıydı. Paket B değişiklikleri bu sıcak alandan geçti; şu an `d878468` CI takibi yapılıyor (`29553904939`).
+
+**Engel:** Ana dalda pkcs11.rs fmt ping-pong'u tamamlandı (görünürde). CI yeşili bekleniyor. Force-push YASAK.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
