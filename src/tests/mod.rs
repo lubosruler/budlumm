@@ -67,3 +67,11 @@ pub mod settlement_prod;
 pub mod tokenomics;
 #[cfg(test)]
 pub mod zkvm;
+// Phase 9 / F4 mühürü (ARENA3, 2026-07-17): SocialFi boost %4 B.U.D. operatör
+// dağıtımı + remainder determinizmi + operatörsüz burn fallback regresyonları.
+#[cfg(test)]
+pub mod socialfi;
+// Phase 9 / F1 mühürü (ARENA3, 2026-07-17): NftBurn -> storage manifest hard
+// prune zincir-seviyesi regresyon kilidi (produce_block yolu).
+#[cfg(test)]
+pub mod hard_prune;
