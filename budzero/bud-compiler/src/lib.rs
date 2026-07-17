@@ -217,12 +217,15 @@ mod tests {
             }
         "#;
 
-        let bytecode = compile(source, IsaProfile::Production)
-            .expect("Should compile boundary literals");
+        let bytecode =
+            compile(source, IsaProfile::Production).expect("Should compile boundary literals");
         let mut vm = bud_vm::Vm::new(8192);
         vm.run(&bytecode).expect("VM should run boundary literals");
 
-        assert_eq!(vm.events, vec![2147483647, 2147483648, 4294967295, 4294967296]);
+        assert_eq!(
+            vm.events,
+            vec![2147483647, 2147483648, 4294967295, 4294967296]
+        );
     }
 
     #[test]
@@ -238,7 +241,11 @@ mod tests {
         "#;
 
         let res = compile(source, IsaProfile::Production);
-        assert!(res.is_ok(), "constant i32 path should compile: {:?}", res.err());
+        assert!(
+            res.is_ok(),
+            "constant i32 path should compile: {:?}",
+            res.err()
+        );
     }
 
     #[test]

@@ -354,10 +354,12 @@ impl ConsensusSigner for Pkcs11Signer {
             if let Some(inner) = guard.as_ref() {
                 match self.try_vendor_bls_sign(&inner.session, msg) {
                     Ok(sig) => return Ok(sig),
-                    Err(e) => tracing::warn!(
-                        "Vendor BLS sign failed ({}), falling back to software",
-                        e
-                    ),
+                    Err(e) => {
+                        tracing::warn!(
+                            "Vendor BLS sign failed ({}), falling back to software",
+                            e
+                        );
+                    }
                 }
             }
         }
@@ -382,19 +384,19 @@ impl ConsensusSigner for Pkcs11Signer {
                 let mech_id = self.pq_mechanism.unwrap();
                 let mechanism = cryptoki::mechanism::Mechanism::Other(mech_id.into());
                 let template = &[
-                    cryptoki::object::Attribute::Class(
-                        cryptoki::object::ObjectClass::PRIVATE_KEY,
-                    ),
+                    cryptoki::object::Attribute::Class(cryptoki::object::ObjectClass::PRIVATE_KEY),
                     cryptoki::object::Attribute::Label(PQ_DATA_LABEL.into()),
                 ];
                 if let Ok(objects) = inner.session.find_objects(template) {
                     if !objects.is_empty() {
                         match inner.session.sign(&mechanism, objects[0], msg) {
                             Ok(sig) => return Ok(sig),
-                            Err(e) => tracing::warn!(
-                                "Vendor PQ sign failed ({}), falling back to software",
-                                e
-                            ),
+                            Err(e) => {
+                                tracing::warn!(
+                                    "Vendor PQ sign failed ({}), falling back to software",
+                                    e
+                                );
+                            }
                         }
                     }
                 }
