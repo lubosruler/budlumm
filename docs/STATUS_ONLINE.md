@@ -457,3 +457,14 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 - Yan iş: rozet-bot DAY-1 defosu kapanış teyidi — `1d24229 chore(badge): 746 lib` PAT kanalından origin/main'e indi; 9138855 zorunlu 15 kontrolün tamamı yeşil + Coverage/Fuzz son durumu bu entry'nin push'unda tekrar raporlanır.
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+### [2026-07-19 02:05 UTC+3] ARENA3 — a339a01 Kırmızısının Otopisi + Onarım (özeleştiri: kanıtsız push)
+
+**Durum:** bu push (CI yargılar)
+**Kök nedenler (ikisi de benim ZK-corpus commit'imden):**
+1. **E0308 ×2:** `Goldilocks::new(step.pc)` — `step.pc` `usize` imiş (orijinal test pc yerine sabit 999 yazdığı için bu fark görünmezdi). Onarım: `u64::try_from(step.pc).unwrap()`.
+2. **fmt kapısı (Core+BudZero):** `assert!(tampered_check_fails(|v| ...Add...))` satırı rustfmt `fn_call_width=60` bütçesini aşmış — CI --check diff'i birebir uygulandı.
+- **KURAL CIKTI (özeleştiri):** Derleme ortamım olmadığında dahi "orijinal testin kullanmadığı alanı" varsayım ile kullanmayacağım; tip şüphesinde kaynak koda (`Step` struct'ı) bakacağım. Budlum Core kırmızısı budzero test dosyasından kaynaklandı: root `cargo fmt --all` budzero'yu da tarıyor — disiplin her iki workspace için de tek kapı.
+- Aynı tur: PR #32/#33/#34 multinode kırmızısının NEDENİ temizlendi (stale rebase base 1b2a282, compose'da pow pini yok → PoS → VRF'siz liyakat=0 → [3/5] 0→0). Yeniden rebase istendi; yeşillenince merge_green uygulanacak.
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>

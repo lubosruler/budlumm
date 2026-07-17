@@ -72,7 +72,7 @@ fn tampered_check_fails(tamper: impl Fn(&mut [Goldilocks])) -> bool {
     for (i, step) in vm.trace.iter().enumerate() {
         let row_start = i * TRACE_WIDTH;
         values[row_start] = Goldilocks::new(i as u64);
-        values[row_start + 1] = Goldilocks::new(step.pc);
+        values[row_start + 1] = Goldilocks::new(u64::try_from(step.pc).unwrap());
         values[row_start + 2] = Goldilocks::new(step.instruction.opcode as u64);
         values[row_start + 3] = Goldilocks::new(step.dst_idx as u64);
         values[row_start + 11 + step.instruction.opcode as usize] = Goldilocks::new(1);
@@ -114,7 +114,9 @@ fn test_conflicting_opcode_selectors_violate_constraints() {
 /// Dropping the opcode selector on row 0 must be rejected.
 #[test]
 fn test_missing_opcode_selector_violates_constraints() {
-    assert!(tampered_check_fails(|v| v[11 + Opcode::Add as usize] = Goldilocks::new(0)));
+    assert!(tampered_check_fails(
+        |v| v[11 + Opcode::Add as usize] = Goldilocks::new(0)
+    ));
 }
 
 /// Public-input shape abuse: wrong PI length must not be silently accepted.
@@ -133,7 +135,7 @@ fn test_wrong_public_input_length_rejected() {
     for (i, step) in vm.trace.iter().enumerate() {
         let row_start = i * TRACE_WIDTH;
         values[row_start] = Goldilocks::new(i as u64);
-        values[row_start + 1] = Goldilocks::new(step.pc);
+        values[row_start + 1] = Goldilocks::new(u64::try_from(step.pc).unwrap());
         values[row_start + 2] = Goldilocks::new(step.instruction.opcode as u64);
         values[row_start + 3] = Goldilocks::new(step.dst_idx as u64);
         values[row_start + 11 + step.instruction.opcode as usize] = Goldilocks::new(1);
