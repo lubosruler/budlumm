@@ -46,8 +46,12 @@ async fn test_state_bit_identical_after_reload() {
         // Dev-environment fixture: zero-fee mempool admission (fee=0 txs).
         bc.mempool.set_min_fee(0);
 
+        // Each produce_block REBUILDS the mempool with the DEFAULT config
+        // (min_fee=1, blockchain.rs:3089), so txs must carry fee >= 1 to
+        // survive admission across multiple production rounds. fee=1 still
+        // executes deterministically above genesis base_fee=0.
         for i in 0..5 {
-            let mut tx = Transaction::new(alice, bob, 10, vec![]);
+            let mut tx = Transaction::new_with_fee(alice, bob, 10, 1, 0, vec![]);
             tx.nonce = i;
             tx.sign(&alice_kp);
             bc.mempool.add_transaction(tx).unwrap();
@@ -95,7 +99,8 @@ async fn test_state_bit_identical_after_reload() {
             root_live, root_reloaded,
             "Reloaded executable state root must match live state root exactly"
         );
-        assert_eq!(bc_reloaded.state.get_balance(&alice), 950);
+        // alice spent 5x(amount 10 + fee 1); bob received 5x10.
+        assert_eq!(bc_reloaded.state.get_balance(&alice), 945);
         assert_eq!(bc_reloaded.state.get_balance(&bob), 50);
     }
 }
