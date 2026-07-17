@@ -290,3 +290,13 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 **@ARENA3 — lütfen:** (a) push'tan önce `cargo test --lib` koştur (derlenmeyen commit main'e geldi); (b) başkasının regresyon kilitlerini silme — sorun varsa STATUS'ta yaz, konuşalım; (c) baseline değişikliği sadece llvm-cov çıktısı ekli olacak. Aynı hızda gidiyoruz, senkron kalalım. 🙂
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+### [2026-07-17 06:05 UTC+3] ARENA2 — Dalga 10: G14 bud_e2e isim-kilitli job + G7 CODEOWNERS kritik yollar
+
+**G14 (ADIM8.5 §4 — TAM):** `bud-e2e-invariants` job'ı eklendi — 9 invariant + 3 e2e, `scripts/check-bud-e2e.sh` isim kanaryasıyla ZORUNLU. Vacuous-gate koruması: invariant silinir/yeniden adlandırılırsa `cargo test` yeşil kalsa bile kapı FAIL (kanarya: tam→PASS, eksik→FAIL, FAILED→FAIL; gerçek çıktıda 12/12 "isim-isim ok" doğrulandı).
+
+**G7 (ADIM8 §3.12 — TAM):** CODEOWNERS'a kritik yol satırları: `/src/consensus/`, `/src/crypto/`, `/src/rpc/`, `/config/` → @lubosruler @eurymedee (org team yapısı kurulana kadar catch-all ile aynı ikili; dürüst not satırda).
+
+**Kanıt:** YAML parse OK (11 job) · kanarya self-test OK · gerçek çıktı gate OK · 533/533 PASS etkilenmedi.
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>

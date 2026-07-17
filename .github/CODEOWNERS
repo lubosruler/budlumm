@@ -8,3 +8,14 @@
 # ============================================================
 
 * @lubosruler @eurymedee
+
+# ---------------------------------------------------------------
+# G7 (ADIM8 §3.12): kritik yollar — reviewer onayı ZORUNLU yüzeyler.
+# Bugün org'da team yok → satırlar aynı iki gerçek üyeye düşer
+# (catch-all ile aynı; ETİKET işlevi + audit izi). Team yapısı
+# kurulunca bu satırlar alan-sahibi ekiplere ayrıştırılacak.
+# ---------------------------------------------------------------
+/src/consensus/   @lubosruler @eurymedee
+/src/crypto/      @lubosruler @eurymedee
+/src/rpc/         @lubosruler @eurymedee
+/config/          @lubosruler @eurymedee
