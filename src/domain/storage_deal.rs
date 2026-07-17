@@ -403,7 +403,9 @@ impl StorageRegistry {
         // VerifyMerkle production gate AÇILDI (ARENA3, 2026-07-16).
         // All three positive STARK tests pass (1+2+64-depth).
         // Real Proof-of-Storage is now active — merkle_proof + storage_root required.
-        let proof_bytes = merkle_proof.as_ref().ok_or(StorageError::MerkleProofRequired)?;
+        let proof_bytes = merkle_proof
+            .as_ref()
+            .ok_or(StorageError::MerkleProofRequired)?;
         let root = storage_root.ok_or(StorageError::MerkleProofRequired)?;
 
         // Validate proof format: must deserialize as a valid ProofEnvelope.
