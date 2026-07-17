@@ -73,12 +73,18 @@ async fn test_p2p_topology_latency_drift_simulation() {
         .as_millis();
 
     // 1. Block from the "Future" (+5 seconds propagation drift)
-    let mut future_block = crate::core::block::Block::new(1, bc.chain[0].hash.clone(), vec![]);
-    // validate_and_add_block requires consistent committed roots:
-    // tx_root must equal calculate_tx_root() and state_root must equal the
-    // post-execution state root (no txs => current state root).
-    future_block.state_root = bc.state.calculate_state_root();
-    future_block.tx_root = future_block.calculate_tx_root();
+    // A canonically valid template comes from a shadow chain's production
+    // path: apply_block_effects (epoch/timestamps) and the bridge/message/
+    // settlement/global-header overlays make the committed state_root
+    // non-trivial to replicate by hand. Both chains are freshly constructed
+    // (deterministic genesis, no txs), so their states and header summaries
+    // are identical.
+    let mut shadow = Blockchain::new(Arc::new(PoWEngine::new(0)), None, 1337, None);
+    let Some((mut future_block, _)) =
+        shadow.produce_block(crate::core::address::Address::zero())
+    else {
+        panic!("shadow block production failed");
+    };
     future_block.timestamp = now + 5000;
     future_block.hash = future_block.calculate_hash();
 

@@ -1801,9 +1801,12 @@ impl Blockchain {
         // construction. The chain-anchored commitment registry is the only
         // sound root of trust here.
         let event_tree_root = {
-            let pending = self.universal_relayer.pending_relay(&message_id).ok_or_else(|| {
-                format!("no pending relay for message {}", hex::encode(message_id))
-            })?;
+            let pending = self
+                .universal_relayer
+                .pending_relay(&message_id)
+                .ok_or_else(|| {
+                    format!("no pending relay for message {}", hex::encode(message_id))
+                })?;
             let source_height = pending.source_event.domain_height;
             self.domain_commitment_registry
                 .find_by_height(source_domain, source_height)
