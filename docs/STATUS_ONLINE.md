@@ -494,3 +494,12 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 - Bulgu ciddiyeti YÜKSELDİ: "bir boot döngülük degradasyon" değil; "tek bozuk dosya + tek boot = tüm snapshot envanterinin sessiz imhası + kalıcı state rollback". Fail-loud + karantina-öncesi schema-sniffing + imza önerileri GAP-1..4 paketiyle kullanıcı/ARENA2 kararına hazır.
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+### [2026-07-19 03:20 UTC+3] ARENA3 — cfe68ee snapshot-chaos: davranış YEŞİL, yalnız fmt turu (kural notu)
+
+**Durum:** bu push (CI yargılar)
+- **cfe68ee kanıtı:** 7/7 snapshot-chaos testi DAVRANIŞ olarak yeşil — Coverage (nextest) + BudZero + multinode smoke dahil 14/15 completed; tek kırmızı Core job'ının fmt kapısıydı (15 hunk; 13'ü apply_fmt.py ile + 2 belirsiz hunk elle, CI diff kanonik). Yani GAP pinleri sistemin gerçek davranışını doğru öngörmüş: v1-probe'unun geçerli V2'yi karantinalaması boot içinde CANLI doğrulandı.
+- **Fmt ders kaydı (gelecek pushlar için):** rustfmt makro gövdelerinde (`assert!` çok argümanlı) ~60 bütçeyle dikey kırıyor; normal fn çağrılarını ≤100 sütuna tek satıra topluyor. Yeni kodda fn-call zincirlerini önceden tek satırda, makro argümanlarını dikey yazacağım.
+- Pipeline gecikme kaydı (kullanıcı talebi): tam CI duvar-süresi ~11-12 dk/SHA (uzun direk: Fuzz Quick içeride); Supply Chain ~2 dk; Docker Smoke ~4-6 dk (compose build ~4 dk dahil). Badge self-commit'i ikinci bir pipeline üretir.
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>

@@ -59,7 +59,9 @@ mod tests {
     }
 
     fn snap_file(dir: &tempfile::TempDir, height: u64) -> std::path::PathBuf {
-        dir.path().join("snaps").join(format!("snapshot_{height}.json"))
+        dir.path()
+            .join("snaps")
+            .join(format!("snapshot_{height}.json"))
     }
 
     // ── 1) Naive tamper (parseable ama hash-bozuk) → red + karantina ───────
@@ -70,10 +72,7 @@ mod tests {
         let pm = PruningManager::new(10, 10, snaps);
 
         let alice = Address::from([0xA1; 32]);
-        let snap = StateSnapshotV2::from_state(
-            &funded_state(&alice, 500),
-            params_v2(30, 1337),
-        );
+        let snap = StateSnapshotV2::from_state(&funded_state(&alice, 500), params_v2(30, 1337));
         pm.save_snapshot_v2(&snap).expect("save");
 
         // JSON yapısını bozmadan bakiyeyi değiştir (snapshot_hash dokunulmaz).
@@ -86,8 +85,7 @@ mod tests {
             .expect("balances object");
         let (_key, value) = balances.iter_mut().next().expect("one entry");
         *value = serde_json::Value::from(9_000_000u64);
-        std::fs::write(&file, serde_json::to_string_pretty(&j).unwrap())
-            .expect("rewrite");
+        std::fs::write(&file, serde_json::to_string_pretty(&j).unwrap()).expect("rewrite");
 
         let res = pm.load_latest_snapshot_v2();
         assert!(res.is_err(), "integrity ihlali reddedilmeli");
@@ -113,10 +111,7 @@ mod tests {
 
         let eve = Address::from([0xEE; 32]);
         let alice = Address::from([0xA1; 32]);
-        let mut snap = StateSnapshotV2::from_state(
-            &funded_state(&alice, 500),
-            params_v2(40, 1337),
-        );
+        let mut snap = StateSnapshotV2::from_state(&funded_state(&alice, 500), params_v2(40, 1337));
 
         // Sahteci, snapshot'a kendi BNS adını enjekte eder; hash'E DOKUNMAZ.
         let mut forged = crate::bns::BnsRegistry::default();
@@ -202,10 +197,7 @@ mod tests {
 
         let eve = Address::from([0xEE; 32]);
         let alice = Address::from([0xA1; 32]);
-        let mut snap = StateSnapshotV2::from_state(
-            &funded_state(&alice, 500),
-            params_v2(50, 1337),
-        );
+        let mut snap = StateSnapshotV2::from_state(&funded_state(&alice, 500), params_v2(50, 1337));
 
         // HASHED alana sahtecilik + hash'in halka-açık algoritmayla yeniden üretimi.
         snap.balances.insert(eve, 9_000_000);
@@ -215,10 +207,7 @@ mod tests {
         assert!(snap.verify(), "GAP: rehash'li sahtecilik kabul gorur");
         pm.save_snapshot_v2(&snap).expect("save");
         let loaded = pm.load_latest_snapshot_v2().expect("load").expect("some");
-        assert_eq!(
-            loaded.balances.get(&eve).copied(),
-            Some(9_000_000)
-        );
+        assert_eq!(loaded.balances.get(&eve).copied(), Some(9_000_000));
     }
 
     // ── 4) Torn-write (yarım dosya) → karantina → eski snapshot'a düşüş ────
@@ -229,14 +218,8 @@ mod tests {
         let pm = PruningManager::new(10, 10, snaps);
 
         let alice = Address::from([0xA1; 32]);
-        let older = StateSnapshotV2::from_state(
-            &funded_state(&alice, 700),
-            params_v2(10, 1337),
-        );
-        let newer = StateSnapshotV2::from_state(
-            &funded_state(&alice, 1_000),
-            params_v2(20, 1337),
-        );
+        let older = StateSnapshotV2::from_state(&funded_state(&alice, 700), params_v2(10, 1337));
+        let newer = StateSnapshotV2::from_state(&funded_state(&alice, 1_000), params_v2(20, 1337));
         pm.save_snapshot_v2(&older).expect("save older");
         pm.save_snapshot_v2(&newer).expect("save newer");
 
@@ -278,18 +261,10 @@ mod tests {
 
         let alice = Address::from([0xA1; 32]);
         let v1_state = funded_state(&alice, 700);
-        let v1_snap = StateSnapshot::from_state(
-            10,
-            "dd".repeat(32),
-            1337,
-            &v1_state,
-            10,
-            "ee".repeat(32),
-        );
-        let v2_snap = StateSnapshotV2::from_state(
-            &funded_state(&alice, 1_000),
-            params_v2(20, 1337),
-        );
+        let v1_snap =
+            StateSnapshot::from_state(10, "dd".repeat(32), 1337, &v1_state, 10, "ee".repeat(32));
+        let v2_snap =
+            StateSnapshotV2::from_state(&funded_state(&alice, 1_000), params_v2(20, 1337));
         pm.save_snapshot(&v1_snap).expect("save v1");
         pm.save_snapshot_v2(&v2_snap).expect("save v2");
 
@@ -334,12 +309,7 @@ mod tests {
         let mut snap_height_b = 0u64;
         {
             let storage = open_storage_bounded(db_str);
-            let mut bc = Blockchain::new(
-                Arc::new(PoWEngine::new(0)),
-                Some(storage),
-                1337,
-                None,
-            );
+            let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
             bc.state.base_fee = 0;
             bc.mempool.set_min_fee(0);
 
@@ -347,19 +317,13 @@ mod tests {
             let _ = bc.produce_block(zero); // tip 1
             snap_height_a = bc.last_block().index;
             let pm = PruningManager::new(10, 10, snap_dir_of(&dir));
-            let snap_a = StateSnapshotV2::from_state(
-                &bc.state,
-                params_v2(snap_height_a, 1337),
-            );
+            let snap_a = StateSnapshotV2::from_state(&bc.state, params_v2(snap_height_a, 1337));
             pm.save_snapshot_v2(&snap_a).expect("save A");
 
             bc.state.add_balance(&alice, 300); // 1000
             let _ = bc.produce_block(zero); // tip 2
             snap_height_b = bc.last_block().index;
-            let snap_b = StateSnapshotV2::from_state(
-                &bc.state,
-                params_v2(snap_height_b, 1337),
-            );
+            let snap_b = StateSnapshotV2::from_state(&bc.state, params_v2(snap_height_b, 1337));
             pm.save_snapshot_v2(&snap_b).expect("save B");
 
             let _ = bc.produce_block(zero); // tip 3 (chain_len=4 > hB=2)
@@ -375,12 +339,7 @@ mod tests {
         {
             let storage = open_storage_bounded(db_str);
             let pm = PruningManager::new(10, 10, snap_dir_of(&dir));
-            let bc = Blockchain::new(
-                Arc::new(PoWEngine::new(0)),
-                Some(storage),
-                1337,
-                Some(pm),
-            );
+            let bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, Some(pm));
             assert_eq!(
                 bc.state.get_balance(&alice),
                 0,
@@ -407,12 +366,7 @@ mod tests {
         {
             let storage = open_storage_bounded(db_str);
             let pm = PruningManager::new(10, 10, snap_dir_of(&dir));
-            let bc = Blockchain::new(
-                Arc::new(PoWEngine::new(0)),
-                Some(storage),
-                1337,
-                Some(pm),
-            );
+            let bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, Some(pm));
             assert_eq!(
                 bc.state.get_balance(&alice),
                 0,
@@ -434,12 +388,7 @@ mod tests {
         let tip3_index;
         {
             let storage = open_storage_bounded(db_str);
-            let mut bc = Blockchain::new(
-                Arc::new(PoWEngine::new(0)),
-                Some(storage),
-                1337,
-                None,
-            );
+            let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
             bc.state.base_fee = 0;
             bc.mempool.set_min_fee(0);
             bc.state.add_balance(&alice, 50_000);
@@ -453,12 +402,7 @@ mod tests {
 
         {
             let storage = open_storage_bounded(db_str);
-            let mut bc = Blockchain::new(
-                Arc::new(PoWEngine::new(0)),
-                Some(storage),
-                1337,
-                None,
-            );
+            let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
             bc.state.base_fee = 0;
             bc.mempool.set_min_fee(0);
 
