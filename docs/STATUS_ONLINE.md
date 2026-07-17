@@ -768,3 +768,21 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 **Kayıt (başlık-uyarısı disiplini):** cb88225 başlığı "executor/main/bud-vm" içerdiğini iddia ederken içerik yalnız relayer'dı — kalıntılar ARENA3 tarafından kapatıldı (e68bee2, 3b3bb91). Birlik notu: commit başlığı ile `--stat` içeriği birebir okunmalı.
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+---
+
+## [2026-07-17 14:20 UTC+3] ARENA3 — ec0de10/18bf437 kırmızısının kök-neden analizi + unlock correlation fix (d1c89a3)
+
+**Teşhis (CI-log kanıtlı, 561 PASS / 2 FAIL):** İki bridge_relayer testi 093d795'ten beri DETERMİNİSTİK kırık — bridge.rs/message.rs pipeline'dan ÖNCE bu haldeydi (son değişimler 8ba9779/d80eeaf). f915045'in "test restore" iddiası `-S` seçkisiyle kesin çürütüldü: testler hiç silinip geri gelmedi, o commit fmt-only.
+- `full_round_trip_lock_mint_burn_unlock` (panik :380, "Unknown bridge transfer"): `burn_with_event` mesajı `new_correlated` ile üretiyor → burn mesajının `message_id`'si kendi içerik hash'i (≠ lock id); `correlation_id = Some(lock_id)`. Ama `pipeline.unlock` burn id ile `BridgeState.transfers` (lock-id anahtarlı) araması yapıyordu → bulamadı. Rasgele değil: köprü mimarisinin tasarlanmış davranışı, pipeline seviyesinde eksik çözümleme.
+- `event_tree_grows_with_locks` (panik :444, "Asset is not active in the source domain"): `require_asset_status(Active)` — aynı asset ikinci kez kilitlenemez (double-lock koruması, `asset_locations` tek-durum haritası). Test bu invariant'ı yanlış kurmuş.
+
+**Teyit mekanizması (kör kabul yok kuralının ödülü):** Ben fix'imi hazırlarken ARENA1 bağımsız olarak aynı test-teşhisine ulaşıp 18bf437'yi pushladı ("uses distinct assets per lock") — rebase'de iki fix BİREBİR örtüştü (a1/a2), net diff kalmadı. Onarım planının semantiği böylece çift-ajan konsensüsüyle mühürlendi.
+
+**Teslim (d1c89a3):** `pipeline.unlock` artık `message.correlation_id.ok_or(PipelineError::MissingCorrelationId)` ile transferi çözümlüyor — **production unlock yolu blockchain.rs:1388 ile birebir aynı model** ve fail-closed (fallback'siz: correlation'suz burn mesajı zaten transfers'ta asla bulunamazdı). Yeni varyant `MissingCorrelationId` + Display arm. Regresyon mühürleri teste eklendi: `assert_ne!(burn_msg.message_id, lock_msg_id)` + `assert_eq!(burn_msg.correlation_id, Some(lock_msg_id))`. ARENA1 kilidi istisnası: main kırmızı, tüm değişiklik commit mesajında şeffaf.
+
+**Yeni bulgu (dokunulmadı, parkur):** `relayer.rs process_relay` de `verify_id` yapmıyor — doğrulama yalnız Merkle proof + pending-event leaf-hash bağlayıcılığına dayanıyor. Pratik risk düşük (pending kuyruğu yalnız pipeline-üretimli event'lerden besleniyor; dışarıdan enjeksiyon yüzeyi yok) ama defense-in-depth adayı: relay edilen mesajda `verify_id()` tek satır. ARENA1'e öneri olarak bırakıyorum.
+
+**Bekleyecek:** CI (Budlum Core + Coverage) `d1c89a3` üzerinde yeşile dönmeli; push protokolü gereği onay/yorum beklenecek. Sıradaki işler: dependabot triyaj raporu (7/7 RED matrisi hazır, karar Ayaz'da), pre-push hook (Hedef 3), Fuzz job durumu tekrar bakılmalı.
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
