@@ -468,3 +468,18 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 - Aynı tur: PR #32/#33/#34 multinode kırmızısının NEDENİ temizlendi (stale rebase base 1b2a282, compose'da pow pini yok → PoS → VRF'siz liyakat=0 → [3/5] 0→0). Yeniden rebase istendi; yeşillenince merge_green uygulanacak.
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+### [2026-07-19 02:50 UTC+3] ARENA3 — P0 3/3: Snapshot-Chaos + Crash-Recovery (4 GAP pini + 3 pozitif) + ZK corpus sonucu + PR kök-neden kapanışı
+
+**Durum:** bu push (CI yargılar)
+**1) ZK corpus SONUCU (e7ac940 BudZero yeşil):** 5 yeni negatifin tamamı AIR tarafından reddedildi (clk/dst_idx sahtesi, çift/eksik selektör, PI boyutu) — bu tamper sınıflarında soundness açığı YOK; corpus 1→6 teste çıktı. Disiplin tuttu: beklenmedik "kabul" görülseydi soundness bulgusu sayılacaktı.
+**2) PR #32-34 multinode kırmızısı — KÖK NEDEN KAPANDI (kanıtlı):** stale rebase base `1b2a282` (compose'da `--consensus=pow --difficulty=0` + validator-address pin'i ÖNCESİ) → daemon PoS'ta kaldı → VRF liyakatı yok → [3/5] 0→0. Kanıt zinciri: d527513 parent=1b2a282; o ref'teki compose'da pow/validator grep=0; node1 banner `Consensus: PoS`; yeşil 086d82a banner'ı PoW. Regresyon/flake DEĞİL. Yeniden `@dependabot rebase` atıldı (main=a339a01++ sonrası) → #34 branch'i 169f976'ya yenilendi; yeşillenince merge_green.
+**3) YENİ DERİN BULGULAR — `src/tests/snapshot_chaos.rs` (7 test):**
+- **GAP-1 (authenticity yok):** `calculate_hash` halka-açık, deterministik, gizli-girdisiz; rehash'li sahtecilik (balance dahil, hashed alan!) verify'ı GEÇER → `test_snapshot_v2_rehash_forgery_no_authenticity_gap`. Öneri: manifest imzası (validator key / HSM) — benim HSM domain'im, emir bekliyor.
+- **GAP-2 (hash kapsam deliği):** schema-3 + Phase-0.08+ alanları (bns/nft/marketplace/hub/registry/bridge_state/message_registry/external_roots/tokenomics*) `calculate_hash` DIŞINDA → BNS kaydı sahteciliği rehash'siz geçer → `test_snapshot_v2_unhashed_field_forgery_gap`. Öneri: kapsamı restore edilen tüm alanlara genişlet (versiyonlu hash allowlist).
+- **GAP-3 (boot sessiz yutma):** `blockchain.rs` boot'u `load_latest_snapshot_v2` Err'sini `if let Ok(..)` ile yutar → eski-geçerli v2 diskteyken state genesis'e döner (tek jenerasyon sessiz rollback); quarantine sayesinde 2. boot self-heal → `test_boot_corrupt_latest_silent_rollback_then_self_heal`. Öneri: Err'de karantina-sonrası retry veya fail-loud abort (PoS equivocation riski: eski state ile zincire dönüş!).
+- **GAP-4 (çapraz-şema gölgeleme):** v1 fallback probe'u en-yeni ".json" = geçerli V2 dosyasını v1-parse edip v1-hash uyuşmazlığından KARANTİNALAR → gerçek v1 dosyası gölgede kalır → `test_snapshot_v1_loader_shadowed_by_v2_file_gap` (2. çağrı self-heal pin'li).
+- **POZİTİF pinler:** naive-tamper red+karantina ✓ · torn-write red + eskiye düşüş ✓ · kapanışsız-crash sonrası üretim sürekliliği (tip/state/parent-link) ✓.
+**4) Dependabot dalga-2:** security-update açılınca sürüm dalgası da geldi (#35-45 açık; #46 = p3-challenger 0.5.3, alert #12 HIGH kapatıcı — kapsam dışı, kullanıcı kararına sunulacak). Dinamik "Dependabot | Update" check'leri main SHA'larında kozmetik kırmızı bırakıyor (zorunlu kontrol değil; hickory/gossipsub/yamux/lru zinciri = bilinen libp2p-stack migrasyon borcu).
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
