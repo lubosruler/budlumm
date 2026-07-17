@@ -94,3 +94,8 @@ pub mod security_auditor;
 pub mod socialfi;
 #[cfg(test)]
 pub mod target_700;
+// P0 mainnet-gap (ARENA3, 2026-07-18): bridge negatif süiti — forgery /
+// replay / anchor-substitution / inactive-relayer / unknown-message reddi.
+// Yalnızca mevcut tanımlı red yollarını doğrular; protokol davranışı değişmez.
+#[cfg(test)]
+pub mod bridge_negatives;
