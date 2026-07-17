@@ -409,3 +409,13 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 **BACKLOG (emir bekliyor — körden başlanmaz):** Gerçek PoS daemon-producer altyapısı = (a) PoSEngine'e validator_keys/HSM-signer enjeksiyonu, (b) devnet için bilinen-açık test-validator anahtarı + genesis validator adresinin onun pubkey'inden türetilmesi (genesis JSON sync + ceremony notları), (c) VRF slot-liderlik determinizmi + smoke'ta PoS pin'ine dönüş. Ekonomik/HSM temaslı — şeffaf komisyon ister.
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+### [2026-07-18 23:55 UTC+3] ARENA3 — Flake Sertleştirme: sled Lock-Race (`disaster_recovery`) + Multinode 5/5 Kanıt
+
+**Durum:** bu push / önceki tur kanıtı
+**Kapsam:**
+1. ✅ `Devnet Multi-Node Smoke` **5/5 PASS** oldu (`b8084d5`): netListening / peerCount / **blok üretimi ilerliyor** / metrics / operator-RPC izolasyonu. Daemon üretimsizlik blocker'ı PoW profilinde kapanmıştır; PoS için backlog kaydı açık (önceki girdi).
+2. Budlum Core'da `test_chaos_v2_ultimate_byzantine_recovery` flakie'si: `could not acquire lock ... WouldBlock (os error 11)` — sled'in dosya kilidi drop ile senkron garantili değil; CI zamanlaması yarışı (run: `4d57f61`). Onarım: dosya genelinde 12 yeniden-açma noktası bounded-wait `reopen_storage` yardımcısına çevrildi. Ürün kodu etkilenmedi.
+3. clippy-extra ratchet: 193→189/191 (loop commit'indeki pedantic/nursery onarımları tuttu).
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>

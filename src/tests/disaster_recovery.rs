@@ -5,6 +5,23 @@ mod tests {
     use crate::core::address::Address;
     use crate::core::transaction::{Transaction, TransactionType};
     use crate::storage::db::Storage;
+
+/// sled's file-lock release is not guaranteed to be synchronous with the
+/// previous owner's `drop` under CI scheduling (os error 11 / WouldBlock
+/// flake — Budlum Core run on `4d57f61`, `test_chaos_v2_ultimate_byzantine_recovery`).
+/// Reopen with a bounded wait: the lock always drains within milliseconds in
+/// practice; 100 x 25ms is generous, then the final open reports the error.
+fn reopen_storage(path: &str) -> Storage {
+    for _ in 0..100 {
+        if let Ok(storage) = crate::storage::db::Storage::new(path) {
+            return storage;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(25));
+    }
+    crate::storage::db::Storage::new(path).expect("storage reopen timed out after 2.5s")
+}
+
+
     use std::sync::Arc;
     use tempfile::tempdir;
     use tracing::info;
@@ -20,7 +37,7 @@ mod tests {
 
         // 1. Initial Setup and State Creation
         {
-            let storage = Storage::new(db_path_str).expect("failed to open storage");
+            let storage = reopen_storage(db_path_str);
             let consensus = Arc::new(PoWEngine::new(0));
             let mut bc = Blockchain::new(consensus, Some(storage), 1337, None);
             bc.state.base_fee = 0;
@@ -53,7 +70,7 @@ mod tests {
         // 2. Recovery from Disk
         {
             info!("RECOVERY: Starting node from disk...");
-            let storage = Storage::new(db_path_str).expect("failed to open storage");
+            let storage = reopen_storage(db_path_str);
             let consensus = Arc::new(PoWEngine::new(0));
 
             // Reconstruct blockchain from existing storage
@@ -89,7 +106,7 @@ mod tests {
 
         // 1. Create NFT
         {
-            let storage = Storage::new(db_path_str).unwrap();
+            let storage = reopen_storage(db_path_str);
             let consensus = Arc::new(PoWEngine::new(0));
             let mut bc = Blockchain::new(consensus, Some(storage), 1337, None);
             bc.state.base_fee = 0;
@@ -107,7 +124,7 @@ mod tests {
 
         // 2. Burn NFT and Simulate Pruning Signal
         {
-            let storage = Storage::new(db_path_str).unwrap();
+            let storage = reopen_storage(db_path_str);
             let consensus = Arc::new(PoWEngine::new(0));
             let mut bc = Blockchain::new(consensus, Some(storage), 1337, None);
             bc.state.base_fee = 0;
@@ -132,7 +149,7 @@ mod tests {
 
         // 3. Verify State consistency after another restart
         {
-            let storage = Storage::new(db_path_str).unwrap();
+            let storage = reopen_storage(db_path_str);
             let consensus = Arc::new(PoWEngine::new(0));
             let bc = Blockchain::new(consensus, Some(storage), 1337, None);
 
@@ -168,7 +185,7 @@ async fn test_chaos_v2_heavy_network_partition_with_forks() {
 
     // 1. Partition A grows
     {
-        let storage = Storage::new(db_a.to_str().unwrap()).unwrap();
+        let storage = reopen_storage(db_a.to_str().unwrap());
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
         bc.state.base_fee = 0;
         bc.mempool.set_min_fee(0);
@@ -180,7 +197,7 @@ async fn test_chaos_v2_heavy_network_partition_with_forks() {
 
     // 2. Partition B grows longer with different data
     {
-        let storage = Storage::new(db_b.to_str().unwrap()).unwrap();
+        let storage = reopen_storage(db_b.to_str().unwrap());
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
         bc.state.base_fee = 0;
         bc.mempool.set_min_fee(0);
@@ -192,10 +209,10 @@ async fn test_chaos_v2_heavy_network_partition_with_forks() {
 
     // 3. Rejoin and Recovery: Node A sees Node B's chain and must reorg
     {
-        let storage = Storage::new(db_a.to_str().unwrap()).unwrap();
+        let storage = reopen_storage(db_a.to_str().unwrap());
         let mut bc_a = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
 
-        let storage_b = Storage::new(db_b.to_str().unwrap()).unwrap();
+        let storage_b = reopen_storage(db_b.to_str().unwrap());
         let bc_b = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage_b), 1337, None);
 
         let reorg_result = bc_a
@@ -219,7 +236,7 @@ async fn test_chaos_v2_ultimate_byzantine_recovery() {
 
     // PHASE 1: Normal Operation
     {
-        let storage = Storage::new(db_path_str).unwrap();
+        let storage = reopen_storage(db_path_str);
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
         bc.state.base_fee = 0;
         bc.mempool.set_min_fee(0);
@@ -250,7 +267,7 @@ async fn test_chaos_v2_ultimate_byzantine_recovery() {
 
     // PHASE 2: Sudden Crash during heavy writing
     {
-        let storage = Storage::new(db_path_str).unwrap();
+        let storage = reopen_storage(db_path_str);
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
         bc.state.base_fee = 0;
         bc.mempool.set_min_fee(0);
@@ -267,7 +284,7 @@ async fn test_chaos_v2_ultimate_byzantine_recovery() {
 
     // PHASE 3: Recovery and Chain Sync with a longer fork
     {
-        let storage = Storage::new(db_path_str).unwrap();
+        let storage = reopen_storage(db_path_str);
         let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
         bc.state.base_fee = 0;
         bc.mempool.set_min_fee(0);
