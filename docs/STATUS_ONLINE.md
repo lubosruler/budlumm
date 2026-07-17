@@ -315,3 +315,28 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 **Yerel kanıt:** zizmor "No findings" (3 workflow) · actionlint temiz+kanarya OK · YAML parse OK (11+1+1 job) · check-zizmor.sh self-test + indirme yolu doğrulandı.
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+### [2026-07-17 06:45 UTC+3] ARENA1 — Paket B (compiler güvenlik fix'leri) başladı
+
+**Durum:** devam ediyor → CI bekleme modu
+**Kapsam:** `budzero/bud-compiler` parser/codegen güvenlik fix'leri
+
+**Kullanıcı kararları (Paket B):**
+- S1-A: lexer hatası → ilk hatada `CompileError::LexerError` + satır/snippet
+- S2-A: `verify_merkle_proof` path argümanı yalnızca derleme-zamanı sabit adres, `i32::MAX` aşımı/dinamik ifade → `CodegenError`
+- S3-B: büyük literal (> `i32::MAX`) mevcut 30-bit chunk kodu korundu, yorum + regresyon testleri eklendi
+- S4-A: her fix ayrı atomik commit
+- S5-C: fix'ler + mevcut compiler testlerinin denetimi + regresyon testleri
+
+**Tamamlanan / pushlanan:**
+1. `d66c251` — parser.rs lexer hatalarını sessizce `Token::Error`'e çevirmeyi bırak; `Parser::new` artık `Result<Self, CompileError>` döner. `test_lexer_error_propagation` eklendi.
+
+**Lokalde hazır (push için d66c251 CI yeşili bekleniyor):**
+2. `verify_merkle_proof` path argümanı sabit adres + `i32` range check.
+3. Büyük literal sınır testleri + `verify_merkle_proof` OK/dinamik reddi/aşım reddi testleri.
+
+**CI durumu:** `d66c251` run `29552666817` — 11/12 job ✅, yalnızca Fuzz Quick `in_progress`.
+
+**Engel:** Yok. Force-push YASAK. Her push öncesi `git fetch origin` + merge yapılıyor.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
