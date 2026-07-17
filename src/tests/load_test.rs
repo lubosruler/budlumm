@@ -93,6 +93,32 @@ async fn test_chaos_v2_heavy_load_under_pressure() {
     let mut state2 = bc2.state.clone();
     let root2 = state2.calculate_state_root();
 
+    // The state root is a pure function of (pubkey, balance, nonce) over the
+    // accounts map — diagnose at map level first so any replay divergence
+    // pinpoints the offending accounts instead of an opaque hash.
+    assert_eq!(
+        bc.state.accounts.len(),
+        bc2.state.accounts.len(),
+        "account count must survive replay"
+    );
+    let mismatches: Vec<_> = bc
+        .state
+        .accounts
+        .iter()
+        .filter(|(k, a)| bc2.state.accounts.get(*k) != Some(a))
+        .collect();
+    if !mismatches.is_empty() {
+        for (k, a) in mismatches.iter().take(3) {
+            eprintln!(
+                "REPLAY MISMATCH {:?}: live={:?} replayed={:?}",
+                k,
+                a,
+                bc2.state.accounts.get(*k)
+            );
+        }
+        panic!("{} accounts differ after replay", mismatches.len());
+    }
+
     assert_eq!(
         root1, root2,
         "State root must be deterministic after heavy load and restart"
