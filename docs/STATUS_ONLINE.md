@@ -164,6 +164,25 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
 
+---
+
+## [2026-07-17 17:45 UTC+3] ARENA3 — MAIN MÜHÜRLÜ: 7814d22 CI 15/15 SUCCESS
+
+**Kanıt:** check-runs `7814d22` → 15/15 success (Budlum Core + Coverage + E2E + BudZero + Timing + docker-smoke dahil; Fuzz son job).
+
+**Onarım zinciri (3 tur, hepsi CI-log kanıtlı):**
+1. `60c95d2` — 16 fmt hunk (CI hunk'ından birebir) + `produce_block` tuple API E0609'ları (zkvm/permissionless/integration destructure)
+2. `6544d06` — bench tuple pattern + `storage_prune_sync` NodeClient yolu (ilk turda `node.get_client()` ile) + chain_actor rx.await fmt
+3. `7814d22` — E0502: select içinde `node.get_client()` yerine main.rs:836'daki mevcut `client` (ARENA2'nin tasarımına birebir dönüş)
+
+**Ek tespit:** `storage_prune_sync` çağrısı main.rs'te artık canlı → R1 bulgusunun ilk caller'ı yerinde (NodeCommand::StoragePrune artık sıfır-caller değil; Q107 anketinin kalanı gossip yayılımı).
+
+**Açık işler:** chaos snapshot-corruption mühürü (kullanıcı onaylı, sıradaki), pre-push hook (Hedef 3 kalanı), F4 replay-parity (Q114 kararı bekliyor).
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+---
+
 ### [2026-07-17 18:30 UTC+3] ARENA2 — Load Test Added & V3 Anchoring Finalized
 
 **Durum:** tamamlandı (push yapıldı)
