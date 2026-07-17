@@ -919,14 +919,14 @@ mod settlement_prod_tests {
         let message = event.message.unwrap();
 
         let mut changed = test_chain();
-        changed.bridge_state = bridge.clone();
+        changed.state.bridge_state = bridge.clone();
         let after_lock = changed.build_global_header(None);
         assert_ne!(baseline.bridge_state_root, after_lock.bridge_state_root);
         assert_ne!(baseline.replay_nonce_root, after_lock.replay_nonce_root);
         assert_ne!(baseline.calculate_hash(), after_lock.calculate_hash());
 
         bridge.mint(&message).unwrap();
-        changed.bridge_state = bridge;
+        changed.state.bridge_state = bridge;
         let after_mint = changed.build_global_header(None);
         assert_ne!(after_lock.bridge_state_root, after_mint.bridge_state_root);
         assert_ne!(after_lock.replay_nonce_root, after_mint.replay_nonce_root);
@@ -1014,13 +1014,13 @@ mod settlement_prod_tests {
 
             let after_lock = blockchain.build_global_header(None);
             assert_ne!(baseline.message_root, after_lock.message_root);
-            assert!(blockchain.message_registry.get(&message_id).is_some());
+            assert!(blockchain.state.message_registry.get(&message_id).is_some());
             expected_message_root = after_lock.message_root;
         }
 
         let storage = Storage::new(path).unwrap();
         let blockchain = Blockchain::new(Arc::new(PoWEngine::new(0)), Some(storage), 1337, None);
-        assert!(blockchain.message_registry.get(&message_id).is_some());
+        assert!(blockchain.state.message_registry.get(&message_id).is_some());
         assert_eq!(
             blockchain.build_global_header(None).message_root,
             expected_message_root
@@ -1311,8 +1311,8 @@ mod settlement_prod_tests {
         let asset = hash_fields_bytes(&[b"double-lock-asset"]);
         let owner = Address::from([10u8; 32]);
         let recipient = Address::from([20u8; 32]);
-        bc.bridge_state.register_asset(asset, 1).unwrap();
-        bc.bridge_state
+        bc.state.bridge_state.register_asset(asset, 1).unwrap();
+        bc.state.bridge_state
             .lock(1, 2, 1, 0, asset, owner, recipient, 100, 500)
             .unwrap();
         let err = bc
@@ -1325,8 +1325,8 @@ mod settlement_prod_tests {
     #[test]
     fn attack_bridge_mint_without_lock() {
         let mut bc = test_chain();
-        let before_bridge_root = bc.bridge_state.root();
-        let before_replay_root = bc.bridge_state.replay_root();
+        let before_bridge_root = bc.state.bridge_state.root();
+        let before_replay_root = bc.state.bridge_state.replay_root();
         let fake_msg = CrossDomainMessage::new(CrossDomainMessageParams {
             source_domain: 1,
             target_domain: 2,
@@ -1339,10 +1339,10 @@ mod settlement_prod_tests {
             kind: MessageKind::BridgeLock,
             expiry_height: 100,
         });
-        let err = bc.bridge_state.mint(&fake_msg).unwrap_err();
+        let err = bc.state.bridge_state.mint(&fake_msg).unwrap_err();
         assert!(err.to_string().contains("Unknown"));
-        assert_eq!(bc.bridge_state.root(), before_bridge_root);
-        assert_eq!(bc.bridge_state.replay_root(), before_replay_root);
+        assert_eq!(bc.state.bridge_state.root(), before_bridge_root);
+        assert_eq!(bc.state.bridge_state.replay_root(), before_replay_root);
     }
 
     #[test]
@@ -1351,14 +1351,14 @@ mod settlement_prod_tests {
         let asset = hash_fields_bytes(&[b"unlock-no-burn"]);
         let owner = Address::from([1u8; 32]);
         let recipient = Address::from([2u8; 32]);
-        bc.bridge_state.register_asset(asset, 1).unwrap();
+        bc.state.bridge_state.register_asset(asset, 1).unwrap();
         let (transfer, event) = bc
             .bridge_state
             .lock(1, 2, 1, 0, asset, owner, recipient, 50, 100)
             .unwrap();
         let msg = event.message.unwrap();
-        bc.bridge_state.mint(&msg).unwrap();
-        let err = bc.bridge_state.unlock(transfer.message_id, 1).unwrap_err();
+        bc.state.bridge_state.mint(&msg).unwrap();
+        let err = bc.state.bridge_state.unlock(transfer.message_id, 1).unwrap_err();
         assert!(err.to_string().contains("not burned"));
     }
 
@@ -1368,24 +1368,24 @@ mod settlement_prod_tests {
         let asset = hash_fields_bytes(&[b"mint-invalid-status"]);
         let owner = Address::from([3u8; 32]);
         let recipient = Address::from([4u8; 32]);
-        bc.bridge_state.register_asset(asset, 1).unwrap();
+        bc.state.bridge_state.register_asset(asset, 1).unwrap();
         let (_transfer, event) = bc
             .bridge_state
             .lock(1, 2, 1, 0, asset, owner, recipient, 50, 100)
             .unwrap();
         let msg = event.message.unwrap();
-        bc.bridge_state.mint(&msg).unwrap();
+        bc.state.bridge_state.mint(&msg).unwrap();
 
-        let before_bridge_root = bc.bridge_state.root();
-        let before_replay_root = bc.bridge_state.replay_root();
-        let err = bc.bridge_state.mint(&msg).unwrap_err();
+        let before_bridge_root = bc.state.bridge_state.root();
+        let before_replay_root = bc.state.bridge_state.replay_root();
+        let err = bc.state.bridge_state.mint(&msg).unwrap_err();
         assert!(
             err.to_string().contains("not locked")
                 || err.to_string().contains("already processed")
                 || err.to_string().contains("replay")
         );
-        assert_eq!(bc.bridge_state.root(), before_bridge_root);
-        assert_eq!(bc.bridge_state.replay_root(), before_replay_root);
+        assert_eq!(bc.state.bridge_state.root(), before_bridge_root);
+        assert_eq!(bc.state.bridge_state.replay_root(), before_replay_root);
     }
 
     #[test]
@@ -1394,14 +1394,14 @@ mod settlement_prod_tests {
         let asset = hash_fields_bytes(&[b"burn-wrong-domain"]);
         let owner = Address::from([1u8; 32]);
         let recipient = Address::from([2u8; 32]);
-        bc.bridge_state.register_asset(asset, 1).unwrap();
+        bc.state.bridge_state.register_asset(asset, 1).unwrap();
         let (transfer, event) = bc
             .bridge_state
             .lock(1, 2, 1, 0, asset, owner, recipient, 50, 100)
             .unwrap();
         let msg = event.message.unwrap();
-        bc.bridge_state.mint(&msg).unwrap();
-        let err = bc.bridge_state.burn(transfer.message_id, 9).unwrap_err();
+        bc.state.bridge_state.mint(&msg).unwrap();
+        let err = bc.state.bridge_state.burn(transfer.message_id, 9).unwrap_err();
         assert!(err.to_string().contains("not minted"));
     }
 
@@ -1414,7 +1414,7 @@ mod settlement_prod_tests {
         let asset = hash_fields_bytes(&[b"replay-test"]);
         let owner = Address::from([1u8; 32]);
         let recipient = Address::from([2u8; 32]);
-        bc.bridge_state.register_asset(asset, 1).unwrap();
+        bc.state.bridge_state.register_asset(asset, 1).unwrap();
         let (_t, event) = bc
             .bridge_state
             .lock(1, 2, 1, 0, asset, owner, recipient, 100, 500)
@@ -1586,7 +1586,7 @@ mod settlement_prod_tests {
             kind: MessageKind::BridgeLock,
             expiry_height: 100,
         });
-        bc.message_registry.insert(msg).unwrap();
+        bc.state.message_registry.insert(msg).unwrap();
         let after = bc.build_global_header(None);
         assert_ne!(baseline.message_root, after.message_root);
         assert_ne!(baseline.calculate_hash(), after.calculate_hash());
@@ -1695,7 +1695,7 @@ mod settlement_prod_tests {
         let asset = hash_fields_bytes(&[b"lifecycle-asset"]);
         let alice = Address::from([0xAA; 32]);
         let bob = Address::from([0xBB; 32]);
-        bc.bridge_state.register_asset(asset, pow.id).unwrap();
+        bc.state.bridge_state.register_asset(asset, pow.id).unwrap();
 
         let (transfer, lock_event) = bc
             .bridge_state
@@ -1759,7 +1759,7 @@ mod settlement_prod_tests {
         let asset = hash_fields_bytes(&[b"return-proof-asset"]);
         let alice = Address::from([0xA1; 32]);
         let bob = Address::from([0xB2; 32]);
-        bc.bridge_state.register_asset(asset, pow.id).unwrap();
+        bc.state.bridge_state.register_asset(asset, pow.id).unwrap();
 
         let (transfer, lock_event) = bc
             .bridge_state

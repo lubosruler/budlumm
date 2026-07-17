@@ -996,6 +996,7 @@ impl BudlumApiServer for RpcServer {
                 expected_block_hash,
                 event,
                 proof,
+                Address::zero(),
             )
             .await
             .map_err(|e| {

@@ -166,7 +166,7 @@ fn invalid_proof_burns_fee_and_leaves_state_unchanged() {
     assert_eq!(bc.state.get_balance(&sender), 0);
     // No claim recorded, no message stored.
     assert_eq!(bc.proof_claims.len(), 0);
-    assert_eq!(bc.message_registry.len(), 0);
+    assert_eq!(bc.state.message_registry.len(), 0);
 }
 
 #[test]

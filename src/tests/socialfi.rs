@@ -77,7 +77,7 @@ fn open_weighted_deal(
     fee: u64,
 ) {
     let shard_id = m.shards[0].shard_id;
-    bc.storage_registry
+    bc.state.storage_registry
         .open_deal(
             42,
             m,
@@ -98,7 +98,7 @@ fn open_weighted_deal(
 fn submit_tx(bc: &mut Blockchain, mut tx: Transaction, kp: &KeyPair) {
     tx.sign(kp);
     bc.mempool.add_transaction(tx).unwrap();
-    let _ = let _ = bc.produce_block(Address::zero());
+    let _ = bc.produce_block(Address::zero());
 }
 
 fn mint_nft(bc: &mut Blockchain, kp: &KeyPair, cid: ContentId) {

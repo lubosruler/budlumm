@@ -39,8 +39,8 @@ async fn nft_burn_prunes_matching_storage_manifest_on_produce() {
     // Manifest zincir registry'sine kayıtlı; NFT aynı content_id'ye bağlı.
     let manifest = ContentManifest::from_bytes_sliced(b"hard prune target", 4).unwrap();
     let cid = manifest.manifest_id;
-    bc.storage_registry.register_manifest(&manifest);
-    assert!(bc.storage_registry.get_manifest(&cid).is_some());
+    bc.state.storage_registry.register_manifest(&manifest);
+    assert!(bc.state.storage_registry.get_manifest(&cid).is_some());
 
     // Mint.
     let data = bincode::serialize(&(cid, None::<String>)).unwrap();
@@ -72,7 +72,7 @@ async fn nft_burn_prunes_matching_storage_manifest_on_produce() {
 
     // NFT yakıldı ve eşleşen manifest hard-prune ile silindi.
     assert_eq!(bc.state.nft_registry.nfts.len(), 0);
-    assert!(bc.storage_registry.get_manifest(&cid).is_none());
+    assert!(bc.state.storage_registry.get_manifest(&cid).is_none());
 
     // F1 Physical Pruning check: return value of produce_block carries the CID
     assert_eq!(pruned_cids.len(), 1);

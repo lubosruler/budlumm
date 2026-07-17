@@ -526,7 +526,7 @@ mod chaos_tests {
             let (_transfer, _event) = bridge
                 .lock(1, 2, round as u64, 0, asset, owner, recipient, 1, 1000)
                 .unwrap();
-            blockchain.bridge_state = bridge.clone();
+            blockchain.state.bridge_state = bridge.clone();
 
             let header = blockchain.seal_global_header(None).unwrap();
             assert_eq!(header.global_height, round as u64);
@@ -650,7 +650,7 @@ mod chaos_tests {
         }
 
         for msg in messages_to_submit {
-            assert!(settlement_node.message_registry.insert(msg).is_ok());
+            assert!(settlement_node.state.message_registry.insert(msg).is_ok());
         }
 
         let global_header = settlement_node.seal_global_header(None).unwrap();
@@ -660,7 +660,7 @@ mod chaos_tests {
             settlement_node.domain_commitment_registry.len(),
             (num_blocks * 3) as usize
         );
-        assert_eq!(settlement_node.message_registry.len(), num_blocks as usize);
+        assert_eq!(settlement_node.state.message_registry.len(), num_blocks as usize);
 
         let global_header_2 = settlement_node.seal_global_header(None).unwrap();
         assert_eq!(global_header_2.global_height, 1);
@@ -739,7 +739,7 @@ mod chaos_tests {
 
         for (_transfer, event) in &transfers_data {
             let msg = event.message.clone().unwrap();
-            settlement_node.message_registry.insert(msg).unwrap();
+            settlement_node.state.message_registry.insert(msg).unwrap();
         }
 
         let global_header = settlement_node.seal_global_header(None).unwrap();
@@ -749,7 +749,7 @@ mod chaos_tests {
         );
         assert_eq!(
             global_header.message_root,
-            settlement_node.message_registry.root()
+            settlement_node.state.message_registry.root()
         );
 
         for (i, (_transfer, lock_event)) in transfers_data.iter().enumerate() {

@@ -219,7 +219,7 @@ fn full_internal_relay_cycle_lock_mint() {
     // - Pending count decreased
     assert_eq!(bc.pending_relay_count(), 0);
     // - Bridge state: Minted
-    let t = bc.bridge_state.get_transfer(&message_id).unwrap();
+    let t = bc.state.bridge_state.get_transfer(&message_id).unwrap();
     assert!(matches!(
         t.status,
         crate::cross_domain::bridge::BridgeStatus::Minted { domain: 2 }
@@ -260,7 +260,7 @@ fn full_internal_relay_cycle_burn_unlock() {
         .lock_bridge_transfer(1, 2, 10, 0, a, owner(), recipient(), 100, 1000)
         .unwrap();
     let lock_msg = lock_event.message.unwrap();
-    bc.bridge_state.mint(&lock_msg).unwrap();
+    bc.state.bridge_state.mint(&lock_msg).unwrap();
 
     // 3. Burn on Domain 2
     let burn_event = bc
@@ -287,7 +287,7 @@ fn full_internal_relay_cycle_burn_unlock() {
 
     // 6. Verify effects:
     // - Bridge state: Unlocked
-    let t = bc.bridge_state.get_transfer(&lock_msg.message_id).unwrap();
+    let t = bc.state.bridge_state.get_transfer(&lock_msg.message_id).unwrap();
     assert!(matches!(
         t.status,
         crate::cross_domain::bridge::BridgeStatus::Unlocked { domain: 1 }

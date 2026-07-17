@@ -187,6 +187,7 @@ impl Default for RelayerConfig {
 ///
 /// Permissionless: any staked RELAYER role holder can submit relays.
 /// Slashing: invalid proofs or missed deadlines trigger economic penalties.
+#[derive(Clone)]
 pub struct UniversalRelayer {
     pub config: RelayerConfig,
     pub ledger: RelayLedger,

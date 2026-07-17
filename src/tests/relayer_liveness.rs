@@ -54,7 +54,7 @@ fn unregistered_account_cannot_submit_cross_domain_message() {
         .unwrap_err();
     assert!(err.contains("not an active relayer"), "got: {err}");
     // No message stored.
-    assert_eq!(bc.message_registry.len(), 0);
+    assert_eq!(bc.state.message_registry.len(), 0);
 }
 
 #[test]
@@ -67,7 +67,7 @@ fn active_relayer_can_submit_cross_domain_message() {
 
     bc.submit_relayed_cross_domain_message(relayed_message(relayer, 1))
         .unwrap();
-    assert_eq!(bc.message_registry.len(), 1);
+    assert_eq!(bc.state.message_registry.len(), 1);
 }
 
 #[test]
@@ -109,7 +109,7 @@ fn unbonding_relayer_can_still_submit() {
     assert!(bc.state.registry.is_active_relayer(&relayer));
     bc.submit_relayed_cross_domain_message(relayed_message(relayer, 1))
         .unwrap();
-    assert_eq!(bc.message_registry.len(), 1);
+    assert_eq!(bc.state.message_registry.len(), 1);
 }
 
 #[test]
@@ -119,7 +119,7 @@ fn system_bridge_path_bypasses_relayer_gate() {
     let mut bc = fresh_chain();
     bc.submit_cross_domain_message(relayed_message(addr(0x05), 1))
         .unwrap();
-    assert_eq!(bc.message_registry.len(), 1);
+    assert_eq!(bc.state.message_registry.len(), 1);
 }
 
 // --- 2. Anti-spam fee -------------------------------------------------------
