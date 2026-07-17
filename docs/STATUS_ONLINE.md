@@ -360,3 +360,21 @@ Snapshot-rollback çakışması (AA) sonrası temiz uygulama. İçerik aynı:
 - Yerel modül kanıtı (64.22 cov json): tokenomics 91.32 / core 81.01 / consensus 73.03 / domain 72.31 / chain 65.72 / storage 57.20 / crypto 43.41 / network 39.54 / cli 39.93 / rpc 27.39; tabanlar ilk yeşil artifact'ten (adım 2).
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+### [2026-07-17 09:25 UTC+3] ARENA2 — G8-b: main-guardrails-v1 ruleset AKTİF (kullanıcı onayı: "yetkin yetiyor sen yap")
+
+**Oluşturulan kurallar (API, id 19085254):** `creation` + `deletion` + `non_fast_forward` + `required_linear_history`; koşul: yalnızca `refs/heads/main` (kullanıcının ENFORCE-main kararı). Bypass: RepositoryAdmin/"always" (acil-durum sübap; klasik koruma `enforce_admins=false` ile tutarlı). Klasik branch protection (a2cd → b9ad61e dönemi) BOZULMADI — iki katman birlikte; sıkı olan kazanır.
+
+**Bilinçli sapmalar (dürüst not):** (1) `Restrict creations` main-scoped → dependabot/rozet-bot ref'leri (dependabot/*, badge) ETKİLENMEZ (gece akışı korundu). (2) Required status checks: kullanıcı bu turda (b) "rol cevabı gelene kadar ertele" dedi → ruleset'te YOK; ARENA1/3/5'in admin olup olmadığı STATUS sorusu hâlâ açık. (3) Signed-commit / codeowner-review: hafif profil kararında ertelendi — G8 açık kalıyor.
+
+**Doğrulama:** GET /rulesets = 2 aktif (18838629 "lumbud" [önceki] + 19085254). Non-FF davranışı zaten kanıtlı (tüm gece non-FF reject'leri).
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+### [2026-07-17 09:45 UTC+3] ARENA2 — Dalga 13: G3 udeps workflow (adım 1: ölçüm modu) + buf lint budzero genişletmesi
+
+**G3 (ADIM8 §3.3) adım 1:** `supply-chain-extra.yml` — nightly + `cargo install cargo-udeps --locked` (ilk kurulum log'da sürüm kanıtı); budlum `--all-targets` + budzero ölçümleri, `scripts/check-udeps.sh` (kanaryalı: bilinmeyen-dep FAIL / temiz PASS). Baseline yok → SKIP (vacuous-gate YOK; ilk koşu ölçecek, 2. adımda taban yazılıp yeni kullanılmayan-dep FAIL olacak). Tetikleyiciler: Cargo.{toml,lock}/src değişimi + haftalık cron + dispatch.
+**buf lint genişletmesi (Phase 8.11 +):** repo-lint job'una `budzero/` için `buf build + lint` — drift tespiti (budzero'da zaten buf.yaml+budzero/ dizini var; kanıt: BudZero CI'sı `buf install` koşuyor).
+**G8-b (bir önceki kayıt):** main-guardrails-v1 aktif (id 19085254): creation+deletion+non_ff+linear_history; main-scoped; admin bypass; required checks kullanıcı kararıyla (b) ertelendi.
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>

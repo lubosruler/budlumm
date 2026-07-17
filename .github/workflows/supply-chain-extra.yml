@@ -1,0 +1,51 @@
+name: Supply Chain Extra (G3 udeps)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'budzero/Cargo.toml'
+      - 'budzero/Cargo.lock'
+      - 'src/**'
+      - 'budzero/**'
+      - '.github/workflows/supply-chain-extra.yml'
+      - '.github/udeps-baseline.txt'
+  schedule:
+    # Haftalık hijyen taraması (cargo update etkileri + yeni dep'ler)
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+# G5: yalnız okur.
+permissions:
+  contents: read
+
+jobs:
+  udeps:
+    name: Udeps — kullanılmayan bağımlılık kapısı (G3/ADIM8 §3.3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      # G3: udeps nightly-gerektirir (rustc private API); kurulum + çalıştırma aynı nightly'de.
+      - name: Install Rust (nightly)
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master 2026-07-16
+        with:
+          toolchain: nightly
+      - uses: Swatinem/rust-cache@23869a5bd66c73db3c0ac40331f3206eb23791dc # v2.9.1
+      - name: Install protoc
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq protobuf-compiler
+      - name: cargo-udeps kur (locked; crate.io sürümü log'da kanıtlı)
+        run: cargo +nightly install cargo-udeps --locked
+      - name: Kanarya (vacuous-gate koruması)
+        run: bash ./scripts/check-udeps.sh --self-test
+      - name: Ölçüm + kapı (rapor modu: baseline 2. adımda)
+        run: |
+          cargo +nightly udeps --all-targets 2>&1 | tee /tmp/udeps1.txt || true
+          bash ./scripts/check-udeps.sh /tmp/udeps1.txt
+          cd budzero
+          cargo +nightly udeps --all-targets 2>&1 | tee /tmp/udeps2.txt || true
+          bash ./scripts/check-udeps.sh /tmp/udeps2.txt
