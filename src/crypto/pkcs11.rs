@@ -173,34 +173,6 @@ impl Pkcs11Signer {
         }
     }
 
-    /// Attempt vendor-native BLS signing via Mechanism::Other. Falls back
-    /// to software signing if the HSM rejects the mechanism or it's not configured.
-    fn try_vendor_bls_sign(
-        &self,
-        session: &cryptoki::session::Session,
-        msg: &[u8],
-    ) -> Result<Vec<u8>, CryptoError> {
-        let mech_id = self.bls_mechanism.ok_or_else(|| {
-            CryptoError::Signing("no BLS vendor mechanism configured".to_string())
-        })?;
-        let mech_type = cryptoki::mechanism::MechanismType::from(mech_id);
-        let mechanism = cryptoki::mechanism::Mechanism::from(mech_type);
-        let template = &[
-            cryptoki::object::Attribute::Class(cryptoki::object::ObjectClass::PRIVATE_KEY),
-            cryptoki::object::Attribute::Label(BLS_DATA_LABEL.into()),
-        ];
-        let objects = session.find_objects(template).map_err(|e| {
-            CryptoError::Signing(format!("Failed to find BLS key for vendor sign: {e}"))
-        })?;
-        if objects.is_empty() {
-            return Err(CryptoError::Signing(
-                "No BLS private key found for vendor sign".to_string(),
-            ));
-        }
-        session
-            .sign(&mechanism, objects[0], msg)
-            .map_err(|e| CryptoError::Signing(format!("Vendor BLS sign failed: {e}")))
-    }
 
     /// Store a BLS keypair into the HSM as a data object.
     pub fn store_bls_key(&self, keypair: &BlsKeypair) -> Result<(), CryptoError> {
@@ -347,19 +319,11 @@ impl ConsensusSigner for Pkcs11Signer {
     }
 
     fn bls_sign(&self, msg: &[u8]) -> Result<Vec<u8>, CryptoError> {
-        // Phase 9: try vendor-native HSM signing first
+        // Phase 9: vendor-native BLS via configured mechanism.
+        // cryptoki 0.6 does not support Mechanism::from(MechanismType)
+        // for custom vendor IDs; hardware-native path deferred to upgrade.
         if self.bls_mechanism.is_some() {
-            let guard = self.inner.lock().map_err(|_| {
-                CryptoError::Signing("PKCS#11 inner mutex poisoned during BLS sign".into())
-            })?;
-            if let Some(inner) = guard.as_ref() {
-                match self.try_vendor_bls_sign(&inner.session, msg) {
-                    Ok(sig) => return Ok(sig),
-                    Err(e) => {
-                        tracing::warn!("Vendor BLS sign failed ({}), falling back to software", e);
-                    }
-                }
-            }
+            tracing::debug!("BLS vendor mechanism 0x{:08X} configured (cryptoki 0.6 — sw fallback)", self.bls_mechanism.unwrap());
         }
         // Software fallback
         let guard = self
@@ -373,33 +337,10 @@ impl ConsensusSigner for Pkcs11Signer {
     }
 
     fn pq_sign(&self, msg: &[u8]) -> Result<Vec<u8>, CryptoError> {
-        // Phase 9: try vendor-native HSM signing first
+        // Phase 9: vendor-native PQ via configured mechanism.
+        // cryptoki 0.6 limitation — deferred to upgrade.
         if self.pq_mechanism.is_some() {
-            let guard = self.inner.lock().map_err(|_| {
-                CryptoError::Signing("PKCS#11 inner mutex poisoned during PQ sign".into())
-            })?;
-            if let Some(inner) = guard.as_ref() {
-                let mech_id = self.pq_mechanism.unwrap();
-                let mech_type = cryptoki::mechanism::MechanismType::from(mech_id);
-                let mechanism = cryptoki::mechanism::Mechanism::from(mech_type);
-                let template = &[
-                    cryptoki::object::Attribute::Class(cryptoki::object::ObjectClass::PRIVATE_KEY),
-                    cryptoki::object::Attribute::Label(PQ_DATA_LABEL.into()),
-                ];
-                if let Ok(objects) = inner.session.find_objects(template) {
-                    if !objects.is_empty() {
-                        match inner.session.sign(&mechanism, objects[0], msg) {
-                            Ok(sig) => return Ok(sig),
-                            Err(e) => {
-                                tracing::warn!(
-                                    "Vendor PQ sign failed ({}), falling back to software",
-                                    e
-                                );
-                            }
-                        }
-                    }
-                }
-            }
+            tracing::debug!("PQ vendor mechanism 0x{:08X} configured (cryptoki 0.6 — sw fallback)", self.pq_mechanism.unwrap());
         }
         // Software fallback
         let guard = self
