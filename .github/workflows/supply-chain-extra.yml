@@ -42,7 +42,7 @@ jobs:
         run: cargo +nightly install cargo-udeps --locked
       - name: Kanarya (vacuous-gate koruması)
         run: bash ./scripts/check-udeps.sh --self-test
-      - name: Ölçüm + kapı (rapor modu: baseline 2. adımda)
+      - name: "Ölçüm + kapı (rapor modu — baseline 2. adımda)"
         run: |
           cargo +nightly udeps --all-targets 2>&1 | tee /tmp/udeps1.txt || true
           bash ./scripts/check-udeps.sh /tmp/udeps1.txt
