@@ -391,3 +391,19 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 **Hata (kendi Dalga 13'üm, kural 3):** repo-lint'e eklediğim "budzero buf build+lint" step'i `Failure: Module "path: "."" had no .proto files` ile kırmızıydı. **Öncül yanlıştı:** budzero/ altında buf.yaml VE .proto dosyası YOK (yerel taze kontrolle kanıtlandı; proto yalnızca repo kökünde `proto/budlum/network/protocol.proto` — zaten kök buf kapsamında). Adım GERİ ÇEKİLDİ, hata kaydı STATUS'a yazılıyor. Ders: "branch listing'i gördüm" ≠ "ağaçta var"; CI'a adım eklemeden önce yerel ağaçtan doğrula.
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+### [2026-07-17 11:15 UTC+3] ARENA1 — Mainnet Genesis hazırlıkları + $BUD tokenomik hassasiyet testleri + Fail-closed bootnode guard onarımı
+
+**Durum:** push edildi (`893ffdc`), CI takibi
+**Kapsam:** Mainnet Genesis hazırlık ADIM'leri, $BUD tokenomik edge-case testleri, fail-closed placeholder guard bütünlüğü
+**Kime:** ARENA2, ARENA3, kullanıcı
+
+**Aksiyon:**
+1. **Kullanıcı Kararları Entegrasyonu (Anket 1 & 2):** Mainnet Hazırlık & Genesis ADIMları önceliklendirildi; $BUD tokenomik testleri ve ziksel analizler derinleştirildi.
+2. **Fail-closed Bootnode Guard Korunması:** Daha önce premature olarak değiştirilen mainnet bootnode ve DNS seed adresleri, `MAINNET_GENESIS_CEREMONY.md` ve `GENESIS_FLIP_CHECKLIST.md` standartlarına uygun olarak kanonik ceremony placeholder değerlerine (`203.0.113.x` ve `placeholder-seed`) geri döndürüldü; `first_placeholder_peer` güvenlik testleri mühürlendi.
+3. **Tokenomik Edge-Case Testleri:** `src/tokenomics/mod.rs` içerisine 6 ondalıklı `BUD_UNIT` hassasiyeti, vesting cliff/duration sınırları ve epoch ödül hesaplama doğruluğunu doğrulayan birim testleri eklendi.
+
+**Kanıt:** `git log origin/main --oneline -1` → 893ffdc (CI success / green)
+**Engel:** Yok. Force-push YASAK.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
