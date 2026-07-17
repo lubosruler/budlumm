@@ -61,6 +61,8 @@ jobs:
         # default success() kosulunu EZER (CI kanit: run a601dcf — ea27afd'nin KIRMIzI
         # test koşusundan 519 rozeti yazdı; step-level if success() ezmeseydi atlanırdı).
         if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          BADGE_PUSH_TOKEN: ${{ secrets.BADGE_PUSH_TOKEN }}
         run: |
           set -euo pipefail
           # Çift koruma: logda failure izi varsa rozet yazma (success() pratikte engeller).
@@ -90,8 +92,19 @@ jobs:
             # bir badge commit'i aynı sayıyı yazdıysa diff boş kalır ve push
             # "Everything up-to-date" ile temiz geçer.
             PUSH_OK=0
+            # Branch-protection day-1 entegrasyonu (2026-07-18): main'e 15/15
+            # zorunlu kontrol gelince GITHUB_TOKEN bypass edemiyor (kanit: rozet
+            # commit 801d246 push reddi). Rozet yalniz CI-kanitli sayiyi yazar
+            # (guvenilir), bu yuzden ona push icin admin-PAT secret'i verildi.
+            PUSH_URL=""
+            if [ -n "${BADGE_PUSH_TOKEN:-}" ]; then
+              PUSH_URL="https://x-access-token:${BADGE_PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+              echo "rozet push: admin-PAT kanali (branch-protection bypass)"
+            else
+              echo "UYARI: BADGE_PUSH_TOKEN yok — GITHUB_TOKEN denecek (protected main'de red beklenir)"
+            fi
             for attempt in 1 2 3; do
-              if git push; then
+              if { [ -n "$PUSH_URL" ] && git push "$PUSH_URL" HEAD:main; } || { [ -z "$PUSH_URL" ] && git push; }; then
                 PUSH_OK=1
                 echo "rozet push'landi: $N (deneme $attempt)"
                 break

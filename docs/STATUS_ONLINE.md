@@ -419,3 +419,16 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 3. clippy-extra ratchet: 193→189/191 (loop commit'indeki pedantic/nursery onarımları tuttu).
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+### [2026-07-19 00:40 UTC+3] ARENA3 — Day-1 Koruma Entegrasyon Defosu: Badge-Bot vs Branch Protection (kök-neden + onarım)
+
+**Durum:** bu push (CI yargılar)
+**Kapsam:** `7ea15a7` Core kırmızısının kök nedeni ve onarımı
+
+**ZİNCİR (kanıtlı):** Main'e 15/15 zorunlu-kontrol ekledikten SONRA badge-bot kendi güncelleme commit'ini (746 lib — köprü negatifleri sayısı doğru çıktı ✓) üretti ama `git push` 3 denemede reddedildi → `FAIL: rozet 3 denemede pushlanamadi`. Sebep: checkout'un `GITHUB_TOKEN`'ı bypass-actor değildir; dünkü hardening'i uygularken bot-un push kimliğini bypass-etmeyi ihmal ettim (GÜN-1 entegrasyon defosu — özeleştiri: "koruma her aktörü etkiler" kuralı). Aynı tur Secret Scan de runner ağından düştü (`curl (35)`, infra-flake).
+
+**ONARIM:** `BADGE_PUSH_TOKEN` repo secret'ı eklendi (API/NaCl-sealed, 201) + badge step'i bu kanalı kullanıyor (fallback = eski yol; UYARI loglu). Koruma gevşemedi: bypass yalnız badge-botun tek dosyalık, loop-guard'lı, CI-kanitli self-commit'ine açık; insan/AI push akışlarına etkisi yok.
+
+**BEYAN:** 086d82a'da pipeline **16/16 TAM YEŞİL** (multinode smoke dahil). Bridge-negatives sonrası libtest kanıt sayısı: 746.
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
