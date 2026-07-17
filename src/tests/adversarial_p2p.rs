@@ -80,8 +80,7 @@ async fn test_p2p_topology_latency_drift_simulation() {
     // (deterministic genesis, no txs), so their states and header summaries
     // are identical.
     let mut shadow = Blockchain::new(Arc::new(PoWEngine::new(0)), None, 1337, None);
-    let Some((mut future_block, _)) =
-        shadow.produce_block(crate::core::address::Address::zero())
+    let Some((mut future_block, _)) = shadow.produce_block(crate::core::address::Address::zero())
     else {
         panic!("shadow block production failed");
     };
