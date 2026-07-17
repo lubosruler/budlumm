@@ -389,7 +389,10 @@ impl ConsensusSigner for Pkcs11Signer {
                         match inner.session.sign(&mechanism, objects[0], msg) {
                             Ok(sig) => return Ok(sig),
                             Err(e) => {
-                                tracing::warn!("Vendor PQ sign failed ({}), falling back to software", e);
+                                tracing::warn!(
+                                    "Vendor PQ sign failed ({}), falling back to software",
+                                    e
+                                );
                             }
                         }
                     }
