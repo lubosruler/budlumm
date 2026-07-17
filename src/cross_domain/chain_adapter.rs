@@ -256,3 +256,37 @@ pub mod test_adapter {
         assert_eq!(chains[0], ExternalChain::Ethereum);
     }
 }
+
+    #[test]
+    fn adapter_registry_empty_supported_chains() {
+        let registry = AdapterRegistry::new();
+        assert!(registry.supported_chains().is_empty());
+        assert!(!registry.supports(&ExternalChain::Ethereum));
+        assert!(!registry.supports(&ExternalChain::Solana));
+    }
+
+    #[test]
+    fn adapter_registry_multiple_adapters() {
+        let mut registry = AdapterRegistry::new();
+        registry.register(Box::new(StubAdapter::new(ExternalChain::Ethereum)));
+        registry.register(Box::new(StubAdapter::new(ExternalChain::Solana)));
+
+        assert!(registry.supports(&ExternalChain::Ethereum));
+        assert!(registry.supports(&ExternalChain::Solana));
+        assert!(!registry.supports(&ExternalChain::Bitcoin));
+
+        let chains = registry.supported_chains();
+        assert_eq!(chains.len(), 2);
+    }
+
+    #[test]
+    fn adapter_error_display() {
+        let err = AdapterError::UnsupportedChain(ExternalChain::Bitcoin);
+        assert!(err.to_string().contains("Bitcoin"));
+
+        let err = AdapterError::ConnectionFailed("timeout".into());
+        assert!(err.to_string().contains("timeout"));
+
+        let err = AdapterError::ConfirmationTimeout;
+        assert!(err.to_string().contains("timeout"));
+    }
