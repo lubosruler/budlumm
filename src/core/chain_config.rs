@@ -314,6 +314,8 @@ mod tests {
 
     /// Phase 8.9 / Q5: dummy bootnode/dns-seed sabitleri guard tarafından
     /// yakalanmalı (fail-closed), gerçek multiaddr'lar serbest kalmalı.
+    /// F7 fix (ARENAX): guard test gücü artırıldı — derlenmiş mainnet sabitlerinin
+    /// placeholder marker ile yakalandığını doğrular (c953049 regresyonu kapatıldı).
     #[test]
     fn test_placeholder_peer_detection_blocks_dummy_mainnet_entries() {
         // Negatif kontroller: placeholder/dummy marker içeren kayıtlar YAKALANMALI.
@@ -321,6 +323,21 @@ mod tests {
         assert!(first_placeholder_peer(&dummy).is_some());
         let dummy_dns = vec!["_dnsaddr.placeholder-seed.mainnet.budlum.network".to_string()];
         assert!(first_placeholder_peer(&dummy_dns).is_some());
+
+        // F7: Derlenmiş mainnet sabitleri placeholder içermeli ve guard tarafından yakalanmalı.
+        // Bu, c953049'daki guard bypass regresyonunun tekrarını engeller.
+        let compiled_bootnodes: Vec<String> =
+            MAINNET_BOOTNODES.iter().map(|s| s.to_string()).collect();
+        assert!(
+            first_placeholder_peer(&compiled_bootnodes).is_some(),
+            "Compiled MAINNET_BOOTNODES must be detected as placeholder (fail-closed guard active)"
+        );
+        let compiled_dns: Vec<String> =
+            MAINNET_DNS_SEEDS.iter().map(|s| s.to_string()).collect();
+        assert!(
+            first_placeholder_peer(&compiled_dns).is_some(),
+            "Compiled MAINNET_DNS_SEEDS must be detected as placeholder"
+        );
 
         // Pozitif kontroller: gerçek görünümlü kayıtlar serbest.
         let clean = vec![

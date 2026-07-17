@@ -488,6 +488,12 @@ async fn main() {
             pin_env.to_string(),
         ) {
             Ok(signer) => {
+                // F3 fix (ARENAX): vendor-native BLS/PQ mechanism IDs previously parsed but never wired to signer.
+                // Wire config values via with_vendor_mechanisms() so hardware-native signing path is active when configured.
+                let signer = signer.with_vendor_mechanisms(
+                    config.pkcs11_bls_mechanism.clone(),
+                    config.pkcs11_pq_mechanism.clone(),
+                );
                 if config.network == budlum_core::core::chain_config::Network::Mainnet
                     && config.role == "validator"
                     && (!signer.has_bls_key() || !signer.has_pq_key())

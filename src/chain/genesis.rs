@@ -586,4 +586,20 @@ mod mainnet_genesis_tests {
         // Metabolic burn: 1%
         assert_eq!(params.tx_fee_burn_ratio_fixed, FIXED_POINT_SCALE / 100);
     }
+
+    /// F9 fix (ARENAX): Genesis hash constant documented in config/mainnet.toml:5
+    /// previously had no absolute-value assert — only JSON==code equality (V5).
+    /// This test seals the constant so accidental genesis config change is caught.
+    #[test]
+    fn test_mainnet_genesis_hash_matches_documented_constant() {
+        // Value from config/mainnet.toml comment and examples/print_genesis_hash.rs
+        const DOCUMENTED_MAINNET_GENESIS_HASH: &str =
+            "9bf07f9f9bda9bf1fba9f12e859e4184dd468c0138cd6327710284629c30df4f";
+
+        let genesis = mainnet_genesis().build_genesis_block();
+        assert_eq!(
+            genesis.hash, DOCUMENTED_MAINNET_GENESIS_HASH,
+            "Mainnet genesis hash must match documented constant in mainnet.toml:5 —              if this intentionally changed, update docs/operations/PRODUCTION_RUNBOOK.md §8.2 and config/mainnet.toml comment"
+        );
+    }
 }

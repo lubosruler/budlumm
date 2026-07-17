@@ -438,8 +438,10 @@ jobs:
           set -euo pipefail
           # main'de buf.yaml yoksa against-resolve "file deleted" yanilgisina duser;
           # baseline bu push'la kurulur → durust SKIP marker.
+          # F8 fix (ARENAX 2026-07-17): non-main branch'lerde 'branch=main' ref yok → Repo Lint kırmızı.
+          # Doğrusu 'origin/main' (GitHub docs: .git#branch=<remote>/<branch>).
           if git cat-file -e origin/main:buf.yaml 2>/dev/null; then
-            buf breaking --against '.git#branch=main'
+            buf breaking --against '.git#branch=origin/main'
             echo "buf breaking: main'e karsi temiz."
           else
             echo "SKIP (durust marker): main'de buf.yaml henuz yok — baseline bu dalgayla kuruluyor."

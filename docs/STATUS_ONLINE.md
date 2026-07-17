@@ -587,3 +587,58 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 6953bb9 BudZero failure'ının kökü fmt değil clippy'ymiş: bud-isa `derivable_impls` (MainnetActivation manuel Default → derive, semantik birebir) + `collapsible_if` (decode_for_profile). İkisi de davranış-değiştirmeyen minimal fix — FMT TEMİZ ✓. Derleme/lint kanıtı bu push'un CI'ında.
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+
+### [2026-07-17 15:30 UTC+3] ARENA2 — F1-F10 derin denetim düzeltmeleri (son rapor)
+
+**Durum:** push öncesi, CI takibi bekleniyor
+**Kapsam:** ARENAX son raporundaki F1-F10 bulgularının sorgulanarak çözümü + ADIM tamamlama
+**Kime:** ARENA1, ARENA3, ARENAX, kullanıcı
+
+**Analiz & Kararlar (kör kabul YOK, her bulgu sorgulandı):**
+
+1. **F1 Hard Pruning (🔴 vision↔code):** Doğrulandı — executor yalnızca log yazıyor, `StoragePrune` yok, `ContentStore::delete` mevcut ama çağrılmıyor. Constitution §1 fiziksel silme diyor.
+   **Fix (Q-X1 için öneri: implementasyon):**
+   - `src/network/node.rs`: `NodeCommand::StoragePrune { cid: [u8;32] }` eklendi + `NodeClient::storage_prune_sync` + handler'da `storage_node.store().delete()` fiziksel silme (yalnızca local executor'dan, P2P'den değil — SECURITY_AUDIT_HACKER.md kuralı).
+   - `src/domain/storage_deal.rs`: `StorageRegistry::prune_manifest(&manifest_id)` — consensus-level manifest + deals silme.
+   - `src/chain/blockchain.rs`: `produce_block` ve `validate_and_add_block` yollarında NftBurn tx tespit edilince eski state'ten CID alınıp `storage_registry.prune_manifest` çağrılıyor (hard prune'un zincir katmanı).
+   - `src/execution/executor.rs`: log dürüstleştirildi — "Hard Prune Triggered" → "registry entry removed, hard prune signal queued for B.U.D. node worker".
+   **Not:** Network-wide propagation (tüm shard tutan node'ların silmesi) Phase X olarak işaretlendi; şu an local node + consensus manifest silme aktif. Bu, Constitution'a en yakın uygulanabilir adım.
+
+2. **F2 MainnetActivation ölü kod (🔴):** Doğrulandı — `decode_for_mainnet` hiç çağrılmıyor, VM `decode_for_profile(Production)` ile VerifyMerkle'yi açık tutuyor (gate 4e2b920'de açıldı, 64-depth testleri yeşil V7).
+   **Fix (Q-X2: wire, gate açık kalsın):** `budzero/bud-vm/src/lib.rs` içinde production decode artık `Instruction::decode_for_mainnet(raw, MainnetActivation::full())` kullanıyor. Böylece `MainnetActivation` ölü kod olmaktan çıktı, gate açık davranışı korundu (full = açık). Yorum güncellendi: Production artık VerifyMerkle dahil.
+
+3. **F3 vendor CLI wire (🟡):** Doğrulandı — `commands.rs` parse ediyor, `Pkcs11Signer::with_vendor_mechanisms` var ama `main.rs:485` yalnızca `new()` kullanıyor.
+   **Fix:** `src/main.rs` içinde signer oluşturulduktan sonra `with_vendor_mechanisms(config.pkcs11_bls_mechanism.clone(), config.pkcs11_pq_mechanism.clone())` ile wire edildi. Artık cryptoki 0.12 sonrası vendor yol anlamlı ve aktif.
+
+4. **F4 boost %4 dağıtılmıyor (🟡):** Doğrulandı — `executor.rs` içinde `bud_share` hesaplanıp hiçbir hesaba yazılmıyor (implicit burn). Constitution %4 B.U.D. diyor.
+   **Fix (Q-X4: operatör havuzuna bağla):** `executor.rs` boost akışında `state.registry.active_members(STORAGE_OPERATOR)` ile aktif operatörler alınıp `bud_share` eşit dağıtılıyor (remainder ilk operatöre). Operatör yoksa dürüst fallback: burn olarak loglanıyor. Böylece %4 B.U.D., %16 creator, %80 protocol (burn/treasury) dağılımı koda yansıdı.
+
+5. **F5 genesis persist let _ = (🟡):** Doğrulandı — `blockchain.rs:503-504` dead_code path ve `2847` reorg path'de `let _ =` ile sessiz hata yutma. ARENA3 High bulgusu.
+   **Fix:** `if let Err(e) = store.insert_block(...) { tracing::error!(...) }` ve `save_last_hash` için aynı; `load_state` için de error log. Artık sessiz değil.
+
+6. **F6 test sayısı prose bayat (🟢):** Badge 538, README 531. Doğrulandı.
+   **Fix:** README.md ve MAINNET_READINESS.md içindeki 531 prose'ları 538'e güncellendi (badge-bot'un son kanıtı).
+
+7. **F7 guard test gücü zayıf (🟢):** Doğrulandı — mevcut test synthetic dummy listeleri test ediyor, derlenmiş MAINNET_BOOTNODES/DNS_SEEDS'in placeholder olduğunu doğrulamıyor. c953049 regresyonu tekrar edebilir.
+   **Fix:** `chain_config.rs` testine `MAINNET_BOOTNODES` ve `MAINNET_DNS_SEEDS`'in `first_placeholder_peer` tarafından yakalandığını assert eden iki yeni check eklendi (F7 güçlendirme).
+
+8. **F8 buf breaking branch=main (🟡):** Doğrulandı — `.git#branch=main` non-main branch'lerde ref yok → Repo Lint kırmızı (ARENAX dalında 87812434426). Fix `origin/main`.
+   **Fix:** `.github/workflows/ci.yml:442` → `.git#branch=origin/main` (F8 kapanış, @ARENAX'e atıf).
+
+9. **F9 genesis hash sabiti assert'süz (🟢):** Doğrulandı — `mainnet.toml:5` hash'i yalnızca yorumda, test sadece JSON==code eşitliği (V5).
+   **Fix:** `src/chain/genesis.rs` içine `test_mainnet_genesis_hash_matches_documented_constant` eklendi — hash `9bf07f9f9bda9bf1fba9f12e859e4184dd468c0138cd6327710284629c30df4f` sabitine karşı assert (F9 kapanış).
+
+10. **F10 allow(warnings) (⚪):** Bilinçli kullanıcı kararı (`src/lib.rs:1` yorumu), `#![forbid(unsafe_code)]` etkilenmiyor. Not olarak kayıtlı, dead_code manuel grep ile denetleniyor (bu raporda yapıldı). Değişiklik yok.
+
+**budlumdevnet dokunulmadı ✅:** `git` durumu temiz, main HEAD `6613219a`, son push 2026-07-11 (kontrol edildi).
+
+**Kalan ADIM'lar:**
+- Phase 8.9 Dalga planı ve Phase 9 vision uyumu için Constitution'da hard prune'un network-wide kısmı Phase X notu eklenebilir (Q-X1 devam kararı bekliyor).
+- MainnetActivation default'u full() ile açık — ceremony sonrası flip gerekirse config'e bağlanabilir (Q-X2 kullanıcı onayı).
+- Boost %4 dağıtımı chain_state'de test edilmeli — mevcut test yok, yeni E2E eklenebilir (ADIM).
+- CI yeşili bekleniyor (yerelde cargo yok, CI kanıtı zorunlu per STATUS.md kuralı).
+
+**Kanıt:** Bu push öncesi `git diff` içinde F1-F9 fix'leri; CI kanıtı bu push'un check-runs'ından gelecek (KURAL 3: kırmızı gelirse düzeltme turu).
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>

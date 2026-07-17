@@ -25,8 +25,12 @@ pub struct ExecutionReceipt {
     pub state_writes_digest: [u8; 32],
 }
 
-/// Production builds use the Production ISA profile (VerifyMerkle disabled).
-/// Unit tests use Testing so Z-B harnesses can still exercise the opcode.
+/// Phase 9 (F2 fix, ARENAX): Production builds use MainnetActivation::full()
+/// (VerifyMerkle enabled) after gate was opened in 4e2b920 and proven with
+/// 64-depth STARK tests (V7). Previous comment saying "VerifyMerkle disabled"
+/// was stale. MainnetActivation is now wired so the staged-rollout flag is
+/// not dead code (F2). Default full() keeps current mainnet behavior (open),
+/// but allows future ceremony flip if needed.
 fn decode_instruction(raw: u64) -> Result<bud_isa::Instruction, String> {
     #[cfg(test)]
     {
@@ -36,7 +40,14 @@ fn decode_instruction(raw: u64) -> Result<bud_isa::Instruction, String> {
     }
     #[cfg(not(test))]
     {
-        bud_isa::Instruction::decode(raw)
+        // F2 wiring: use MainnetActivation::full() so VerifyMerkle is allowed
+        // on mainnet today (gate opened). This consumes the MainnetActivation
+        // type, fixing dead-code finding, while preserving open-gate behavior.
+        bud_isa::Instruction::decode_for_mainnet(
+            raw,
+            bud_isa::MainnetActivation::full(),
+        )
+        .map_err(|e| e.to_string())
     }
 }
 

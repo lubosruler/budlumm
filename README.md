@@ -111,12 +111,12 @@ This is **not** a substitute for a professional external audit.
 ```bash
 cargo fmt --all -- --check
 cargo clippy --lib --tests -- -D warnings
-cargo test --lib          # 531 unit/integration tests (lib)
+cargo test --lib          # 538 unit/integration tests (lib)
 ```
 
 CI (GitHub Actions): separate fmt → clippy `-D warnings` → test gates for the L1 and the in-tree BudZero workspace.
 
-> Test sayısı Phase 8.4 (Dalga 7b) itibarıyla CI rozet-botuyla **otomatik** tazelenir (loop-guard'lı self-commit; kullanıcı Q5 kararı — yalnız sayı değişiminde, yalnız main push'unda). Son manuel kanıt notu: `cargo test --lib` → 531 passed / 58.24s (Phase 8.9 Dalga-5 push'u; önceki: 523, Dalga-3).
+> Test sayısı Phase 8.4 (Dalga 7b) itibarıyla CI rozet-botuyla **otomatik** tazelenir (loop-guard'lı self-commit; kullanıcı Q5 kararı — yalnız sayı değişiminde, yalnız main push'unda). Son manuel kanıt notu: `cargo test --lib` → 538 passed / (Phase 8.9+ badge-bot).
 
 ---
 

@@ -320,7 +320,10 @@ impl Executor {
                     .burn(id, &tx.from)
                     .map_err(|e| BudlumError::validation("nft_burn_failed", e.to_string()))?;
 
-                tracing::info!(%cid, "B.U.D. Hard Prune Triggered by NftBurn");
+                // F1 fix: honest logging — physical deletion happens via NodeCommand::StoragePrune worker,
+                // not synchronously in executor. Previously log claimed "Hard Prune Triggered" while no
+                // physical deletion occurred. Now we log registry removal and note that node worker will handle.
+                tracing::info!(%cid, "NftBurn: registry entry removed, hard prune signal queued for B.U.D. node worker (physical deletion via StoragePrune)");
 
                 let sender = state.get_or_create(&tx.from);
                 sender.balance = sender.balance.saturating_sub(tx.fee);
@@ -355,6 +358,43 @@ impl Executor {
 
                 let creator = state.get_or_create(&nft.owner);
                 creator.balance = creator.balance.saturating_add(creator_share);
+
+                // F4 fix (ARENAX): Constitution §3 says 4% to B.U.D. Storage Operators.
+                // Previously bud_share was computed but never distributed (implicit burn).
+                // Now distribute equally among active STORAGE_OPERATORs if any; otherwise treat as protocol burn (honest fallback).
+                if bud_share > 0 {
+                    let operators = state
+                        .registry
+                        .active_members(crate::registry::role::roles::STORAGE_OPERATOR);
+                    if !operators.is_empty() {
+                        let per_operator = bud_share / (operators.len() as u64);
+                        let remainder = bud_share % (operators.len() as u64);
+                        for reg in &operators {
+                            let op_acc = state.get_or_create(&reg.account);
+                            op_acc.balance = op_acc.balance.saturating_add(per_operator);
+                        }
+                        // Remainder goes to first operator to avoid dust loss
+                        if remainder > 0 {
+                            if let Some(first) = operators.first() {
+                                let first_acc = state.get_or_create(&first.account);
+                                first_acc.balance = first_acc.balance.saturating_add(remainder);
+                            }
+                        }
+                        tracing::info!(
+                            nft_id = %nft_id,
+                            bud_share = %bud_share,
+                            operator_count = operators.len(),
+                            per_operator = %per_operator,
+                            "SocialFi: B.U.D. operator share distributed"
+                        );
+                    } else {
+                        tracing::info!(
+                            nft_id = %nft_id,
+                            bud_share = %bud_share,
+                            "SocialFi: No active storage operators — B.U.D. share burned as protocol fee (honest fallback)"
+                        );
+                    }
+                }
 
                 tracing::info!(nft_id = %nft_id, creator_reward = %creator_share, protocol_fee = %protocol_share, "SocialFi: Content Boosted");
             }

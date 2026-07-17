@@ -55,6 +55,10 @@ pub enum NodeCommand {
     Broadcast(String, NetworkMessage),
     BroadcastTx(crate::core::transaction::Transaction),
     ListPeers,
+    /// F1 fix (ARENAX): Hard Pruning — physical deletion of B.U.D. content.
+    /// Triggered ONLY by local Executor after verified NftBurn (SECURITY_AUDIT_HACKER.md).
+    /// Payload is 32-byte ContentId (mirrors budlum_core::storage::content_id::ContentId and bud_node::store::ContentId).
+    StoragePrune { cid: [u8; 32] },
 }
 #[derive(Clone)]
 pub struct NodeClient {
@@ -114,6 +118,17 @@ impl NodeClient {
             "blocks".into(),
             NetworkMessage::SlashingEvidence(evidence),
         ));
+    }
+
+    /// F1: Trigger local hard prune of B.U.D. content (only via local executor, not P2P).
+    pub fn storage_prune_sync(&self, cid: [u8; 32]) {
+        let _ = self
+            .sender
+            .try_send(NodeCommand::StoragePrune { cid });
+    }
+
+    pub async fn storage_prune(&self, cid: [u8; 32]) {
+        let _ = self.sender.send(NodeCommand::StoragePrune { cid }).await;
     }
 }
 #[tokio::test]
@@ -734,6 +749,34 @@ impl Node {
                                 let topic = gossipsub::IdentTopic::new("transactions");
                                 if let Err(e) = self.swarm.behaviour_mut().gossipsub.publish(topic, msg.to_bytes()) {
                                     warn!("Failed to gossip transaction: {}", e);
+                                }
+                            }
+                            NodeCommand::StoragePrune { cid } => {
+                                // F1 fix: Hard Pruning worker — physical deletion from local B.U.D. store.
+                                // Only triggered by local Executor (not via P2P gossip), per SECURITY_AUDIT_HACKER.md.
+                                if let Some(ref storage_node) = self.storage_node {
+                                    let content_id = bud_node::store::ContentId(cid);
+                                    match storage_node.store().delete(&content_id) {
+                                        Ok(()) => {
+                                            info!(
+                                                cid = %hex::encode(cid),
+                                                "B.U.D. hard prune executed: content physically deleted from local store (NftBurn)"
+                                            );
+                                        }
+                                        Err(e) => {
+                                            // Not found is not an error — content may have been pruned already or never stored locally
+                                            tracing::debug!(
+                                                cid = %hex::encode(cid),
+                                                error = %e,
+                                                "B.U.D. hard prune: content not found locally (already pruned or not stored)"
+                                            );
+                                        }
+                                    }
+                                } else {
+                                    warn!(
+                                        cid = %hex::encode(cid),
+                                        "StoragePrune received but storage_node is None — no-op (node without B.U.D. storage)"
+                                    );
                                 }
                             }
                         }

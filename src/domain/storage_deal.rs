@@ -706,6 +706,33 @@ impl StorageRegistry {
     pub fn all_results(&self) -> Vec<&ChallengeResult> {
         self.results.values().collect()
     }
+
+    /// F1 fix (ARENAX): Hard Pruning — remove a manifest and all its deals.
+    /// Called when an NFT whose content_id equals a manifest_id is burned.
+    /// This is the consensus-level part of hard pruning (manifest + deals).
+    /// The physical B.U.D. chunk deletion (off-chain store) happens via
+    /// NodeCommand::StoragePrune worker (src/network/node.rs).
+    /// Returns true if a manifest was present and removed.
+    pub fn prune_manifest(&mut self, manifest_id: &ContentId) -> bool {
+        let existed = self.manifests.remove(manifest_id).is_some();
+        if existed {
+            // Remove all deals whose manifest_id matches, and clean the index
+            let deal_ids_to_remove: Vec<u64> = self
+                .deals
+                .iter()
+                .filter(|(_, d)| &d.manifest_id == manifest_id)
+                .map(|(id, _)| *id)
+                .collect();
+            for deal_id in deal_ids_to_remove {
+                self.deals.remove(&deal_id);
+            }
+            // Clean deals_by_shard index entries for this manifest
+            self.deals_by_shard
+                .retain(|(mid, _), _| mid != manifest_id);
+            tracing::info!(%manifest_id, "StorageRegistry: hard pruned manifest and its deals (NftBurn)");
+        }
+        existed
+    }
 }
 
 /// Canonical, domain-tagged byte encoding of a `StorageDeal`. Used in
