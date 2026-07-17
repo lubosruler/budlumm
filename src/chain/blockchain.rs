@@ -1187,6 +1187,11 @@ impl Blockchain {
         let fee = final_amount.saturating_mul(1) / 100;
         final_amount = final_amount.saturating_sub(fee);
 
+        // Phase 9 Security: Prevent u128 -> u64 truncation (AÇIK Fix)
+        if final_amount > u64::MAX as u128 {
+            return Err("Bridge amount exceeds maximum representable balance (u64 overflow)".into());
+        }
+
         // Credit the recipient and the relayer
         self.state
             .add_balance(&transfer.recipient, final_amount as u64);
@@ -1806,6 +1811,14 @@ impl Blockchain {
                 let fee = transfer.amount.saturating_mul(1) / 100;
                 let final_amount = transfer.amount.saturating_sub(fee);
 
+                // Phase 9 Security: Prevent u128 -> u64 truncation (AÇIK Fix)
+                if final_amount > u64::MAX as u128 {
+                    return Err(format!(
+                        "Bridge amount {} exceeds maximum representable balance",
+                        final_amount
+                    ));
+                }
+
                 self.state
                     .add_balance(&transfer.recipient, final_amount as u64);
                 self.state.add_balance(&relayer, fee as u64);
@@ -1824,6 +1837,14 @@ impl Blockchain {
                 // Actually, if a relayer brings proof of burn on target, they should be paid on source.
                 let fee = transfer.amount.saturating_mul(1) / 100;
                 let final_amount = transfer.amount.saturating_sub(fee);
+
+                // Phase 9 Security: Prevent u128 -> u64 truncation (AÇIK Fix)
+                if final_amount > u64::MAX as u128 {
+                    return Err(format!(
+                        "Unlock amount {} exceeds maximum balance",
+                        final_amount
+                    ));
+                }
 
                 self.state.add_balance(&transfer.owner, final_amount as u64);
                 self.state.add_balance(&relayer, fee as u64);

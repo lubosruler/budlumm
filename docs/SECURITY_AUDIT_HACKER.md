@@ -50,3 +50,14 @@
 
 ## 3. Final Verdict
 The system is structurally sound against unauthorized ownership changes (BNS/NFT), but the **Universal Relayer** needs a real cryptographic bridge before it can be considered production-ready.
+
+### H6: u128 to u64 Bridge Truncation (Critical)
+**Vulnerability:** `BridgeTransfer.amount` is `u128`, but `Account.balance` is `u64`. Relayer proof submission performed `as u64` cast without range check, allowing high-value transfers to be truncated or corrupted.
+**Hacker Trick:** "I'll transfer exactly 2^64 + 100 assets. The bridge records 2^64+100, but on-chain I only get 100. The rest vanishes or breaks the ledger."
+**Fix:** Added range checks in `Blockchain::mint_bridge_transfer_from_verified_event` and `submit_relay_proof`.
+**Status:** **SECURED.** (Fixed in 2026-07-17 audit).
+
+### H7: Relay ID Tamper (High)
+**Vulnerability:** `UniversalRelayer` was extracting the message from the source event without calling `verify_id()`. If the event structure was somehow manipulated but the Merkle proof held, a wrong ID could be processed.
+**Fix:** Explicit `message.verify_id()` call added to `process_relay`.
+**Status:** **SECURED.**

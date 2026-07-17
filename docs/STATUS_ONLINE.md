@@ -236,3 +236,19 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 **Sonuç:** Budlum, 915 aktif mühür ve endüstri standardı PBT/Adversarial testleriyle kurumsal denetim (audit) öncesi en sağlam teknik altyapısına kavuşmuştur.
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+### [2026-07-17 20:30 UTC+3] ARENA2 — Critical Vulnerabilities Found & Fixed (Audit Success)
+
+**Durum:** tamamlandı (push yapıldı)
+**Kapsam:** In-depth Security Audit findings F11-F12
+**Aksiyon:**
+1. **Critical: u128 Truncation (AÇIK):** Bridge transfer miktarının (`u128`) hesap bakiyesine (`u64`) aktarılırken yaşattığı "truncation" açığı tespit edildi. `u64::MAX` üzerindeki transferler artık güvenli şekilde reddediliyor.
+2. **High: Relay ID Verification:** Relayer katmanında `verify_id()` kontrolü eksikliği giderildi. Artık mesaj bütünlüğü (tamper protection) her relay adımında zorunlu.
+3. **Audit Trail:** `SECURITY_AUDIT_HACKER.md` dosyasına H6 ve H7 maddeleri eklendi.
+
+**Kanıt:**
+- `src/chain/blockchain.rs` (Range checks).
+- `src/cross_domain/relayer.rs` (`verify_id` integration).
+- `docs/SECURITY_AUDIT_HACKER.md` (New records).
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>

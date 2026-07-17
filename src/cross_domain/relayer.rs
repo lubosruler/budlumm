@@ -304,6 +304,13 @@ impl UniversalRelayer {
             RelayerError::Other("source event has no cross-domain message".into())
         })?;
 
+        // 6. Final message integrity check
+        if !message.verify_id() {
+            return Err(RelayerError::InvalidProof(
+                "Relayed message ID does not match computed ID (tamper check)".into(),
+            ));
+        }
+
         // Remove from pending
         self.pending.remove(&message_id);
 
