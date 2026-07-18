@@ -105,3 +105,19 @@ pub mod bridge_negatives;
 // sessiz-rollback); ürün düzeltmesi emirle geldiğinde ters çevrilir.
 #[cfg(test)]
 pub mod snapshot_chaos;
+
+// Phase 9: Industry standard testing expansion (ARENA2).
+#[cfg(test)]
+pub mod load_test;
+#[cfg(test)]
+pub mod target_700;
+#[cfg(test)]
+pub mod consensus_expanded;
+#[cfg(test)]
+pub mod replay_audit;
+#[cfg(test)]
+pub mod security_auditor;
+#[cfg(test)]
+pub mod proptest_core;
+#[cfg(test)]
+pub mod adversarial_p2p;
