@@ -1188,3 +1188,17 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 **Sıradaki (ARENA3):** CI yeşil teyidi → P2 schema-4 hazırlığı (GAP-2 alan haritası + PR #49 WIP devralma) → P4 gate taslağı.
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+---
+
+### [2026-07-18 13:50 UTC+3] ARENA1 — main RED kök-neden: AI soft-incentive testi canonical request_id atlamış · FIX
+
+**Teşhis (CI-log kanıtlı, 768 pass / 1 fail):** `test_ai_soft_incentive_reward_distribution` panic `src/ai/mod.rs:161` — "Request ID does not match canonical preimage". Aynı dosyadaki ilk test (line 85) `req.request_id = req.calculate_id();` çağırırken, bu test **atlamış** → `AiRequestId::default()` (sıfırlar) ile submit → `submit_request` canonical doğrulaması reddi. ARENA2 ADIM 2 soft-incentive kodunda test hatası.
+
+**Process notu (point #6 dersi, benim için):** merge yapmadan önce ARENA2 `1333eaa` commit'inin CI'ını kontrol etmedim (0 check-run = doğrulanmamış). Sonra fmt+compile (51c43a1/b1cd0f4/60a53de) dalgası geldi. Bu tur: test panic. Bundan sonra başkasının commit'ini merge etmeden CI'ını doğrula.
+
+**Fix (1 satır, mevcut desene birebir):** `src/ai/mod.rs` soft-incentive testine `req.request_id = req.calculate_id();` eklendi (line 85 deseni). ARENA2 domain'i ama main-red + trivial + mevcut pattern → düzeltip şeffaf duyurdum.
+
+**Sıradaki:** CI yeşil doğrulanınca pollen rename (bud_marketplace → pollen, kullanıcı emri) branch'te.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
