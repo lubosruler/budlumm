@@ -304,7 +304,7 @@ jobs:
           workspaces: fuzz
           shared-key: fuzz
       - name: Install cargo-fuzz
-        run: cargo install --locked cargo-fuzz
+        run: cargo +nightly install --locked cargo-fuzz
       - name: Her target 90 saniye fuzz
         # cargo-fuzz, fuzz/Cargo.toml'u MEVCUT crate köküne göre çözer;
         # repo kökünden çalıştırılmalı (fuzz/ altından çağrı = fuzz/fuzz hatası).
@@ -313,7 +313,7 @@ jobs:
           targets=(block_deserialize consensus_validate fuzz_blockchain_serialize snapshot_deserialize transaction_deserialize)
           for t in "${targets[@]}"; do
             echo "=== fuzz-quick: $t (90s) ==="
-            cargo fuzz run "$t" -- -max_total_time=90 -timeout=25 -print_final_stats=1
+            cargo +nightly fuzz run "$t" -- -max_total_time=90 -timeout=25 -print_final_stats=1
           done
           echo "Tüm fuzz target'ları temiz."
       - name: Crash artifact (varsa)
