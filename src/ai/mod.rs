@@ -1790,7 +1790,11 @@ mod tests {
         };
         req.request_id = req.calculate_id();
         // Override result_deadline_blocks to 200 so result_deadline=210 > deadline_block=110
-        registry.models.get_mut(&model_id).unwrap().result_deadline_blocks = 200;
+        registry
+            .models
+            .get_mut(&model_id)
+            .unwrap()
+            .result_deadline_blocks = 200;
         let req_id = registry.submit_request(req, 10).unwrap();
 
         let v1 =
