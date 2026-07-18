@@ -2419,6 +2419,316 @@ impl BudlumApiServer for RpcServer {
         Ok(hex::encode(data))
     }
 
+    // --- Phase 10 (§1): AI Inference & Verifier Layer ---
+
+    async fn ai_get_model(&self, model_id: String) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let clean_id = model_id.strip_prefix("0x").unwrap_or(&model_id);
+        let id_bytes = hex::decode(clean_id).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid model_id hex: {e}"), None::<()>)
+        })?;
+        if id_bytes.len() != 32 {
+            return Err(ErrorObjectOwned::owned(-32602, "model_id must be 32 bytes", None::<()>));
+        }
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&id_bytes);
+        match self.chain.get_ai_model(crate::ai::types::AiModelId(arr)).await {
+            Some(spec) => Ok(serde_json::to_value(&spec).unwrap_or(serde_json::Value::Null)),
+            None => Ok(serde_json::Value::Null),
+        }
+    }
+
+    async fn ai_register_model(
+        &self,
+        owner: String,
+        model_hash: String,
+        min_verifier_count: u32,
+        agreement_threshold: u32,
+        max_input_ref_bytes: u64,
+        max_output_ref_bytes: u64,
+        request_deadline_blocks: u64,
+        result_deadline_blocks: u64,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let clean_owner = owner.strip_prefix("0x").unwrap_or(&owner);
+        let owner_addr = crate::core::address::Address::from_hex(clean_owner).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid owner address: {e}"), None::<()>)
+        })?;
+
+        let clean_hash = model_hash.strip_prefix("0x").unwrap_or(&model_hash);
+        let hash_bytes = hex::decode(clean_hash).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid model_hash hex: {e}"), None::<()>)
+        })?;
+        if hash_bytes.len() != 32 {
+            return Err(ErrorObjectOwned::owned(-32602, "model_hash must be 32 bytes", None::<()>));
+        }
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&hash_bytes);
+
+        let model_id = crate::ai::types::AiModelId::of(&owner_addr, &arr, 1);
+        let spec = crate::ai::types::AiModelSpec {
+            model_id,
+            model_hash: arr,
+            owner: owner_addr,
+            min_verifier_count,
+            agreement_threshold,
+            max_input_ref_bytes,
+            max_output_ref_bytes,
+            request_deadline_blocks,
+            result_deadline_blocks,
+            version: 1,
+            active: true,
+        };
+
+        let tx = crate::core::transaction::Transaction {
+            from: owner_addr,
+            to: crate::core::address::Address::zero(),
+            amount: 0,
+            fee: crate::execution::zkvm::MIN_TX_FEE,
+            nonce: 0,
+            data: Vec::new(),
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis(),
+            hash: String::new(),
+            signature: None,
+            chain_id: self.chain.get_chain_id().await,
+            tx_type: crate::core::transaction::TransactionType::AiModelRegister(spec),
+        };
+
+        Ok(serde_json::json!({
+            "model_id": model_id.to_hex(),
+            "owner": owner_addr.to_hex(),
+            "tx_template": tx,
+        }))
+    }
+
+    async fn ai_submit_request(
+        &self,
+        requester: String,
+        model_id: String,
+        input_commitment: String,
+        input_ref_hex: String,
+        max_fee: u64,
+        callback: Option<String>,
+        deadline_block: u64,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let clean_req = requester.strip_prefix("0x").unwrap_or(&requester);
+        let req_addr = crate::core::address::Address::from_hex(clean_req).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid requester address: {e}"), None::<()>)
+        })?;
+
+        let clean_mid = model_id.strip_prefix("0x").unwrap_or(&model_id);
+        let mid_bytes = hex::decode(clean_mid).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid model_id hex: {e}"), None::<()>)
+        })?;
+        if mid_bytes.len() != 32 {
+            return Err(ErrorObjectOwned::owned(-32602, "model_id must be 32 bytes", None::<()>));
+        }
+        let mut mid = [0u8; 32];
+        mid.copy_from_slice(&mid_bytes);
+
+        let clean_com = input_commitment.strip_prefix("0x").unwrap_or(&input_commitment);
+        let com_bytes = hex::decode(clean_com).map_err(|e| {
+            ErrorObjectOwned::owned(
+                -32602,
+                format!("Invalid input_commitment hex: {e}"),
+                None::<()>,
+            )
+        })?;
+        if com_bytes.len() != 32 {
+            return Err(ErrorObjectOwned::owned(
+                -32602,
+                "input_commitment must be 32 bytes",
+                None::<()>,
+            ));
+        }
+        let mut icom = [0u8; 32];
+        icom.copy_from_slice(&com_bytes);
+
+        let clean_ref = input_ref_hex.strip_prefix("0x").unwrap_or(&input_ref_hex);
+        let ref_bytes = hex::decode(clean_ref).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid input_ref hex: {e}"), None::<()>)
+        })?;
+        let input_ref = crate::ai::types::BoundedBytes::try_new(ref_bytes).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, e, None::<()>)
+        })?;
+
+        let cb = match callback {
+            Some(c) if !c.is_empty() => {
+                let clean_cb = c.strip_prefix("0x").unwrap_or(&c);
+                Some(crate::core::address::Address::from_hex(clean_cb).map_err(|e| {
+                    ErrorObjectOwned::owned(
+                        -32602,
+                        format!("Invalid callback address: {e}"),
+                        None::<()>,
+                    )
+                })?)
+            }
+            _ => None,
+        };
+
+        let current_height = self.chain.get_height().await;
+        let mut req = crate::ai::types::AiInferenceRequest {
+            request_id: crate::ai::types::AiRequestId::default(),
+            requester: req_addr,
+            model_id: crate::ai::types::AiModelId(mid),
+            input_commitment: icom,
+            input_ref,
+            max_fee,
+            callback: cb,
+            submitted_at_block: current_height,
+            deadline_block,
+        };
+        req.request_id = req.calculate_id();
+
+        let tx = crate::core::transaction::Transaction {
+            from: req_addr,
+            to: crate::core::address::Address::zero(),
+            amount: 0,
+            fee: crate::execution::zkvm::MIN_TX_FEE,
+            nonce: 0,
+            data: Vec::new(),
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis(),
+            hash: String::new(),
+            signature: None,
+            chain_id: self.chain.get_chain_id().await,
+            tx_type: crate::core::transaction::TransactionType::AiInferenceRequest(req.clone()),
+        };
+
+        Ok(serde_json::json!({
+            "request_id": req.request_id.to_hex(),
+            "requester": req_addr.to_hex(),
+            "tx_template": tx,
+        }))
+    }
+
+    async fn ai_submit_result(
+        &self,
+        verifier: String,
+        request_id: String,
+        output_commitment: String,
+        output_ref_hex: String,
+        result_nonce: u64,
+        signature_hex: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let clean_v = verifier.strip_prefix("0x").unwrap_or(&verifier);
+        let v_addr = crate::core::address::Address::from_hex(clean_v).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid verifier address: {e}"), None::<()>)
+        })?;
+
+        let clean_rid = request_id.strip_prefix("0x").unwrap_or(&request_id);
+        let rid_bytes = hex::decode(clean_rid).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid request_id hex: {e}"), None::<()>)
+        })?;
+        if rid_bytes.len() != 32 {
+            return Err(ErrorObjectOwned::owned(-32602, "request_id must be 32 bytes", None::<()>));
+        }
+        let mut rid = [0u8; 32];
+        rid.copy_from_slice(&rid_bytes);
+
+        let clean_ocom = output_commitment.strip_prefix("0x").unwrap_or(&output_commitment);
+        let com_bytes = hex::decode(clean_ocom).map_err(|e| {
+            ErrorObjectOwned::owned(
+                -32602,
+                format!("Invalid output_commitment hex: {e}"),
+                None::<()>,
+            )
+        })?;
+        if com_bytes.len() != 32 {
+            return Err(ErrorObjectOwned::owned(
+                -32602,
+                "output_commitment must be 32 bytes",
+                None::<()>,
+            ));
+        }
+        let mut ocom = [0u8; 32];
+        ocom.copy_from_slice(&com_bytes);
+
+        let clean_oref = output_ref_hex.strip_prefix("0x").unwrap_or(&output_ref_hex);
+        let ref_bytes = hex::decode(clean_oref).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid output_ref hex: {e}"), None::<()>)
+        })?;
+        let output_ref = crate::ai::types::BoundedBytes::try_new(ref_bytes).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, e, None::<()>)
+        })?;
+
+        let clean_sig = signature_hex.strip_prefix("0x").unwrap_or(&signature_hex);
+        let sig_bytes = hex::decode(clean_sig).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid signature hex: {e}"), None::<()>)
+        })?;
+
+        let current_height = self.chain.get_height().await;
+        let res = crate::ai::types::AiInferenceResult {
+            request_id: crate::ai::types::AiRequestId(rid),
+            verifier: v_addr,
+            output_commitment: ocom,
+            output_ref,
+            result_nonce,
+            signature: sig_bytes,
+            submitted_at_block: current_height,
+        };
+
+        let tx = crate::core::transaction::Transaction {
+            from: v_addr,
+            to: crate::core::address::Address::zero(),
+            amount: 0,
+            fee: crate::execution::zkvm::MIN_TX_FEE,
+            nonce: 0,
+            data: Vec::new(),
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis(),
+            hash: String::new(),
+            signature: None,
+            chain_id: self.chain.get_chain_id().await,
+            tx_type: crate::core::transaction::TransactionType::AiInferenceResult(res),
+        };
+
+        Ok(serde_json::json!({
+            "verifier": v_addr.to_hex(),
+            "tx_template": tx,
+        }))
+    }
+
+    async fn ai_get_outcome(
+        &self,
+        request_id: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let clean_id = request_id.strip_prefix("0x").unwrap_or(&request_id);
+        let id_bytes = hex::decode(clean_id).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid request_id hex: {e}"), None::<()>)
+        })?;
+        if id_bytes.len() != 32 {
+            return Err(ErrorObjectOwned::owned(-32602, "request_id must be 32 bytes", None::<()>));
+        }
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&id_bytes);
+        match self.chain.get_ai_outcome(crate::ai::types::AiRequestId(arr)).await {
+            Some(outcome) => Ok(serde_json::to_value(&outcome).unwrap_or(serde_json::Value::Null)),
+            None => Ok(serde_json::Value::Null),
+        }
+    }
+
+    async fn ai_get_active_verifiers(&self) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let role = crate::registry::role::roles::AI_VERIFIER;
+        let members = self.chain.get_registry_active_members(role).await;
+        let list: Vec<serde_json::Value> = members
+            .iter()
+            .map(|reg| {
+                serde_json::json!({
+                    "address": Self::to_0x_hash(reg.account.to_hex()),
+                    "stake": reg.stake,
+                    "active": reg.is_active,
+                })
+            })
+            .collect();
+        Ok(serde_json::Value::Array(list))
+    }
+
     async fn prune_status(&self) -> Result<serde_json::Value, ErrorObjectOwned> {
         self.chain.get_prune_status().await.map_err(|e| {
             ErrorObjectOwned::owned(

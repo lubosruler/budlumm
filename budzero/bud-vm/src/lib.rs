@@ -481,6 +481,11 @@ impl Vm {
                     1 => self.context.sender,
                     2 => self.context.block_height,
                     3 => self.context.nonce,
+                    6 => {
+                        self.events.push(0x00A1_00A1);
+                        self.events.push(src1_val);
+                        self.context.block_height.saturating_add(src1_val)
+                    }
                     _ => 0,
                 };
                 self.registers[dst_idx as usize] = result;
@@ -990,6 +995,23 @@ mod tests {
         assert_eq!(vm.registers[1], 9);
         assert_eq!(vm.registers[2], 77);
         assert_eq!(vm.trace.len(), 4);
+    }
+
+    #[test]
+    fn test_syscall_imm_6_emits_ai_request_event() {
+        let program = vec![
+            inst(Opcode::Push, 1, 0, 0, 42),
+            inst(Opcode::Syscall, 2, 1, 0, 6),
+            inst(Opcode::Halt, 0, 0, 0, 0),
+        ];
+
+        let mut vm = Vm::new(64);
+        vm.context.block_height = 100;
+        let receipt = vm.run_receipt(&program);
+
+        assert!(receipt.success);
+        assert_eq!(vm.events, vec![0x00A1_00A1, 42]);
+        assert_eq!(vm.registers[2], 142);
     }
 
     #[test]

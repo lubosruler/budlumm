@@ -126,6 +126,14 @@ pub enum ChainCommand {
         source_domain: crate::domain::types::DomainId,
         response: oneshot::Sender<Result<crate::cross_domain::message::CrossDomainMessage, String>>,
     },
+    GetAiModel(
+        crate::ai::types::AiModelId,
+        oneshot::Sender<Option<crate::ai::types::AiModelSpec>>,
+    ),
+    GetAiOutcome(
+        crate::ai::types::AiRequestId,
+        oneshot::Sender<Option<crate::ai::types::AiInferenceOutcome>>,
+    ),
     GetPruneStatus(oneshot::Sender<serde_json::Value>),
     RequestPrune(Option<u64>, oneshot::Sender<Result<u64, String>>),
     BuildGlobalHeader(oneshot::Sender<Result<crate::settlement::GlobalBlockHeader, String>>),
@@ -287,7 +295,7 @@ pub enum ChainCommand {
         response: oneshot::Sender<Vec<crate::socialfi::types::Nft>>,
     },
     MarketGetOffers {
-        response: oneshot::Sender<Vec<crate::marketplace::DataOffer>>,
+        response: oneshot::Sender<Vec<crate::bud_marketplace::DataOffer>>,
     },
     HubGetApps {
         response: oneshot::Sender<Vec<crate::hub::types::AppRecord>>,
@@ -948,6 +956,33 @@ impl ChainHandle {
             .unwrap_or_else(|_| Err("Actor dropped".to_string()))
     }
 
+    pub async fn get_ai_model(
+        &self,
+        id: crate::ai::types::AiModelId,
+    ) -> Option<crate::ai::types::AiModelSpec> {
+        let (tx, rx) = oneshot::channel();
+        if self.tx.send(ChainCommand::GetAiModel(id, tx)).await.is_err() {
+            return None;
+        }
+        rx.await.unwrap_or(None)
+    }
+
+    pub async fn get_ai_outcome(
+        &self,
+        id: crate::ai::types::AiRequestId,
+    ) -> Option<crate::ai::types::AiInferenceOutcome> {
+        let (tx, rx) = oneshot::channel();
+        if self
+            .tx
+            .send(ChainCommand::GetAiOutcome(id, tx))
+            .await
+            .is_err()
+        {
+            return None;
+        }
+        rx.await.unwrap_or(None)
+    }
+
     pub async fn get_prune_status(&self) -> Result<serde_json::Value, String> {
         let (tx, rx) = oneshot::channel();
         if let Err(e) = self.tx.send(ChainCommand::GetPruneStatus(tx)).await {
@@ -1346,7 +1381,7 @@ impl ChainHandle {
         rx.await.unwrap_or_default()
     }
 
-    pub async fn market_get_offers(&self) -> Vec<crate::marketplace::DataOffer> {
+    pub async fn market_get_offers(&self) -> Vec<crate::bud_marketplace::DataOffer> {
         let (tx, rx) = oneshot::channel();
         let _ = self
             .tx
@@ -1776,6 +1811,14 @@ impl ChainActor {
                         &proof,
                         source_domain,
                     ));
+                }
+                ChainCommand::GetAiModel(id, res_tx) => {
+                    let res = self.blockchain.state.ai_registry.models.get(&id).cloned();
+                    let _ = res_tx.send(res);
+                }
+                ChainCommand::GetAiOutcome(id, res_tx) => {
+                    let res = self.blockchain.state.ai_registry.outcomes.get(&id).cloned();
+                    let _ = res_tx.send(res);
                 }
                 ChainCommand::GetPruneStatus(res_tx) => {
                     let height = self.blockchain.chain.len() as u64;

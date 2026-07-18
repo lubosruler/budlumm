@@ -205,8 +205,37 @@ impl Executor {
                 }
             }
             TransactionType::ContractCall => {
-                ZkVmExecutor::execute_bytecode(&tx.data, DEFAULT_CONTRACT_GAS_LIMIT)
-                    .map_err(|e| BudlumError::validation("contract_execution_failed", e))?;
+                let receipt =
+                    ZkVmExecutor::execute_bytecode(&tx.data, DEFAULT_CONTRACT_GAS_LIMIT)
+                        .map_err(|e| BudlumError::validation("contract_execution_failed", e))?;
+
+                if !receipt.events.is_empty() && receipt.events[0] == 0x00A1_00A1 {
+                    if receipt.events.len() >= 4 {
+                        let mut model_id = [0u8; 32];
+                        model_id[0..8].copy_from_slice(&receipt.events[1].to_le_bytes());
+                        let max_fee = receipt.events[2];
+                        let deadline_block = state
+                            .epoch_index
+                            .saturating_mul(100)
+                            .saturating_add(receipt.events[3]);
+                        let mut req = crate::ai::types::AiInferenceRequest {
+                            request_id: crate::ai::types::AiRequestId::default(),
+                            requester: tx.from,
+                            model_id: crate::ai::types::AiModelId(model_id),
+                            input_commitment: crate::core::transaction::Transaction::signing_hash(
+                                &tx,
+                            ),
+                            input_ref: crate::ai::types::BoundedBytes::try_new(tx.data.clone())
+                                .unwrap_or_default(),
+                            max_fee,
+                            callback: Some(tx.from),
+                            submitted_at_block: state.epoch_index.saturating_mul(100),
+                            deadline_block,
+                        };
+                        req.request_id = req.calculate_id();
+                        let _ = state.ai_registry.submit_request(req);
+                    }
+                }
 
                 let sender = state.get_or_create(&tx.from);
                 sender.balance = sender.balance.saturating_sub(tx.fee);

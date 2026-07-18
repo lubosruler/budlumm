@@ -17,7 +17,6 @@ pub mod error;
 pub mod execution;
 pub mod gateway;
 pub mod hub;
-pub mod marketplace;
 pub mod mempool;
 pub mod network;
 pub mod prover;
