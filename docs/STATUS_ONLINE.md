@@ -1650,3 +1650,50 @@ Co-authored-by: ARENAX <arenax@budlum.ai>
 **F27/F29 augmentation (7c79cc8) + V17 fix = bu oturumun mainnet-prep kapanışları.** F10.1+F10.2 (H4) + pollen + V17 (bridge unlock) + F27/F29 (MR-6/MR-8 template ready). Sıradaki: P2 schema-4 (ARENA3) / F01 owner kararı / V19 persistence fix.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+### [2026-07-18 22:30 UTC+3] ARENAX — İlk sürekli denetim turu TAMAMLANDI (17/17 YEŞİL)
+
+**Durum:** TAM YEŞİL — SHA `c286c6f` için 17/17 check success (CI kanıtlı)
+**Kapsam:** İlk sürekli denetim turu tamamlandı. 7 bulgu (V22-V27) tespit edildi, 2'si main-RED onarımıyla kapatıldı.
+
+**Denetim envanteri:**
+
+| # | Bulgu | Ciddiyet | Durum |
+|---|-------|----------|-------|
+| V22 | AI Registry state_root() cross-map domain-separation eksik | 🟡 Orta | Açık (RFC önerisi verildi) |
+| V23 | NftRegistry::update_luminance u64 overflow (üst sınır yok) | 🟡 Orta | Açık (tek satır fix önerisi verildi) |
+| V24 | BridgeState::root() transfer detaylarını kapsamıyor | 🔴 Kritik | Açık (GAP-2 kapsamında, bilinçli borç) |
+| V25 | snapshot calculate_hash V24 kökünün kapsam eksikliğini koruyor | 🟡 Orta | V24'e bağımlı |
+| V26 | expiry_queue stale entry bloat | ⚪ Bilgi | Açık (performans, güvenlik değil) |
+| V27 | P5 ADIM6 deadline boundary test parametre hatası | 🔴 Kritik | ✅ KAPANDI (main-RED onarımı) |
+| V28 | executor.rs current_block = epoch_index * 100 (zincir yüksekliği yerine) | 🟡 Orta | Açık (0-99 blok sapma, tasarım kararı) |
+
+**Onarım zinciri (bu oturum):**
+1. `e6e84c6` — V22-V26 denetim raporu (docs)
+2. `4070dc9` — V27 main-RED onarımı (deadline boundary test fix)
+3. `ffbb0ef` — V27 rapor kaydı (docs)
+4. `31d41d1` — rustfmt onarımı (tek hunk)
+5. `c286c6f` — merge (diğer ajanların bridge fix + docs değişiklikleri dahil)
+
+**Değiştirilen dosyalar:**
+- `src/ai/mod.rs` — V27 test parametreleri + fmt
+- `docs/STATUS_ONLINE.md` — denetim raporları
+
+**Değiştirilmeyen dosyalar (audit-only):**
+- `src/ai/registry.rs` — V22 bulgusu (RFC önerisi verildi, kod değişmedi)
+- `src/socialfi/mod.rs` — V23 bulgusu (fix önerisi verildi, kod değişmedi)
+- `src/cross_domain/bridge.rs` — V24 bulgusu (GAP-2 kapsamında)
+- `src/execution/executor.rs` — V28 bulgusu (tasarım kararı)
+- `src/chain/snapshot.rs` — V25 bulgusu (V24'e bağımlı)
+
+**Budlumdevnet dokunulmadı** — salt-okunur tutuldu (HEAD `6613219` kontrol edildi, işlem öncesi/sonrası ls-remote özdeş).
+
+**Ne bekliyor:**
+- V22 fix (AI registry domain-separation) — ARENA3 review'ı bekliyor
+- V23 fix (NftRegistry luminance cap) — tek satır, diğer ajan uygulayabilir
+- V24+V25 (bridge root scope) — GAP-2 schema-4 PR kapsamında
+- V28 (executor current_block) — tasarım kararı (epoch_index * 100 mü, chain height mı?)
+
+**Kim karar verecek:** Kullanıcı (Ayaz) — V28 tasarım kararı ve V22/V23 fix önceliği
+
+Co-authored-by: ARENAX <arenax@budlum.ai>
