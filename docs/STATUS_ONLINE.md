@@ -1951,3 +1951,114 @@ Ama şunları hash'lemiyor: tokenomics, tokenomics_burn, registry, liveness, inv
 **Kim karar verecek:** Kullanıcı (Ayaz)
 
 Co-authored-by: ARENAX <arenax@budlum.ai>
+
+### [2026-07-18 23:02 UTC+3] ARENAX — HACKER PERSPEKTİFİ DERİN DENETİM (DEVAM): V40-V45
+
+**Durum:** CI 11/13, 0 failure (devam ediyor). Yeni saldırı vektörleri tespit edildi.
+
+---
+
+#### 🔴 V40 [YÜKSEK]: Governance SlashValidator Kanıt Gerektirmez
+
+**Dosya:** `src/core/account.rs:842-849`
+**Sorun:** `ProposalType::SlashValidator(addr)` herhangi bir slashing kanıtı gerektirmez. Normal slashing yolu: `submit_slashing_evidence → verify_evidence → slash` (kanıtlı). Ama governance yolu: `proposal → vote → execute_proposal → direkt slash` (kanıtsız).
+
+**Saldırı:** Yeterli stake çoğunluğu olan saldırgan, herhangi bir validator'u kanıtsız olarak slash'layabilir (stake=0, active=false, slashed=true).
+
+**Mitigasyon:** Bu bilinçli bir tasarım kararı olabilir (governance = ultimate authority). Ama mainnet'te bu gücün kötüye kullanım riski yüksek.
+
+**Ciddiyet:** 🔴 Yüksek (bilinçli tasarım kararı olarak kabul edilebilir ama belgelenmeli)
+
+---
+
+#### 🟡 V41 [YÜKSEK]: Governance ile Slashing Devre Dışı Bırakılabilir
+
+**Dosya:** `src/core/account.rs:865-900`
+**Sorun:** `ParameterUpdate` ile tüm slash oranları 0'a çekilebilir:
+- `double_sign_slash_ratio_fixed = 0` → double-sign cezasız
+- `liveness_slash_ratio_fixed = 0` → liveness ihlali cezasız
+- `malicious_slash_ratio_fixed = 0` → kötü niyetli davranış cezasız
+
+**Mitigasyon:** `params.validate()` alt sınır koymuyor (sadece üst sınır = FIXED_POINT_SCALE).
+
+**Ciddiyet:** 🟡 Orta (governance saldırısı için yeterli stake gerekli)
+
+---
+
+#### 🟡 V45 [YÜKSEK]: Maksimum Timestamp Drift Kontrolü Yok
+
+**Dosya:** `src/consensus/mod.rs:84-106`
+**Sorun:** `validate_timestamp()` yalnızca iki kontrol yapar:
+1. Monotonik artış (`block.timestamp > prev.timestamp`)
+2. Minimum interval (`interval >= MIN_BLOCK_INTERVAL_MS`)
+
+Ama **maksimum drift** kontrolü YOK. Block producer timestamp'i geleceğe ayarlayabilir (ör. yıl 2100).
+
+**Etki:** Timestamp'e bağlı mantık manipüle edilebilir:
+- Vesting schedule erkene alınabilir
+- BNS name expiration manipüle edilebilir
+- Bridge lock expiry manipüle edilebilir
+- AI request deadline manipüle edilebilir
+
+**Önerilen fix:** `block.timestamp <= now + MAX_TIMESTAMP_DRIFT_MS` kontrolü (ör. MAX_DRIFT = 15 saniye).
+
+**Ciddiyet:** 🟡 Orta (PoS/VRF liderlik seçimi timestamp'i sınırlar ama tek-producer durumunda serbest)
+
+---
+
+#### 🟡 V46 [DÜŞÜK]: Unbounded State Growth (DoS Vektörü)
+
+**Dosyalar:** Çeşitli
+**Sorun:** Aşağıdaki koleksiyonlar için üst sınır yok:
+- `AccountState.validators` — kayıt için min_stake var ama max yok
+- `GovernanceState.proposals` — proposals.push() limitsiz
+- `BnsRegistry.names` — names.insert() limitsiz
+- `NftRegistry.nfts` — next_id sonsuza kadar artar
+- `BridgeState.transfers` — transfers.insert() limitsiz
+- `AiRegistry.models/requests/results` — limitsiz
+
+**Etki:** Saldırgan ucuz tx'lerle state'i şişirebilir → snapshot boyutu artar → sync yavaşlar.
+
+**Ciddiyet:** 🟡 Düşük (her kayıt için minimum maliyet var — stake, fee vb.)
+
+---
+
+#### ⚪ V47 [BİLGİ]: Snapshot HashMap Kullanımı (Deterministik Değil)
+
+**Dosya:** `src/chain/snapshot.rs:12-13, 361-362`
+**Sorun:** `StateSnapshot` ve `StateSnapshotV2` balances/nonces için `HashMap` kullanıyor. HashMap iteration sırası non-deterministik.
+
+**Mitigasyon:** `calculate_hash()` sorted keys kullanıyor → hash deterministik. Ama JSON serde sırası garantili değil → farklı node'lar farklı JSON üretebilir.
+
+**Ciddiyet:** ⚪ Bilgi (hash deterministik, ama JSON byte-identical değil)
+
+---
+
+#### ⚪ V48 [BİLGİ]: ZKVM Memory Bounds Check Sağlam
+
+**Dosya:** `budzero/bud-vm/src/lib.rs:781-790`
+**Doğrulama:** `memory_word_addr` i128 overflow korumalı, negatif adres kontrolü, `checked_add(8)` ile son adres kontrolü. Bu, iyi bir güvenlik önlemi.
+
+---
+
+#### ⚪ V49 [BİLGİ]: Mainnet Key File Yasağı Sağlam
+
+**Dosya:** `src/cli/commands.rs:901`
+**Doğrulama:** Mainnet validator'ları için disk'ten key yükleme yasak (PKCS#11 zorunlu). Bu, iyi bir güvenlik önlemi.
+
+---
+
+**Güncel Toplam Denetim Envanteri (V22-V49):**
+
+| Ciddiyet | Sayı | Bulgular |
+|----------|------|----------|
+| 🔴 Kritik (Mainnet Blocker) | 1 | V29 (signing hash collision) |
+| 🔴 Kapatıldı | 1 | V27 (deadline test fix) |
+| 🟡 Yüksek | 8 | V22, V23, V24, V25, V30, V31, V34, V40, V41, V45 |
+| ⚪ Düşük/Bilgi | 8 | V26, V28, V36, V37, V38, V39, V46, V47, V48, V49 |
+
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** V29 fix acil. V40/V41/V45 tasarım kararı gerektirir.
+**Kim karar verecek:** Kullanıcı (Ayaz)
+
+Co-authored-by: ARENAX <arenax@budlum.ai>
