@@ -15,11 +15,19 @@
 //! `crate::domain::storage_deal::StorageRegistry` (kept under
 //! `domain/` because the data shapes it owns are consensus types, not
 //! transport types).
+//!
+//! The B.U.D. data marketplace primitives (Phase 10) live in
+//! [`marketplace`] — provenance, access grants, and marketplace listings.
 
 pub mod content_id;
 pub mod db;
 pub mod manifest;
+pub mod marketplace;
 pub mod traits;
 
 pub use content_id::{ContentId, DEFAULT_CHUNK_SIZE_BYTES};
 pub use manifest::{manifest_id_from_shards, ContentManifest, ShardRef};
+pub use marketplace::{
+    DataAsset, StorageCommitment, AccessGrant, AccessRevocation, MarketplaceListing,
+    MarketplaceRegistry, MarketplaceParams, GrantScope, Grantee, MarketplaceError,
+};

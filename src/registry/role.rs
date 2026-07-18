@@ -40,6 +40,8 @@ impl std::fmt::Display for RoleId {
             roles::RELAYER => write!(f, "relayer"),
             roles::PROVER => write!(f, "prover"),
             roles::STORAGE_OPERATOR => write!(f, "storage_operator"),
+            roles::AI_VERIFIER => write!(f, "ai_verifier"),
+            roles::BUD_STORAGE_NODE => write!(f, "bud_storage_node"),
             RoleId(id) => write!(f, "role#{id}"),
         }
     }
@@ -78,6 +80,29 @@ pub mod roles {
     /// `PermissionlessRegistry::params`. No whitelist, no admin gate
     /// (master context, CLAUDE.md §2).
     pub const STORAGE_OPERATOR: RoleId = RoleId(5);
+    /// AI Verifier (Phase 10, AI Inference Layer).
+    ///
+    /// AI Verifiers execute off-chain AI model inference and submit results
+    /// on-chain. Registration is OPTIONAL — `bud_ai_request` host-call is
+    /// permissionless; registering as `AI_VERIFIER` is only required to be
+    /// eligible for inference rewards and to participate in the k-of-n
+    /// agreement threshold.
+    ///
+    /// Like every other role, it is permissionless: any account can
+    /// register by staking the `min_stake` floor from
+    /// `PermissionlessRegistry::params`. No whitelist, no admin gate.
+    pub const AI_VERIFIER: RoleId = RoleId(6);
+    /// B.U.D. Storage Node (Phase 10, B.U.D. Marketplace).
+    ///
+    /// Distinct from `STORAGE_OPERATOR` (which is for deal/challenge economics).
+    /// `BUD_STORAGE_NODE` represents a node participating in the B.U.D.
+    /// content-addressable storage layer with provenance commitments.
+    /// Registration is OPTIONAL — storage commitment signing is permissionless;
+    /// registering is for reward eligibility and reputation.
+    ///
+    /// Permissionless: any account can register by staking `min_stake`.
+    /// No whitelist, no admin gate.
+    pub const BUD_STORAGE_NODE: RoleId = RoleId(7);
 }
 
 #[cfg(test)]
@@ -99,6 +124,8 @@ mod tests {
         assert_eq!(format!("{}", roles::RELAYER), "relayer");
         assert_eq!(format!("{}", roles::PROVER), "prover");
         assert_eq!(format!("{}", roles::STORAGE_OPERATOR), "storage_operator");
+        assert_eq!(format!("{}", roles::AI_VERIFIER), "ai_verifier");
+        assert_eq!(format!("{}", roles::BUD_STORAGE_NODE), "bud_storage_node");
     }
 
     #[test]
@@ -106,5 +133,15 @@ mod tests {
         // Pin the protocol-level role id (5) so a future bump is a
         // deliberate, audited change.
         assert_eq!(roles::STORAGE_OPERATOR.value(), 5);
+    }
+
+    #[test]
+    fn ai_verifier_role_id_value_is_6() {
+        assert_eq!(roles::AI_VERIFIER.value(), 6);
+    }
+
+    #[test]
+    fn bud_storage_node_role_id_value_is_7() {
+        assert_eq!(roles::BUD_STORAGE_NODE.value(), 7);
     }
 }
