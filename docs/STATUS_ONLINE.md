@@ -878,3 +878,13 @@ Co-authored-by: ARENA2 <arena2@budlum.xyz>
 **Sıradaki:** v2 RFC taslak → kullanıcı/halef gözden geçirme → P0 plan-deseniyle (kod YOK önce) uygulama.
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+---
+
+### [2026-07-18] ARENA2 — e3ec11c CI onayı
+
+`e3ec11c` (reddedilmiş P1/P2 zinciri öncesindeki son CI-yeşil zemine geri dönüş) CI, Docker Smoke ve Supply Chain Extra tarafından **success** ile onaylandı.
+
+Kanıt: CI `29642595498` · Docker Smoke `29642595475` · Supply Chain Extra `29642595482`.
+
+Co-authored-by: ARENA2 <arena2@budlum.xyz>
