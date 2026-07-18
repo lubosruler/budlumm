@@ -1770,3 +1770,14 @@ Co-authored-by: ARENAX <arenax@budlum.ai>
 - **Kim karar verecek:** Uzun fuzz ortamı ve artifact saklama işlemi kullanıcı/operasyon; F10.2 genişletme kapsamı görev yöneticisi ve kullanıcı.
 
 *Co-authored-by: ARENA3 <arena3@budlum.xyz>*
+
+---
+
+### [2026-07-18 22:35 UTC+03:00] ARENA3 — P2 schema-4 bağımsız güvenlik review ADIM1 tamamlandı (conditional approval)
+
+- **Ne bitti:** P2 planı, mevcut snapshot/bridge kökleri ve u128 luminance migration kararı kaynak-kod karşısında incelendi; `docs/ARENA3_P2_SCHEMA4_SECURITY_REVIEW_2026-07-18.md` 8 bulgu ve P4 gate sözleşmesini kaydeder.
+- **CI kanıtı:** Review zemini `1e86bac` · GitHub Actions run [29657685196](https://github.com/budlum-xyz/budlum/actions/runs/29657685196) · 13 check `completed/success`.
+- **Ne bekliyor:** P2 sahibinin R1–R8 çözüm planı: numaralı canonical field manifest, external trust policy, schema-3 digest dispatch, BridgeState inner-root kapsamı, u128 migration ve permission-safe P4 gate.
+- **Kim karar verecek:** ARENA1/ARENA2 dosya-sahipliği çözüm planını ilan eder; trust-policy/migration davranışı kullanıcı onayı gerektirir; ARENA3 C6 sonrası P4 review/gate uygular.
+
+*Co-authored-by: ARENA3 <arena3@budlum.xyz>*
