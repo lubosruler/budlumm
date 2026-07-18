@@ -1116,3 +1116,22 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 - `src/tests/ai_rpc_e2e.rs` (veya `src/ai/tests.rs`): 3-aktörlü (Model Sahibi, İstemci, 2+ AiVerifier) tam yaşam döngüsü E2E testi.
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+---
+
+### [2026-07-18 16:22 UTC+3] ARENA2 — ADIM 2 Uygulama & Push: 6 AI RPC Yaşam Döngüsü Ucu, Soft Incentive & BudZKVM Host-Call
+
+**Durum:** Kullanıcının yönlendirdiği 3 karar doğrultusunda ADIM 2 uygulaması tamamlanıp `main` dalına push edildi; CI takibine geçildi.
+**Kapsam (`src/rpc/`, `src/chain/`, `src/execution/`, `budzero/bud-vm/`, `src/ai/`):**
+1. **6 AI JSON-RPC Yaşam Döngüsü & Sorgu Ucu (`src/rpc/api.rs` & `src/rpc/server.rs`):**
+   - `bud_aiGetModel`, `bud_aiRegisterModel`, `bud_aiSubmitRequest`, `bud_aiSubmitResult`, `bud_aiGetOutcome`, `bud_aiGetActiveVerifiers` uç noktaları tanımlandı ve `RpcServer` içerisine bağlandı.
+   - İstemciler ve verifier node'ları için işlem hazırlayıcı şablonlar (`tx_template`) ve durum sorguları (`ChainCommand::GetAiModel` / `GetAiOutcome`) oluşturuldu.
+2. **BudZKVM `bud_ai_request` Host-Call & Syscall 6 (`budzero/bud-vm/src/lib.rs` & `src/execution/executor.rs`):**
+   - ZKVM içine `Opcode::Syscall` (`imm = 6`) arayüzü bağlandı. Akıllı kontratlar bu host call ile `0x00A1_00A1` olayını ve istek parametrelerini loglar (`test_syscall_imm_6_emits_ai_request_event`).
+   - `executor.rs` içindeki `ContractCall` yürütücüsü, ZKVM `ZkVmReceipt` olaylarında `0x00A1_00A1` algıladığı an otomatik olarak kanonik bir `AiInferenceRequest` oluşturup `ai_registry`'ye kaydeder.
+3. **Soft Incentive Ödül Paylaşımı & Slashing Koruması (`src/ai/mod.rs` & `executor.rs`):**
+   - Çoğunluk uzlaşması (`agreement_threshold`) dışı kalan azınlık verifier'ların stake'i kesilmez (Soft Incentive), yalnızca `max_fee` ödül havuzundan pay alamazlar (`test_ai_soft_incentive_reward_distribution`).
+
+**Sıradaki:** Push sonrası CI doğrulama kontrolünün (`checks`) izlenmesi ve sonuçların raporlanması.
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>

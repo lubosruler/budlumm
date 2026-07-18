@@ -532,4 +532,63 @@ pub trait BudlumApi {
         &self,
         min_blocks_to_keep: Option<u64>,
     ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    // --- Phase 10 (§1): AI Inference & Verifier Layer ---
+
+    /// Query registered AI model specification by model_id hex.
+    #[method(name = "bud_aiGetModel")]
+    async fn ai_get_model(
+        &self,
+        model_id: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Prepare a model registration transaction.
+    #[method(name = "bud_aiRegisterModel")]
+    async fn ai_register_model(
+        &self,
+        owner: String,
+        model_hash: String,
+        min_verifier_count: u32,
+        agreement_threshold: u32,
+        max_input_ref_bytes: u64,
+        max_output_ref_bytes: u64,
+        request_deadline_blocks: u64,
+        result_deadline_blocks: u64,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Prepare an AI inference request transaction.
+    #[method(name = "bud_aiSubmitRequest")]
+    async fn ai_submit_request(
+        &self,
+        requester: String,
+        model_id: String,
+        input_commitment: String,
+        input_ref_hex: String,
+        max_fee: u64,
+        callback: Option<String>,
+        deadline_block: u64,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Prepare an AI inference attestation result transaction.
+    #[method(name = "bud_aiSubmitResult")]
+    async fn ai_submit_result(
+        &self,
+        verifier: String,
+        request_id: String,
+        output_commitment: String,
+        output_ref_hex: String,
+        result_nonce: u64,
+        signature_hex: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Query finalized AI inference outcome by request_id hex.
+    #[method(name = "bud_aiGetOutcome")]
+    async fn ai_get_outcome(
+        &self,
+        request_id: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Query active AI verifiers (RoleId::AI_VERIFIER = RoleId(6)).
+    #[method(name = "bud_aiGetActiveVerifiers")]
+    async fn ai_get_active_verifiers(&self) -> Result<serde_json::Value, ErrorObjectOwned>;
 }

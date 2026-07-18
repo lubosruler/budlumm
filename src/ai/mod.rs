@@ -121,4 +121,95 @@ mod tests {
         assert_eq!(finalized.agreeing_verifiers.len(), 2);
         assert_eq!(finalized.output_commitment, [9u8; 32]);
     }
+
+    #[test]
+    fn test_ai_soft_incentive_reward_distribution() {
+        // Phase 10 §1: Soft incentive verifies majority gets max_fee share
+        // and minority verifiers get zero reward without stake slashing.
+        let mut registry = AiRegistry::new();
+        let owner =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000001")
+                .unwrap();
+        let model_id = AiModelId::of(&owner, &[1u8; 32], 1);
+        registry
+            .register_model(AiModelSpec {
+                model_id,
+                model_hash: [1u8; 32],
+                owner,
+                min_verifier_count: 3,
+                agreement_threshold: 2,
+                max_input_ref_bytes: 1024,
+                max_output_ref_bytes: 2048,
+                request_deadline_blocks: 100,
+                result_deadline_blocks: 50,
+                version: 1,
+                active: true,
+            })
+            .unwrap();
+
+        let req = AiInferenceRequest {
+            request_id: AiRequestId::default(),
+            requester: owner,
+            model_id,
+            input_commitment: [2u8; 32],
+            input_ref: BoundedBytes::try_new(b"test".to_vec()).unwrap(),
+            max_fee: 100,
+            callback: None,
+            submitted_at_block: 10,
+            deadline_block: 110,
+        };
+        let req_id = registry.submit_request(req).unwrap();
+
+        let v1 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000011")
+                .unwrap();
+        let v2 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000012")
+                .unwrap();
+        let v_minority =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000013")
+                .unwrap();
+
+        // Minority verifier submits different commitment
+        registry
+            .submit_result(AiInferenceResult {
+                request_id: req_id,
+                verifier: v_minority,
+                output_commitment: [88u8; 32],
+                output_ref: BoundedBytes::try_new(b"wrong".to_vec()).unwrap(),
+                result_nonce: 1,
+                signature: vec![1],
+                submitted_at_block: 15,
+            })
+            .unwrap();
+
+        // Majority verifiers submit consensus commitment
+        registry
+            .submit_result(AiInferenceResult {
+                request_id: req_id,
+                verifier: v1,
+                output_commitment: [99u8; 32],
+                output_ref: BoundedBytes::try_new(b"correct".to_vec()).unwrap(),
+                result_nonce: 2,
+                signature: vec![2],
+                submitted_at_block: 16,
+            })
+            .unwrap();
+
+        let outcome = registry
+            .submit_result(AiInferenceResult {
+                request_id: req_id,
+                verifier: v2,
+                output_commitment: [99u8; 32],
+                output_ref: BoundedBytes::try_new(b"correct".to_vec()).unwrap(),
+                result_nonce: 3,
+                signature: vec![3],
+                submitted_at_block: 17,
+            })
+            .unwrap();
+
+        let finalized = outcome.expect("Should finalize after two matching results");
+        assert_eq!(finalized.agreeing_verifiers, vec![v1, v2]);
+        assert!(!finalized.agreeing_verifiers.contains(&v_minority));
+    }
 }
