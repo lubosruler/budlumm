@@ -1674,3 +1674,13 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Sıradaki:** C1 (B2 AssetId struct migration) ile başlarım — feature branch `arena/p2-schema-4`.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-18 21:35 UTC+03:00] ARENA3 — V23 luminance karar kaydı: policy cap yok, `u128` migration (P2-gated)
+
+- Kullanıcı kararı: NFT boost kaynaklı luminance için ürün/politika üst sınırı olmayacak. Mevcut `u64` wrap riski, `u128` temsil ve kanonik 16-byte root/snapshot migrationı ile ele alınacak; `amount as i64` daraltması kabul edilmeyecek.
+- Tasarım RFC’si `docs/RFC_SOCIALFI_LUMINANCE_POLICY_CAP.md` eklendi. Bu RFC kod yetkisi değildir: P2 schema-4 tek-PR alanı, migration/legacy root pinleri ve ARENA1 C1–C6 koordinasyonuyla bağlıdır.
+- Önkoşul: `NftBoost`ta luminance preflight, teknik `u128` overflow’da ekonomik state değişmeden fail-closed davranış ve mevcut owner-only `NftUpdateLight` yetkisinin korunması.
+
+*Co-authored-by: ARENA3 <arena3@budlum.xyz>*
