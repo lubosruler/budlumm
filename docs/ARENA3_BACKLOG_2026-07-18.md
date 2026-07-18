@@ -7,7 +7,7 @@
 | # | Kalem | Sahip | Durum / koşul |
 |---|---|---|---|
 | 1 | **Phase 10 Sprint 1 — Bölüm 4 mühendisliği** (modül README'leri, kök README dashboard, BNS ayrı CI gate isim-kanaryalı) | ARENA3 | **BU OTURUMDA başlıyor** — sıralı commit zinciri |
-| 2 | **Phase 10 Sprint 2 — AccessGrant RFC taslağı** (Bölüm 2 hard-enforcement; GAP-1 §7 4 soruyla birleşik) | ARENA3 | Sprint 1 sonrası; GAP-1 §7'yi güvenli-varsayılan kararlarla revize eder (tüm süreç yetkisi) |
+| 2 | **Phase 10 Sprint 2 — AccessGrant RFC taslağı** | ARENA1 (pivot) + ARENA3 (review) | **TASLAK HAZIR** (`87a0643`, `docs/RFC_ACCESSGRANT_BUD_MARKETPLACE.md`) — GAP-1 damgası kullanıcı-onaylı teyitli; ARENA3 review şartlı onayı STATUS’ta (R1-R3 düzeltme sonrası P1 açılır) |
 | 3 | **7 major PR triyajı:** #45 toml (YEŞİL — TOML 1.1 davranış incelemesi + merge adayı değerlendirmesi) · #43 tower (KIRMIZI — recreate sonrası hâlâ, gerçek kırılım) · #36/#37/#38/#39/#41 (KIRMIZI değerlendirme) | ARENA3 | Sprint 1 sonrası kuyruk; her PR ayrı değerlendirme commit'i, kapanış/merge yorumu ile |
 | 4 | **PoS-producer gerçek altyapısı** (daemon validator key/HSM enjeksiyonu + genesis eşitleme + multinode PoW→PoS smoke) | ARENA3 (ilanlı backlog) | Phase 10 kapsamı dışı — kullanıcıdan ayrı emir bekliyor |
 | 5 | **hickory/yamux lock yenileme borcu** (dismiss'ler upstream tüketimi açılana dek) | ARENA3 | İzlemede: dependabot günlük taramalarında otomatik triyaj |

@@ -757,3 +757,24 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 *— ARENA3 (süreç koordinasyonu, kullanıcı yetkili)*
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+---
+
+### [2026-07-18 22:05 UTC+3] ARENA3 — ARENA1 katıldı + kullanıcı onayı teyitli + AccessGrant RFC resmi incelemesi (şartlı onay)
+
+**Katılım:** ARENA1 ilk commit'i `87a0643` (GAP-1 RFC approved + AccessGrant RFC draft). **Kullanıcı teyidi (ask_user):** GAP-1 §7 onayı ARENA1'e BİZZAT kullanıcı tarafından verilmiş — damga GEÇERLİ ✓. Süreç ihlali yok.
+
+**Kullanıcı dağılım kararı (onaylı):** ARENA1 → AccessGrant P1-P5 (bulgularımı düzelterek) · ARENA3 → güvenlik incelemesi + P6 (HSM/şifreleme Faz-2) + süreç sahibi · ARENA2-halef → beklemede (AI layer tipleri adayı).
+
+**ARENA3 resmi incelemesi — `docs/RFC_ACCESSGRANT_BUD_MARKETPLACE.md`: GENEL ONAY + ŞART R1-R3:**
+- ✅ Sadakat: P10 dokümanıyla uyumlu · GAP-1 tek schema-4 birleşimi doğru · PR planı atomik (P6 ARENA3 HSM domain'inde — saygılı) · egemenlik-kuralı → hard-enforcement zorunluluğu doğru aktarılmış · dürüstlük notları (revocation/DRM) yerinde · 9 test + ayrı gate planı modül-ayrımıyla uyumlu.
+- **R1 (düzelt):** §1 hâlâ "7 RPC" diyor — güncel gerçek **9 uç** (`bud_storageOpenDeal`, `bud_storageGetEconomicsSummary`, `bud_storageGetEconomicsEvents` dahil; ARENA3 doğrulaması, P10 açılış girdisi).
+- **R2 (düzelt):** `Signature` tipi kod tabanında **mevcut değil** (grep=0). RFC'ye eklensin: yeni tip tanımı P1 kapsamına (ör. `pub struct Signature(pub [u8; 64])`, Ed25519 + serde + Default) — `owner_signature: Signature` ve `Signature::default()` kullanımları buna dayanıyor.
+- **R3 (düzelt — kritik sınıf):** `BTreeMap<[u8; 32], DataAsset>` vb. snapshot map anahtarları serde_json'da **çalışmaz** (JSON object-key = string zorunluluğu; ekibin bilinen tuzağı — `src/registry/permissionless.rs:176` tuple-key notu + Phase 0.16 geçmişi). Çözüm: `pub struct AssetId(pub [u8; 32])` gibi **string-serialize wrapper** (Address deseni, `src/core/address.rs:64-73`) veya hex-String key. RFC §6 alan tanımlarını buna göre güncelleyin; yoksa P1 ilk serialize'da patlar (derleme geçer, runtime hata — coverage'da yakalanır ama önden kapatmak bedava).
+- **Öneri (şart değil):** `StorageCommitment.storage_node_id` için 5 (STORAGE_OPERATOR) vs 7 (BUD_STORAGE_NODE) rollover'ını açık-soru olarak ilan edin (şu an "5 veya 7" belirsiz).
+
+**ARENA1'den beklenen (onboarding §5 kuralı):** "okudum + hizalandım + sahiplendim kalem" girdisi (henüz yok — ilk commit'ten önce açılmalıydı). R1-R3 commit'inden sonra P1 (`src/bud/marketplace.rs`) başlayabilir; review onayım bu girdidir.
+
+**Not — etik:** RFC yazar satırında adım ortak-yazar geçiyor; katkım = güvenlik incelemesi (bu girdi) + P6 (ileride). Metin katkısı yok — trailer/attribution doğru kalır, düzeltme gerekmez.
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
