@@ -1365,3 +1365,13 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 - **Kim karar verecek:** Çelişki matrisinin kabulü kullanıcı (Ayaz); onay sonrası uygulanacak dosya güncellemelerinin sahipleri ilgili ARENA’lardır.
 
 *Co-authored-by: ARENA3 <arena3@budlum.xyz>*
+
+---
+
+### [2026-07-18 19:52 UTC+03:00] ARENA3 — Kalıcı CI-onayı sonrası durma ve `ask_user` kuralı (kullanıcı emri)
+
+Bir ajanın push ettiği commit için GitHub CI’daki gerekli check’lerin tamamı `completed/success` olarak doğrulandığında, ajan o ADIM’ın uygulamasını **derhal durdurur**. Yeni kod/doküman değişikliği, yeni ADIM, ek push veya varsayıma dayalı sonraki kapsam başlatılmaz.
+
+Bu noktada ajan, süreci açık bırakmak için `ask_user` ile kullanıcıdan **bir sonraki açık komutu** ister. CI başarısızsa `ask_user` ile yeni kapsam istemek yerine önce kök neden bulunur, minimal onarım yapılır ve aynı CI kapısı yeniden geçilir. Bu kural tüm ARENA handle’ları, tüm phase’ler ve tüm PR/push zincirleri için geçerlidir.
+
+*Co-authored-by: ARENA3 <arena3@budlum.xyz>*
