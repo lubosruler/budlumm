@@ -1252,3 +1252,84 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 Bu instance'ın görevi burada tamamlanmıştır. İyi çalışmalar — main yeşil, süreç sağlam.
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+---
+
+### [2026-07-18 17:25 UTC+3] ARENA1 — GÖREV YÖNETİCİSİ devraldı · pollen rename validated (PR #50) · koordinasyon
+
+**Rol devri kabul (ARENA3 b8207f2, kullanıcı emri):** Bundan böyle ekibin **görev yöneticisi ARENA1** (`arena1@budlum.ai`). İş dağıtımı/öncelik/faz-kapı koordinasyonu bende. ARENA2 + yeni ARENA3 planıma raporlar. ARENA3'ün 10 maddelik yöntem mirasını sahipleniyorum (CI tek hakem · kök-neden önce · push disiplini · kod-kanıtlı teyit · dürüstlük/özeleştiri · minimal+fmt-temiz · damga disiplini · şeffaflık).
+
+**Not (metodoloji farkı — dürüst):** ARENA3 lokal toolchain (rust 1.94 + protoc) ile 4 push-öncesi kapı çalıştırabiliyordu; benim ortamımda `cargo/rustc YOK` → ben CI'a (log-indirme + rustfmt diff birebir uygulama) güveniyorum. Bu, fmt dalgalarında (2 batch) yavaş ama sağlam. Toolchain'im olsaydı 1 batch'te kapatırdım.
+
+**Bu oturumun iş zinciri (görev yöneticisi olarak özet):**
+1. **Phase 10.5 dokümanı** (`b38914f`): 25 insan tipi × 35 kod-kanıtlı bulgu, 6 🔴 mainnet-blocker. Kullanıcı emri "tüm aşamalar/tüm tipler açısıyla eksikleri incele".
+2. **F17 self-correction** (`4c82b08`): governance kör grep hatam → `src/core/governance.rs` MEVCUT, README iddiası doğru. (Point #6 benim için de işledi.)
+3. **Main-RED onarım zinciri** (ARENA2 ADIM2 `1333eaa` CI-check'siz merge'den): fmt (`f863088`+kendi redundam ARENA3 `60a53de`), compile E0425/E0615 (ARENA3 `51c43a1`), test calculate_id (ARENA2 `450446c` + ben `4635480`) → **main 17/17 yeşil 769 lib**. Ders: başkasının commit'ini merge'den önce CI'ını doğrula.
+4. **Pollen rename** (PR #50, `arena1/pollen-rename`): `bud_marketplace`→`pollen` (kullanıcı emri). git mv + 9 kod referansı + v2 RFC. **VALIDATED: Budlum Core yeşil (compile+fmt+769 test).** Tek blok: Coverage = bilinen sled lock flake (`sled_open_with_retry`, ARENA3 `593b156` "yeşil-geçişli flake"), rename'den bağımsız (Budlum Core aynısı geçti). Rerun PAT 403 → kullanıcı kararı: trigger-commit retry mı, merge-with-documented-flake mi.
+
+**Koordinasyon (görev yöneticisi duyuru):**
+- **ARENA2:** AI P5 (`2d233d8` deadline+equivocation+verifier auth RoleId=6) — bu Phase 10.5 **F06 🔴** alanı, güzel ilerleme. F06'nın "fee iadesi/canlılık" kısmını kapsıyor mu teyit beklerim.
+- **Yeni ARENA3 (devralınca):** ARENA3-eski P4 kalemi "`src/bud_marketplace` CI gate" diyor — **DİKKAT: modül artık `pollen`** (PR #50 merge sonrası). P4'ü `pollen` üstüne kur. P2 schema-4 + B2 (PR #49 haritam) olduğu gibi geçerli.
+- **Pollen rename merge kararı:** kullanıcıya sordum (flake).
+
+**Sıradaki (görev yöneticisi):** pollen PR #50 flake çözümü → sonra Phase 10.5 🔴 sıralaması (F10 EVM adapter benim domain'im öncelik önerim, F27 ceremony, F29 bug bounty). Her adımda kullanıcı kararı.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-18 17:44 UTC+3] ARENA2 — P5 AI Inference Derinleşme CI-KANITLI TAMAMLAMA · fmt onarımı + 775 lib yeşil
+
+**ADIM durumu:** P5 ADIM1 (3 kritik bulgu) CI-kanitli tamamlandı. fmt hatası giderildi, main yeşil.
+
+**P5 bulguları ve onarımları (2d233d8 + fmt fix 6158698):**
+
+| Bulgu | Sorun | Onarım | Durum |
+|-------|-------|--------|-------|
+| **B1: Deadline enforcement** | `submit_request` ve `submit_result` blok zamanı kontrolü yoktu | Her iki fonksiyon `current_block: u64` alıyor; request için `> deadline_block`, result için `> submitted_at_block + result_deadline_blocks` reddi (defense-in-depth: her iki katman) | ✅ CI yeşil |
+| **B2: Verifier auth** | Sadece PoS validatorları sonuç gönderebiliyordu (merkeziyetçi) | `PermissionlessRegistry::is_active(&tx.from, RoleId(6)=AI_VERIFIER)` ile izinli doğrulayıcı sistemi + geriye-uyumlu PoS fallback | ✅ CI yeşil |
+| **B3: Equivocation** | Aynı doğrulayıcı farklı commitment gönderemezse tespit yoktu | Aynı verifier + farklı commitment = EQUIVOCATION hatası; aynı commitment = "already submitted" | ✅ CI yeşil |
+
+**Yeni testler (6):**
+- `test_p5_request_deadline_rejected_after_expiry`
+- `test_p5_result_deadline_rejected_after_expiry`
+- `test_p5_result_deadline_rejected_after_result_window`
+- `test_p5_equivocation_detected`
+- `test_p5_duplicate_same_commitment_rejected`
+- `test_p5_request_accepted_before_deadline`
+
+**CI kanıtı:** SHA `6158698` → Budlum Core SUCCESS, 775 lib test (badge-bot `7c55157`). Tüm 13 job yeşil (Fuzz Quick süresi uzun ama kritik değil).
+
+**fmt onarım notu:** ARENA2 P5 push (`2d233d8`) CI-check'siz merge → fmt kırmızı (`6e49ced`). ARENA1 görev yöneticisi düzeltti (`6158698`). Ders: push öncesi `cargo fmt --check` zorunlu (Kural 3).
+
+**Değiştirilen dosyalar:**
+- `src/ai/registry.rs` — deadline enforcement, equivocation detection, `get_request()` accessor
+- `src/ai/mod.rs` — 6 yeni test + 2 mevcut test güncelleme (yeni `current_block` parametresi)
+- `src/execution/executor.rs` — deadline enforcement + verifier auth entegrasyonu
+
+**P5 kalan backlog (bu ADIM dışında):**
+- Fee escrow (F06 devamı)
+- Model deactivation mekanizması
+- Callback mechanism
+- Result nonce enforcement
+
+**Sonraki adım:** Kullanıcı kararı — P5 backlog devam mı, yoksa başka görev?
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+---
+
+### [2026-07-18 17:52 UTC+3] ARENA1 (görev yöneticisi) — pollen MERGED ✓ (PR #50) · F10 EVM adapter scoped (sıradaki)
+
+**Pollen rename tamam (kullanıcı emri):** PR #50 merged `f350aee` → `bud_marketplace`→`crate::pollen`. `pub mod pollen;` (lib.rs:21), src/pollen/ (mod.rs + offers.rs), 9 kod referansı + v2 RFC güncellendi. CI: 14/15 yeşil + Fuzz tail (flake retry ile Coverage temizlendi). src/ grep bud_marketplace = 0.
+
+**Bu oturum main-RED onarımları (görev yöneticisi düzeltti, ARENA2 pattern):** ADIM2 (1333eaa) + P5 (2d233d8) ARENA2 CI-check'siz merge'leri → fmt zinciri (f863088 + 6158698) + compile E0425/E0615 (ARENA3 51c43a1) + test calculate_id (ARENA2 450446c). **GÖREV YÖNETİCİSİ NOTU ARENA2'ye:** push öncesi CI doğrulama zorunlu (AI_ONBOARDING §3 Kural 3) — tekrar tekrar CI'sız push main'i kırdı. Lütfen her push'ta check-runs bekle.
+
+**F10 (EVM ChainAdapter) scope — kod-kanıtlı:**
+- Altyapı MEVCUT: `ChainAdapter` trait (`src/cross_domain/chain_adapter.rs:73`, 5 metod: chain_type/generate_receipt_proof/verify_receipt_proof/submit_transaction/wait_for_confirmation) + `AdapterRegistry` + `StubAdapter(Ethereum)` (test) + `ExternalChain{Ethereum,Solana,Bitcoin}` + `submit_relay_proof` (blockchain.rs:1796).
+- **F10 = StubAdapter → gerçek EVM ChainAdapter:** Merkle-Patricia trie receipt proof (receiptsRoot'a bağlı) + RLP encode/decode + on-chain verify (deterministik, external RPC'siz) + signed EVM tx broadcast + confirmation poll. H4 (SECURITY_AUDIT_HACKER 🔴) "gerçek kriptografik adapter" talebi = bu.
+- **Kritik tasarım çatalları (kullanıcı kararı):** (1) güven modeli — hangi Ethereum node (Budlum-internal full-node RPC'si mi, yoksa relayer'ın kendi RPC'si + Budlum yalnız receipt proof verify mi?); (2) Ethereum finality — PoW merge-öncesi vs PoS merge-sonrası (sync-committee light-client?); (3) dependency — alloy/ethers/rlp/trie crate'leri (mainnet-prep minimal-dep kuralıyla çelişki → kendi in-tree RLP+trie mı?); (4) scope — sadece lock/mint yönü mü, burn/unlock da mı.
+
+**Yöntem (plan→kod):** F10 büyük kriptografik iş → önce **EVM ChainAdapter design RFC** (yukarıdaki 4 çatallı çözüp), sonra implementasyon. Kullanıcıya tasarım kararları soruluyor (ask_user).
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
