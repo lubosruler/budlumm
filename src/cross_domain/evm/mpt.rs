@@ -357,7 +357,10 @@ mod tests {
 
         let nib_a = to_nibbles(&keccak256(key_a));
         let nib_b = to_nibbles(&keccak256(key_b));
-        assert_ne!(nib_a[0], nib_b[0], "test precondition: distinct first nibble");
+        assert_ne!(
+            nib_a[0], nib_b[0],
+            "test precondition: distinct first nibble"
+        );
 
         let leaf_a_bytes = leaf_node_bytes(&nib_a[1..], val_a);
         let leaf_b_bytes = leaf_node_bytes(&nib_b[1..], val_b);
@@ -505,9 +508,9 @@ mod tests {
         let garbage_sets: Vec<Vec<Vec<u8>>> = vec![
             vec![vec![0x00]],
             vec![vec![0xff; 100]],
-            vec![vec![0xc0]],               // empty list
-            vec![vec![0xc1, 0x80]],         // 1-elem list (invalid node)
-            vec![vec![0xd2, 0x80, 0x80]],   // 2-elem list but value empty
+            vec![vec![0xc0]],             // empty list
+            vec![vec![0xc1, 0x80]],       // 1-elem list (invalid node)
+            vec![vec![0xd2, 0x80, 0x80]], // 2-elem list but value empty
         ];
         let root = [0x42u8; 32];
         for proof in &garbage_sets {

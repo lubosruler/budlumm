@@ -369,7 +369,10 @@ mod tests {
         let item = Item::List(vec![
             Item::List(vec![]),
             Item::List(vec![Item::List(vec![])]),
-            Item::List(vec![Item::List(vec![]), Item::List(vec![Item::List(vec![])])]),
+            Item::List(vec![
+                Item::List(vec![]),
+                Item::List(vec![Item::List(vec![])]),
+            ]),
         ]);
         // Expected: 0xc7 c0 c1 c0 c3 c0 c1 c0
         assert_eq!(encode(&item), hex("c7c0c1c0c3c0c1c0"));
