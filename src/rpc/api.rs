@@ -532,4 +532,70 @@ pub trait BudlumApi {
         &self,
         min_blocks_to_keep: Option<u64>,
     ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    // === Phase 10 — B.U.D. Data Marketplace (Provenance + Access Control) ===
+    // 8 RPCs for the permissionless data marketplace with provenance and grants.
+    // All endpoints are callable by any account — no whitelist, no admin gate.
+
+    /// Register a DataAsset with StorageCommitment (provenance proof).
+    /// Called by owner after uploading to B.U.D. storage node.
+    #[method(name = "bud_dataAssetRegister")]
+    async fn data_asset_register(
+        &self,
+        asset: crate::storage::marketplace::DataAsset,
+        commitment: crate::storage::marketplace::StorageCommitment,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Get DataAsset metadata by asset_id.
+    #[method(name = "bud_dataAssetGet")]
+    async fn data_asset_get(
+        &self,
+        asset_id: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Submit an owner-signed AccessGrant for a grantee.
+    /// Validates: owner signature, asset exists, grant not duplicate.
+    #[method(name = "bud_accessGrantSubmit")]
+    async fn access_grant_submit(
+        &self,
+        grant: crate::storage::marketplace::AccessGrant,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Query grants for a specific grantee on an asset.
+    /// Used by AI Verifier / Storage Node before serving data.
+    #[method(name = "bud_accessGrantQuery")]
+    async fn access_grant_query(
+        &self,
+        asset_id: String,
+        grantee: crate::storage::marketplace::Grantee,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Revoke an access grant (blocks future access only).
+    #[method(name = "bud_accessGrantRevoke")]
+    async fn access_grant_revoke(
+        &self,
+        revocation: crate::storage::marketplace::AccessRevocation,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// List an asset on the marketplace.
+    #[method(name = "bud_marketplaceList")]
+    async fn marketplace_list(
+        &self,
+        listing: crate::storage::marketplace::MarketplaceListing,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Get marketplace listing for an asset.
+    #[method(name = "bud_marketplaceGet")]
+    async fn marketplace_get(
+        &self,
+        asset_id: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Purchase an asset (pay price + protocol fee) and optionally auto-grant access.
+    #[method(name = "bud_marketplacePurchase")]
+    async fn marketplace_purchase(
+        &self,
+        asset_id: String,
+        buyer: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
 }

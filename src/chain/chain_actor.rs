@@ -133,6 +133,13 @@ pub enum ChainCommand {
         crate::domain::DomainId,
         oneshot::Sender<Result<u64, String>>,
     ),
+    /// Phase 10: Get MarketplaceRegistry for RPC reads (cloned).
+    GetMarketplaceRegistry(oneshot::Sender<crate::storage::marketplace::MarketplaceRegistry>),
+    /// Phase 10: Set MarketplaceRegistry after RPC mutations (consensus write).
+    SetMarketplaceRegistry(
+        crate::storage::marketplace::MarketplaceRegistry,
+        oneshot::Sender<()>,
+    ),
     RegisterBridgeAsset {
         asset_id: crate::cross_domain::AssetId,
         domain: crate::domain::DomainId,
@@ -967,6 +974,29 @@ impl ChainHandle {
         }
         rx.await
             .unwrap_or_else(|_| Err("Actor dropped".to_string()))
+    }
+
+    /// Phase 10: Get MarketplaceRegistry for RPC reads (cloned).
+    pub async fn get_marketplace_registry(&self) -> crate::storage::marketplace::MarketplaceRegistry {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .tx
+            .send(ChainCommand::GetMarketplaceRegistry(tx))
+            .await;
+        rx.await.unwrap_or_else(|_| crate::storage::marketplace::MarketplaceRegistry::new())
+    }
+
+    /// Phase 10: Set MarketplaceRegistry after RPC mutations (consensus write).
+    pub async fn set_marketplace_registry(
+        &self,
+        registry: crate::storage::marketplace::MarketplaceRegistry,
+    ) {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .tx
+            .send(ChainCommand::SetMarketplaceRegistry(registry, tx))
+            .await;
+        let _ = rx.await;
     }
 
     pub async fn register_bridge_asset(
@@ -1824,6 +1854,13 @@ impl ChainActor {
                         .map(|d| d.last_committed_height)
                         .ok_or_else(|| format!("Domain {domain_id} not found"));
                     let _ = res_tx.send(res);
+                }
+                ChainCommand::GetMarketplaceRegistry(res_tx) => {
+                    let _ = res_tx.send(self.blockchain.marketplace_registry.clone());
+                }
+                ChainCommand::SetMarketplaceRegistry(new_reg, res_tx) => {
+                    self.blockchain.marketplace_registry = new_reg;
+                    let _ = res_tx.send(());
                 }
                 ChainCommand::RegisterBridgeAsset {
                     asset_id,

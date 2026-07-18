@@ -428,6 +428,14 @@ pub struct StateSnapshotV2 {
     pub bns_registry: Option<crate::bns::BnsRegistry>,
     #[serde(default)]
     pub nft_registry: Option<crate::nft::NftRegistry>,
+    // --- schema_version 3 (Phase 10): B.U.D. Data Marketplace (Provenance + Access Control)
+    // New comprehensive marketplace registry with DataAsset, AccessGrant, AccessRevocation, MarketplaceListing.
+    // Replaces the old simple `DataOffer`-only marketplace. `#[serde(default)]` for backward compatibility
+    // with schema≤3 snapshots (old snapshots deserialize with this field as None).
+    #[serde(default)]
+    pub marketplace_v4: Option<crate::storage::marketplace::MarketplaceRegistry>,
+    // Legacy marketplace (simple DataOffer model) — kept for schema≤3 backward compatibility.
+    // New snapshots (schema_version >= 4) should use `marketplace_v4` instead.
     #[serde(default)]
     pub marketplace: Option<crate::marketplace::MarketplaceRegistry>,
     #[serde(default)]
@@ -511,6 +519,9 @@ impl StateSnapshotV2 {
             global_header_summary: account_state.global_header_summary,
             bns_registry: Some(account_state.bns_registry.clone()),
             nft_registry: Some(account_state.nft_registry.clone()),
+            // New Phase 10 marketplace registry (comprehensive: DataAsset, AccessGrant, etc.)
+            marketplace_v4: Some(account_state.marketplace_v4.clone()),
+            // Legacy marketplace (kept for backward compatibility)
             marketplace: Some(account_state.marketplace.clone()),
             hub: Some(account_state.hub.clone()),
             storage_registry: Some(account_state.storage_registry.clone()),

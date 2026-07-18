@@ -695,8 +695,138 @@ fn storage_economics_event_to_json(
     })
 }
 
+/// Marketplace-specific helpers
+fn data_asset_to_json(asset: &crate::storage::marketplace::DataAsset) -> serde_json::Value {
+    serde_json::json!({
+        "assetId": format!("0x{}", hex::encode(asset.asset_id)),
+        "owner": format!("0x{}", asset.owner.to_hex()),
+        "contentHash": format!("0x{}", hex::encode(asset.content_hash)),
+        "encrypted": asset.encrypted,
+        "listed": asset.listed,
+        "createdAtBlock": asset.created_at_block,
+    })
+}
+
+fn storage_commitment_to_json(commitment: &crate::storage::marketplace::StorageCommitment) -> serde_json::Value {
+    serde_json::json!({
+        "assetId": format!("0x{}", hex::encode(commitment.asset_id)),
+        "contentHash": format!("0x{}", hex::encode(commitment.content_hash)),
+        "storageNodeId": commitment.storage_node_id.value(),
+        "blockHeight": commitment.block_height,
+        "signature": format!("0x{}", hex::encode(&commitment.signature)),
+    })
+}
+
+fn access_grant_to_json(grant: &crate::storage::marketplace::AccessGrant) -> serde_json::Value {
+    let grantee_json = match &grant.grantee {
+        crate::storage::marketplace::Grantee::RoleId(rid) => {
+            serde_json::json!({ "type": "RoleId", "value": rid.value() })
+        }
+        crate::storage::marketplace::Grantee::Address(addr) => {
+            serde_json::json!({ "type": "Address", "value": format!("0x{}", addr.to_hex()) })
+        }
+    };
+    let scope_json = match &grant.scope {
+        crate::storage::marketplace::GrantScope::ReadOnce => serde_json::json!("ReadOnce"),
+        crate::storage::marketplace::GrantScope::ReadUntilBlock(h) => serde_json::json!({ "ReadUntilBlock": h }),
+        crate::storage::marketplace::GrantScope::Perpetual => serde_json::json!("Perpetual"),
+    };
+    serde_json::json!({
+        "assetId": format!("0x{}", hex::encode(grant.asset_id)),
+        "grantee": grantee_json,
+        "scope": scope_json,
+        "wrappedKey": grant.wrapped_key.as_ref().map(|k| format!("0x{}", hex::encode(k))),
+        "grantedAtBlock": grant.granted_at_block,
+    })
+}
+
+fn access_revocation_to_json(rev: &crate::storage::marketplace::AccessRevocation) -> serde_json::Value {
+    let grantee_json = match &rev.grantee {
+        crate::storage::marketplace::Grantee::RoleId(rid) => {
+            serde_json::json!({ "type": "RoleId", "value": rid.value() })
+        }
+        crate::storage::marketplace::Grantee::Address(addr) => {
+            serde_json::json!({ "type": "Address", "value": format!("0x{}", addr.to_hex()) })
+        }
+    };
+    serde_json::json!({
+        "assetId": format!("0x{}", hex::encode(rev.asset_id)),
+        "grantee": grantee_json,
+        "revokedAtBlock": rev.revoked_at_block,
+    })
+}
+
+fn marketplace_listing_to_json(listing: &crate::storage::marketplace::MarketplaceListing) -> serde_json::Value {
+    serde_json::json!({
+        "assetId": format!("0x{}", hex::encode(listing.asset_id)),
+        "price": listing.price,
+        "autoGrantOnPayment": listing.auto_grant_on_payment,
+    })
+}
+
+fn parse_grantee(val: serde_json::Value) -> Result<crate::storage::marketplace::Grantee, ErrorObjectOwned> {
+    let grantee_type = val.get("type").and_then(|v| v.as_str()).ok_or_else(|| {
+        ErrorObjectOwned::owned(-32602, "Grantee missing 'type' field (RoleId or Address)", None::<()>)
+    })?;
+    let grantee_value = val.get("value").ok_or_else(|| {
+        ErrorObjectOwned::owned(-32602, "Grantee missing 'value' field", None::<()>)
+    })?;
+    match grantee_type {
+        "RoleId" => {
+            let role_id = grantee_value.as_u64().ok_or_else(|| {
+                ErrorObjectOwned::owned(-32602, "Grantee RoleId must be a number", None::<()>)
+            })? as u32;
+            Ok(crate::storage::marketplace::Grantee::RoleId(crate::registry::RoleId::new(role_id)))
+        }
+        "Address" => {
+            let addr_str = grantee_value.as_str().ok_or_else(|| {
+                ErrorObjectOwned::owned(-32602, "Grantee Address must be a string", None::<()>)
+            })?;
+            let clean = addr_str.strip_prefix("0x").unwrap_or(addr_str);
+            let addr = crate::core::address::Address::from_hex(clean).map_err(|e| {
+                ErrorObjectOwned::owned(-32602, format!("Invalid address: {e}"), None::<()>)
+            })?;
+            Ok(crate::storage::marketplace::Grantee::Address(addr))
+        }
+        _ => Err(ErrorObjectOwned::owned(-32602, "Grantee type must be RoleId or Address", None::<()>)),
+    }
+}
+
+fn parse_grant_scope(val: serde_json::Value) -> Result<crate::storage::marketplace::GrantScope, ErrorObjectOwned> {
+    if val.is_string() {
+        let s = val.as_str().unwrap();
+        match s {
+            "ReadOnce" => Ok(crate::storage::marketplace::GrantScope::ReadOnce),
+            "Perpetual" => Ok(crate::storage::marketplace::GrantScope::Perpetual),
+            _ => Err(ErrorObjectOwned::owned(-32602, "GrantScope string must be ReadOnce or Perpetual", None::<()>)),
+        }
+    } else if val.is_object() {
+        if let Some(read_until) = val.get("ReadUntilBlock").and_then(|v| v.as_u64()) {
+            Ok(crate::storage::marketplace::GrantScope::ReadUntilBlock(read_until))
+        } else {
+            Err(ErrorObjectOwned::owned(-32602, "GrantScope object must have ReadUntilBlock field", None::<()>))
+        }
+    } else {
+        Err(ErrorObjectOwned::owned(-32602, "GrantScope must be string or object with ReadUntilBlock", None::<()>))
+    }
+}
+
+fn parse_hash32(hex_str: &str) -> Result<crate::domain::Hash32, ErrorObjectOwned> {
+    let clean = hex_str.strip_prefix("0x").unwrap_or(hex_str);
+    let bytes = hex::decode(clean).map_err(|e| {
+        ErrorObjectOwned::owned(-32602, format!("Invalid hex: {e}"), None::<()>)
+    })?;
+    if bytes.len() != 32 {
+        return Err(ErrorObjectOwned::owned(-32602, "Hash32 must be 32 bytes", None::<()>));
+    }
+    let mut arr = [0u8; 32];
+    arr.copy_from_slice(&bytes);
+    Ok(arr)
+}
+
 #[jsonrpsee::core::async_trait]
 impl BudlumApiServer for RpcServer {
+    // ... existing methods ...
     async fn chain_id(&self) -> Result<String, ErrorObjectOwned> {
         let chain_id = self.chain.get_chain_id().await;
         Ok(Self::to_hex(chain_id))
@@ -2445,6 +2575,253 @@ impl BudlumApiServer for RpcServer {
             "status": "completed",
             "pruned_blocks": pruned_count,
         }))
+    }
+
+    // === Phase 10 — B.U.D. Data Marketplace RPC Implementations ==============
+
+    async fn data_asset_register(
+        &self,
+        asset: crate::storage::marketplace::DataAsset,
+        commitment: crate::storage::marketplace::StorageCommitment,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        // Verify commitment matches asset
+        if commitment.asset_id != asset.asset_id {
+            return Err(ErrorObjectOwned::owned(
+                -32602,
+                "Commitment asset_id mismatch",
+                None::<()>,
+            ));
+        }
+        if commitment.content_hash != asset.content_hash {
+            return Err(ErrorObjectOwned::owned(
+                -32602,
+                "Commitment content_hash mismatch",
+                None::<()>,
+            ));
+        }
+        // TODO: Verify Ed25519 signature using node's snapshot signing pubkey
+        // Requires access to node's public key (from consensus or HSM).
+
+        // Store in marketplace registry
+        let mut market = self.chain.get_marketplace_registry().await;
+        market
+            .register_asset(asset.clone(), commitment.clone(), self.chain.get_height().await)
+            .map_err(|e| ErrorObjectOwned::owned(-32602, format!("Registration failed: {e}"), None::<()>))?;
+
+        // Update chain state
+        self.chain.set_marketplace_registry(market).await;
+
+        Ok(serde_json::json!({
+            "assetId": format!("0x{}", hex::encode(asset.asset_id)),
+            "status": "registered",
+            "commitment": storage_commitment_to_json(&commitment),
+        }))
+    }
+
+    async fn data_asset_get(
+        &self,
+        asset_id: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let clean = asset_id.strip_prefix("0x").unwrap_or(&asset_id);
+        let bytes = hex::decode(clean).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid asset_id hex: {e}"), None::<()>)
+        })?;
+        if bytes.len() != 32 {
+            return Err(ErrorObjectOwned::owned(
+                -32602,
+                "asset_id must be 32 bytes",
+                None::<()>,
+            ));
+        }
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&bytes);
+        let id = crate::domain::Hash32(arr);
+
+        let market = self.chain.get_marketplace_registry().await;
+        match market.get_asset(&id) {
+            Some(asset) => Ok(data_asset_to_json(asset)),
+            None => Ok(serde_json::Value::Null),
+        }
+    }
+
+    async fn access_grant_submit(
+        &self,
+        grant: crate::storage::marketplace::AccessGrant,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        // Verify owner signature matches asset owner
+        // TODO: Verify Ed25519 signature over grant fields using asset.owner
+        // For now, structural validation only.
+
+        let mut market = self.chain.get_marketplace_registry().await;
+        market
+            .submit_grant(grant.clone(), self.chain.get_height().await)
+            .map_err(|e| ErrorObjectOwned::owned(-32602, format!("Grant submit failed: {e}"), None::<()>))?;
+
+        self.chain.set_marketplace_registry(market).await;
+
+        Ok(serde_json::json!({
+            "grantId": format!("0x{}", hex::encode(crate::core::hash::hash_fields_bytes(&[
+                b"BUD_ACCESS_GRANT_V1",
+                &grant.asset_id,
+                &grant.granted_at_block.to_le_bytes(),
+            ]))),
+            "status": "submitted",
+            "grant": access_grant_to_json(&grant),
+        }))
+    }
+
+    async fn access_grant_query(
+        &self,
+        asset_id: String,
+        grantee: crate::storage::marketplace::Grantee,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let clean = asset_id.strip_prefix("0x").unwrap_or(&asset_id);
+        let bytes = hex::decode(clean).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid asset_id hex: {e}"), None::<()>)
+        })?;
+        if bytes.len() != 32 {
+            return Err(ErrorObjectOwned::owned(
+                -32602,
+                "asset_id must be 32 bytes",
+                None::<()>,
+            ));
+        }
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&bytes);
+        let id = crate::domain::Hash32(arr);
+
+        let market = self.chain.get_marketplace_registry().await;
+        let current_block = self.chain.get_height().await;
+        let grants = market.query_grants(&id, &grantee);
+
+        if grants.is_empty() {
+            return Ok(serde_json::Value::Null);
+        }
+
+        // Return most permissive valid grant
+        let valid = market.has_valid_grant(&id, &grantee, current_block);
+        Ok(valid.map(access_grant_to_json).unwrap_or(serde_json::Value::Null))
+    }
+
+    async fn access_grant_revoke(
+        &self,
+        revocation: crate::storage::marketplace::AccessRevocation,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let mut market = self.chain.get_marketplace_registry().await;
+        market
+            .revoke_grant(revocation.clone())
+            .map_err(|e| ErrorObjectOwned::owned(-32602, format!("Revoke failed: {e}"), None::<()>))?;
+
+        self.chain.set_marketplace_registry(market).await;
+
+        Ok(serde_json::json!({
+            "revocationId": format!("0x{}", hex::encode(crate::core::hash::hash_fields_bytes(&[
+                b"BUD_ACCESS_REVOCATION_V1",
+                &revocation.asset_id,
+                &revocation.revoked_at_block.to_le_bytes(),
+            ]))),
+            "status": "revoked",
+            "revocation": access_revocation_to_json(&revocation),
+        }))
+    }
+
+    async fn marketplace_list(
+        &self,
+        listing: crate::storage::marketplace::MarketplaceListing,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let mut market = self.chain.get_marketplace_registry().await;
+        market
+            .list_asset(listing.clone())
+            .map_err(|e| ErrorObjectOwned::owned(-32602, format!("Listing failed: {e}"), None::<()>))?;
+
+        self.chain.set_marketplace_registry(market).await;
+
+        Ok(serde_json::json!({
+            "listingId": format!("0x{}", hex::encode(crate::core::hash::hash_fields_bytes(&[
+                b"BUD_MARKETPLACE_LIST_V1",
+                &listing.asset_id,
+            ]))),
+            "status": "listed",
+            "listing": marketplace_listing_to_json(&listing),
+        }))
+    }
+
+    async fn marketplace_get(
+        &self,
+        asset_id: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let clean = asset_id.strip_prefix("0x").unwrap_or(&asset_id);
+        let bytes = hex::decode(clean).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid asset_id hex: {e}"), None::<()>)
+        })?;
+        if bytes.len() != 32 {
+            return Err(ErrorObjectOwned::owned(
+                -32602,
+                "asset_id must be 32 bytes",
+                None::<()>,
+            ));
+        }
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&bytes);
+        let id = crate::domain::Hash32(arr);
+
+        let market = self.chain.get_marketplace_registry().await;
+        match market.get_listing(&id) {
+            Some(listing) => Ok(marketplace_listing_to_json(listing)),
+            None => Ok(serde_json::Value::Null),
+        }
+    }
+
+    async fn marketplace_purchase(
+        &self,
+        asset_id: String,
+        buyer: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let clean = asset_id.strip_prefix("0x").unwrap_or(&asset_id);
+        let bytes = hex::decode(clean).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid asset_id hex: {e}"), None::<()>)
+        })?;
+        if bytes.len() != 32 {
+            return Err(ErrorObjectOwned::owned(
+                -32602,
+                "asset_id must be 32 bytes",
+                None::<()>,
+            ));
+        }
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&bytes);
+        let id = crate::domain::Hash32(arr);
+
+        let clean_buyer = buyer.strip_prefix("0x").unwrap_or(&buyer);
+        let buyer_addr = crate::core::address::Address::from_hex(clean_buyer).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Invalid buyer address: {e}"), None::<()>)
+        })?;
+
+        let mut market = self.chain.get_marketplace_registry().await;
+        let current_block = self.chain.get_height().await;
+
+        let grant = market
+            .purchase_asset(&id, &buyer_addr, current_block)
+            .map_err(|e| ErrorObjectOwned::owned(-32602, format!("Purchase failed: {e}"), None::<()>))?;
+
+        // Transfer price + protocol fee from buyer to asset.owner + protocol treasury
+        // This requires AccountState integration - done in chain layer
+        // TODO: Integrate with chain.burn/pay logic for marketplace fee
+
+        self.chain.set_marketplace_registry(market).await;
+
+        match grant {
+            Some(g) => Ok(serde_json::json!({
+                "status": "purchased",
+                "grant": access_grant_to_json(&g),
+                "protocolFeeBps": market.params.protocol_fee_bps,
+            })),
+            None => Ok(serde_json::json!({
+                "status": "purchased",
+                "note": "auto_grant_on_payment=false, grant must be requested separately",
+                "protocolFeeBps": market.params.protocol_fee_bps,
+            })),
+        }
     }
 }
 

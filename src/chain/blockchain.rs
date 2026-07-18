@@ -102,6 +102,9 @@ pub struct Blockchain {
     pub storage_last_reward_epoch: BTreeMap<u64, u64>,
     /// Append-only in-memory event log consumed by RPC/gossip/reporting layers.
     pub storage_economics_events: Vec<StorageEconomicsEvent>,
+    /// Phase 10: B.U.D. Data Marketplace registry (provenance, grants, listings).
+    /// Cloned for RPC reads, mutated via ChainCommand for consensus writes.
+    pub marketplace_registry: crate::storage::marketplace::MarketplaceRegistry,
 }
 impl Blockchain {
     pub fn with_metrics(mut self, metrics: Arc<crate::core::metrics::Metrics>) -> Self {
@@ -467,6 +470,7 @@ impl Blockchain {
             storage_operator_rewards: BTreeMap::new(),
             storage_last_reward_epoch: BTreeMap::new(),
             storage_economics_events: Vec::new(),
+            marketplace_registry: crate::storage::marketplace::MarketplaceRegistry::new(),
         };
 
         if let Some(first) = bc.chain.first() {
