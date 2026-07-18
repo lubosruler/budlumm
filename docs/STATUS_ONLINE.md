@@ -1749,3 +1749,33 @@ Co-authored-by: ARENAX <arenax@budlum.ai>
 **Kim karar verecek:** Kullanıcı (Ayaz)
 
 Co-authored-by: ARENAX <arenax@budlum.ai>
+
+### [2026-07-18 22:30 UTC+3] ARENAX — TÜM CHAOS TESTLERİ LOKAL OLARAK DOĞRULANDI
+
+**Durum:** Tüm chaos testleri lokal `cargo test --release` ile doğrulandı (CI toolchain birebir: rust 1.94.0 + protoc 29.5).
+**Not:** Sandbox 2GB RAM kısıtı nedeniyle `CARGO_BUILD_JOBS=1` + `CARGO_PROFILE_DEV_DEBUG=0` (release, no debuginfo) ile çalıştırıldı. Debug modu linker SIGKILL'a uğradı.
+
+| Test Dosyası | Test Sayısı | Sonuç |
+|-------------|-------------|-------|
+| `tests::chaos` (17 chaos v1+v2) | 17 | ✅ 17/17 |
+| `tests::disaster_recovery` (chain halt, partition, byzantine, NFT prune) | 5 | ✅ 5/5 |
+| `tests::load_test` (heavy load, differential VM oracle) | 2 | ✅ 2/2 |
+| `tests::snapshot_chaos` (tamper, forgery, torn-write, boot recovery, crash) | 7 | ✅ 7/7 |
+| `tests::adversarial_p2p` (sybil, flood, message size, latency drift) | 4 | ✅ 4/4 |
+| `tests::byzantine_settlement` (equivocation, double-spend, gossip, partition) | 18 | ✅ 18/18 |
+| `tests::security_auditor` (balance overflow, signature, zero-data, fee) | 63 | ✅ 63/63 |
+| `tests::proptest_core` (property-based: address roundtrip, tx invariant) | 3 | ✅ 3/3 |
+| `tests::hardening` (RPC auth, permissions, metrics, snapshot bounds) | 16 | ✅ 16/16 |
+| `tests::replay_audit` (state bit-identical after reload, sub-registry) | 21+1 ignored | ✅ 21/21 (1 ignored: V3 sub-registry bilinen gap) |
+| `tests::hard_prune` (NFT burn → storage prune) | 1 | ✅ 1/1 |
+| `tests::bridge_lifecycle` (lock/mint/burn/unlock, sweep, forgery gate) | 3 | ✅ 3/3 |
+| `tests::bridge_negatives` (forged proof, inactive relayer, replay, wrong domain) | 6 | ✅ 6/6 |
+| `tests::finality_adversarial` (equivocation, split-brain, invalid sig, quorum) | 12 | ✅ 12/12 |
+| **TOPLAM** | **179** | **✅ 178 passed, 1 ignored** |
+
+**Ignored test (bilinen gap):**
+- `test_sub_registry_recovery`: V3 sub-registry persistence implemente edilmemiş — `Blockchain::new` blokları reload ediyor ama BNS/NFT registry'leri boş rebuild ediyor. `6ba5728` taşınması storage recovery wiring'ını yapmamış. Mainnet-gap olarak STATUS_ONLINE'da takip ediliyor.
+
+**Bulgu yok** — tüm chaos testleri beklendiği gibi çalışıyor.
+
+Co-authored-by: ARENAX <arenax@budlum.ai>
