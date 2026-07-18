@@ -271,3 +271,16 @@ mod tests {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// C3 (Phase 10 kategorizasyonu, kullanıcı: mkt_migrate): Phase 5 AI DataOffer
+// ekonomisi `src/marketplace`'ten buraya taşındı. Fiziksel taşıma bu adımda;
+// model birleştirmesi (DataOffer (u64 id, seller, cid, price, active) ↔
+// v2 DataAsset/MarketplaceListing (AssetId + SaleAuthorization)) P1/P2
+// kapsamında tasarlanır — bu modül v2 ile ÇAKIŞAN İKİ modeli barındırmaz,
+// geçiş köprüsüdür (bkz. RFC_ACCESSGRANT_V2 §3.2/).
+// ---------------------------------------------------------------------------
+
+/// Phase 5 §5.5 AI Data Marketplace (satıcı-teklifi ekonomisi) — geçiş modülü.
+pub mod offers;
+pub use offers::{DataOffer, MarketplaceRegistry};

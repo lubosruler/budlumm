@@ -287,7 +287,7 @@ pub enum ChainCommand {
         response: oneshot::Sender<Vec<crate::socialfi::types::Nft>>,
     },
     MarketGetOffers {
-        response: oneshot::Sender<Vec<crate::marketplace::DataOffer>>,
+        response: oneshot::Sender<Vec<crate::bud_marketplace::DataOffer>>,
     },
     HubGetApps {
         response: oneshot::Sender<Vec<crate::hub::types::AppRecord>>,
@@ -1346,7 +1346,7 @@ impl ChainHandle {
         rx.await.unwrap_or_default()
     }
 
-    pub async fn market_get_offers(&self) -> Vec<crate::marketplace::DataOffer> {
+    pub async fn market_get_offers(&self) -> Vec<crate::bud_marketplace::DataOffer> {
         let (tx, rx) = oneshot::channel();
         let _ = self
             .tx
