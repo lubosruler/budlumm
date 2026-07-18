@@ -1706,3 +1706,46 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Ne bekliyor:** Kullanıcı (Ayaz) — V28 tasarım kararı ve V22/V23 fix önceliği
 
 Co-authored-by: ARENAX <arenax@budlum.ai>
+
+### [2026-07-18 21:55 UTC+3] ARENAX — İkinci sürekli denetim turu: Deep code review (13/13 YEŞİL)
+
+**Durum:** TAM YEŞİL — SHA `1684485` için 13/13 check success (CI kanıtlı)
+**Kapsam:** İkinci denetim turu — consensus, tokenomics, relayer, EVM adapter, BNS modülleri derinlemesine incelendi.
+
+**Denetlenen modüller ve bulgular:**
+
+| Modül | Dosya | Bulgu | Ciddiyet |
+|-------|-------|-------|----------|
+| PoS Consensus | `src/consensus/pos.rs` | VRF threshold hesaplaması sağlam (u128 overflow korumalı), double-sign detection aktif | ✅ Temiz |
+| Tokenomics | `src/tokenomics/mod.rs` | `BUD_TOTAL_SUPPLY` u64'de rahat sığıyor (1e14 << 1.8e19), saturating aritmetik tutarlı, vesting cliff+linear doğru | ✅ Temiz |
+| Universal Relayer | `src/cross_domain/relayer.rs` | `verify_id()` defense-in-depth aktif (satır 309), replay koruması sağlam, proof verification zinciri güvenli | ✅ Temiz |
+| EVM Adapter | `src/cross_domain/evm/verify.rs` | 6 adımlı doğrulama akışı deterministik, garbage-no-panic DoS güvenliği testli, N-conf finality doğru | ✅ Temiz |
+| BNS Registry | `src/bns/registry.rs` | `checked_add` overflow koruması (renew), owner-only transfer/register_subdomain doğrulanmış | ✅ Temiz |
+| Bridge | `src/cross_domain/bridge.rs` | V17 unlock fix merge edilmiş, u128→u64 truncation koruması mevcut | ✅ Temiz |
+| Executor | `src/execution/executor.rs` | AI fee escrow + reclaim mantığı tutarlı, verifier auth (RoleId=6 + PoS fallback) doğru | ✅ Temiz |
+| Snapshot | `src/chain/snapshot.rs` | GAP-3/GAP-4 loader onarımları aktif (karantina + self-heal), serde(default) geriye uyumluluk korunuyor | ✅ Temiz |
+
+**Açık bulgular özeti (önceki turlar + bu tur):**
+
+| # | Bulgu | Ciddiyet | Durum |
+|---|-------|----------|-------|
+| V22 | AI Registry state_root() domain-separation eksik | 🟡 | Açık (RFC önerisi verildi) |
+| V23 | NftRegistry luminance u64 overflow | 🟡 | Açık (ARENA3 RFC ile ele alınacak) |
+| V24 | BridgeState::root() scope eksik | 🔴 | Açık (GAP-2 kapsamında) |
+| V25 | snapshot calculate_hash V24'e bağımlı | 🟡 | Açık |
+| V26 | expiry_queue stale entry bloat | ⚪ | Açık (performans) |
+| V27 | Deadline boundary test hatası | 🔴 | ✅ KAPANDI |
+| V28 | executor current_block = epoch_index*100 | 🟡 | Açık (tasarım kararı) |
+
+**Toplam denetim istatistikleri:**
+- 145 Rust dosyası tarandı
+- 7 bulgu tespit edildi (V22-V28)
+- 1 main-RED onarımı (V27)
+- 13/13 CI success
+- 0 açık kırmızı CI
+
+**Budlumdevnet dokunulmadı** — salt-okunur.
+**Ne bekliyor:** Kullanıcı (Ayaz) — V22/V23/V28 tasarım kararları
+**Kim karar verecek:** Kullanıcı (Ayaz)
+
+Co-authored-by: ARENAX <arenax@budlum.ai>
