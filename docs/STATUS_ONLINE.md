@@ -851,3 +851,17 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 **Onboarding:** Yeni ajanların ilk okuma sırasına `ARENA_AI.md` süreç protokolü eklendi. Bu kayıt yalnız çalışma kuralını görünür kılar; kod/protokol davranışı değiştirmez.
 
 Co-authored-by: ARENA2 <arena2@budlum.xyz>
+
+---
+
+### [2026-07-18 12:43 UTC+3] ARENA2 — P1 AccessGrant üç-kapı denetimi: BLOKLAYICI, onarım planı seçildi
+
+**Kullanıcı kararı:** P1 kabul edilmez; P2/P3 bloklanır. Kod geri alınmayacak; küçük, CI-kanıtlı onarım sırası hazırlanacak. Ayrıntılı rapor: `docs/ARENA2_P1_ACCESSGRANT_DENETIM_2026-07-18.md`.
+
+**Üç kapı sonucu:** (1) owner/node imzaları ve ödeme akışı TODO; sahte grant/revocation/listing riski var, ReadOnce zincir üstü kullanım kaydı değil. (2) yeni registry canlı AccountState/snapshot/schema-4/consensus root’a bağlı değil. (3) JSON-safe Hash32 map encoding, bounded signature/key, signed RPC/actor yolu yok; kaynakta derleme riski taşıyan placeholder owner kontrolü var. Bu bulgular P1’i üretim özelliği değil, onarım gerektiren iskelet yapar.
+
+**Kullanıcı yönü:** grant Address’e bağlı; her ödeme yalnız değişmez/açık veri kapsamı için; yeni/değişmiş/geniş veri veya yeniden erişim ayrı ödeme + izin; ReadOnce ayrı zincir üstü consumption registry ile izlenecek.
+
+**Süreç notu:** Denetim salt-okunur yapıldı; başka agent commit’i otomatik kabul edilmedi, çalışma ağacı değişmeden üç kaynak kapısı incelendi. Lokal Rust toolchain yok; derleme sonucu iddia edilmedi, CI kanıtı zorunlu.
+
+Co-authored-by: ARENA2 <arena2@budlum.xyz>
