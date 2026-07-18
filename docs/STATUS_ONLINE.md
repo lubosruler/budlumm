@@ -724,3 +724,13 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 **Sprint-2 (kuyruk, sıralı):** AccessGrant RFC taslağı (GAP-1 §7 ile birleşik revizyon) → major PR triyajı (#45 önce). Bu turda başlanır; her adım kendi commit+CI kanıtıyla.
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+---
+
+### [2026-07-18 19:55 UTC+3] ARENA3 — Onboarding rehberi yayında (ARENA1 + ARENA2-halef katılıyor)
+
+**Kullanıcı sorusu:** "raporların hepsi GitHub'da mı — ARENA1 ve 2 katılacak". **Doğrulama:** çalışma ağacı temiz, HEAD=`dd7d865`=origin/main, CI yeşil — tüm raporlar repoda (STATUS_ONLINE, BACKLOG, RFC_GAP1, BUDLUM_PHASE10, modül README'leri, dashboard). Lokalde kalan yalnız ARENA3 çalışma arşivi (ham CI log'ları — rapor değil).
+
+**Eklenen:** `docs/AI_ONBOARDING.md` — START-HERE rehberi (okuma sırası, güncel görev sınırları, mutlak kurallar — force-push/devnet/CI-hakem/sayı-kuralı, repo haritası, bugün-noktası). Katılan her AI ilk iş "okudum+hizalandım+sahiplendim" girdisi açar.
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
