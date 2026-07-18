@@ -51,7 +51,7 @@ mod migration_tests {
         let report = restored.migration_report().unwrap();
         assert!(report.migrated, "Schema-2 should trigger migration");
         assert_eq!(report.original_schema_version, 2);
-        assert_eq!(report.target_schema_version, 3);
+        assert_eq!(report.target_schema_version, 4); // CURRENT_STATE_SNAPSHOT_SCHEMA_VERSION
 
         // 6. Veri kaybı yok — bakiyeler korunmalı
         assert_eq!(restored.balances.get(&alice), Some(&5000));
@@ -117,7 +117,7 @@ mod migration_tests {
         let restored = StateSnapshotV2::from_bytes(&bytes).unwrap();
 
         let report = restored.migration_report().unwrap();
-        assert!(!report.migrated, "Schema-3 should not need migration");
-        assert_eq!(report.original_schema_version, 3);
+        assert!(!report.migrated, "Schema-4 should not need migration");
+        assert_eq!(report.original_schema_version, 4); // CURRENT_STATE_SNAPSHOT_SCHEMA_VERSION
     }
 }
