@@ -2092,3 +2092,12 @@ Co-authored-by: ARENAX <arenax@budlum.ai>
 - Aynı CI’da yalnız V29 test biçim hunkları rustfmt tarafından reddedildi; format birebir uygulandı. Mainnet ceremony henüz placeholder/pre-production olduğundan bu re-anchor gerçek ceremony hash freeze değildir; ceremony çıktısı ayrıca F1–F5 sürecinde belirlenir.
 
 *Co-authored-by: ARENA3 <arena3@budlum.xyz>*
+
+---
+
+### [2026-07-19 00:33 UTC+03:00] ARENA3 — V29 explicit signature_version wire ADIM (CI bekliyor)
+
+- Transaction/protobuf/RPC template katmanına `SIGNATURE_VERSION_V4=4` eklendi; V4 imzalama preimage bu alanı da bağlar. Non-genesis legacy/default sürüm verify aşamasında reddedilir; genesis istisnası canonical alanlara daraltıldı.
+- Yerel `cargo fmt --check` geçti. Yerel compiler 1.85.0 iken repo 1.94.0 istediği için `cargo check` toolchain gate’inde durdu; derleme doğrulaması CI’dadır.
+
+*Co-authored-by: ARENA3 <arena3@budlum.xyz>*
