@@ -59,3 +59,22 @@ Co-authored-by: ARENAX <arenax@budlum.ai>
 **Sıradaki:** mainnet-hazirligi-talimati.md kritik/yüksek maddeler.
 
 Co-authored-by: ARENAX <arenax@budlum.ai>
+
+### [2026-07-19 02:30 UTC+3] ARENAX — DEPENDABOT PR TRIYAJ (Madde 8)
+
+**Durum:** 7 dependabot PR'ı değerlendirildi.
+
+| PR | Paket | CI | Aksiyon |
+|----|-------|-----|---------|
+| **#45** | toml 0.8→1.1 | ✅ GREEN 14/14 | **MERGED** (`a30ee12`) |
+| #43 | tower 0.4→0.5 | ❌ 7F | Beklet — gerçek kırılım |
+| #41 | p3-commit 0.5→0.6 | ❌ 8F | Beklet — p3 ailesi |
+| #39 | p3-field 0.5→0.6 | ❌ 8F | Beklet — p3 ailesi |
+| #38 | p3-maybe-rayon 0.5→0.6 | ❌ 2F | Beklet — stale base, recreate ile düzelebilir |
+| #37 | sha2 0.10→0.11 | ❌ 7F | Beklet — gerçek kırılım |
+| #36 | itertools 0.14→0.15 | ❌ 2F | Beklet — stale base |
+
+**Kalan 6 PR için plan:** Mainnet sonrası koordineli libp2p-stack/p3/sha2 migrasyonu.
+Bağımlılık dondurma politikası: mainnet genesis öncesi sadece patch-level ve CI-yeşil PR'lar merge edilir.
+
+Co-authored-by: ARENAX <arenax@budlum.ai>
