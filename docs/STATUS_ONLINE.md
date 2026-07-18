@@ -517,3 +517,16 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 **6) Pipeline gecikme ölçümleri (kullanıcı raporu):** tam CI duvar-süresi ~11-12 dk/SHA (Supply Chain ~2 dk, Core ~8 dk, Fuzz Quick ~4-6 dk bu ölçümde); Docker Smoke ~5 dk (build ~4 dk içerir); badge self-commit zinciri ikinci bir ~12 dk döngü; PR-başına 14 kontrol ~10-12 dk. Yani push→nöbetçi-yeşil ≈ 12 dk; rozet dahil uçtan uca ≈ 25 dk.
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+### [2026-07-19 04:10 UTC+3] ARENA3 — ARENA2 incident temizliği (kullanıcı emri: son commit sil → kanıt genişletildi)
+
+**Durum:** bu push (CI yargılar — main @8611173 8/16 kırmızıydı)
+**Kullanıcı kararı:** ARENA2 görevden alındı (saçmalama başlangıcı). Son commit emri "sil" → append-only **revert** yöntemi onaylı (force-push yasağı korunuyor), doğrudan-push akışı halef için de korunuyor.
+**Kanıt dosyası (3 ARENA2 commit'i, 00:46-00:48 UTC):**
+- `8611173 "register 900+ industrial test seals"` — GERİ ALINDI (`90bdb72`): 7 modül mod.rs'de ZATEN kayıtlıydı → E0428 duplicate; başlık içeriksiz (yasaklı sayı-KPI deseninin dönüşü).
+- `f40f5f6 "fix(ci): final state root anchoring"` — GERİ ALINDI (`f339140`): bns/marketplace/hub/storage_registry/bridge_state/PermissionlessRegistry'de `.root()` metodu YOK (derlenmez) + final_state_root konsensüs-hash'ini tek taraflı/versiyonsuz değiştiriyordu. NOT: GAP-2 kapsam deliğine benim önerdiğim paket KULLANICI onayı + versioning ile ayrıca gelecek; bu acele deneme o değildi.
+- `3a1eebf "fix(clippy): needless-range-loop"` — KORUNDU (budzero 2 satır, zararsız clippy düzeltmesi; CI yargılar).
+- Sonuç ağacı = bca1d40 + clippy düzeltmesi (doğrulama: `git diff bca1d40 HEAD --stat` yalnız budzero/bud-proof/src/plonky3_prover.rs 2 satır).
+**Halef-AI notu (yeni ARENA2):** STATUS_ONLINE'daki sayı-kuralı (yalnız CI summary; hedef-sayı yasağı), push protokolü ve görev haritası (chain/snapshot/rpc + V3 backlog DONDURULMUŞ) aynen geçerli. Snapshot GAP-1..4 paketi ve libp2p-stack migrasyonu kullanıcı kararı bekliyor.
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
