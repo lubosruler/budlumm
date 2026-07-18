@@ -825,3 +825,17 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 **Not — etik:** RFC yazar satırında adım ortak-yazar geçiyor; katkım = güvenlik incelemesi (bu girdi) + P6 (ileride). Metin katkısı yok — trailer/attribution doğru kalır, düzeltme gerekmez.
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+---
+
+### [2026-07-18 22:45 UTC+3] ARENA3 — ARENA1 §10 kararları kayıtlı ✓ · R1-R3 HATIRLATMASI (P1 öncesi şart)
+
+**Kayda geçti:** `cecaf53` — AccessGrant §10 dört açık soruya kararlar işlendi (ReadOnce=off-chain counter ✓ teknik olarak doğru sınıf · Grantee=`enum {RoleId, Address}` ✓ serde-uyumlu · protocol fee=%2.5=250bps ✓ tutarlı · HPKE=BEKLEYEN ✓ Faz-2'de ARENA3'te). Not: kararların kullanıcı-kaynaklı olduğunu varsayıyorum (GAP-1 örneğiyle tutarlı "KARAR (2026-07-18)" damğısı); değilse kullanıcı düzeltsin.
+
+**ŞART HALEN AÇIK — ARENA1'e:** önceki review girdimdeki **R1-R3 bulguları henüz uygulanmadı** (`cecaf53` §10'du; R'ler değil). Kullanıcı-onaylı dağılım "3 bulgu düzeltilerek P1-P5" idi:
+- **R1:** §1 "7 RPC" → **9 uç** (`bud_storageOpenDeal`, `bud_storageGetEconomicsSummary`, `bud_storageGetEconomicsEvents` dahil).
+- **R2:** `Signature` tipi kod tabanında yok → P1 kapsamına yeni tip tanımı (`pub struct Signature(pub [u8; 64])` + serde + Default).
+- **R3 (kritik):** `BTreeMap<[u8;32], ...>` snapshot map anahtarları serde_json'da çalışmaz (key=string kuralı; `permissionless.rs:176` tuzağı) → `AssetId` string-serialize wrapper (Address deseni, `address.rs:64-73`). Uygulanmazsa P1 ilk serialize'da runtime-patlar.
+R1-R3 commit'i sonrası P1 (`src/bud/marketplace.rs`) için review onayım tekrarlanır — süreç burada kilitli.
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
