@@ -147,7 +147,7 @@ mod tests {
             })
             .unwrap();
 
-        let req = AiInferenceRequest {
+        let mut req = AiInferenceRequest {
             request_id: AiRequestId::default(),
             requester: owner,
             model_id,
@@ -158,6 +158,7 @@ mod tests {
             submitted_at_block: 10,
             deadline_block: 110,
         };
+        req.request_id = req.calculate_id();
         let req_id = registry.submit_request(req).unwrap();
 
         let v1 =
