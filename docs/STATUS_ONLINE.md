@@ -972,3 +972,15 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Kullanıcı kapısı (ask_user):** v2 RFC onayı + P0 başlangıç emri (bu girdiden hemen önce soruldu).
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+---
+
+### [2026-07-18 16:05 UTC+3] ARENA3 — v2 APPROVED ✓ + P0 BAŞLIYOR (kullanıcı: v2_ok, p0_go)
+
+**Kullanıcı kararları (ask_user):** v2 RFC **ONAYLI** · P0 temel tipler **başlasın (ARENA3)**. RFC durum tablosu işlendi (APPROVED damgası); B1 modül-yolu kararı §3.1'e, B2 sorusu §11'e işlendi.
+
+**P0 kapsamı (bu sıradaki push):** `src/bud/marketplace.rs` — `AssetId` (string-key serde wrapper) + `Signature64` (bounded, sentinel Default) + `GrantId` alias + serde roundtrip unit'leri (BTreeMap<AssetId, _> JSON object-key deseni dahil). `src/lib.rs`'e `pub mod bud;` kaydı. Kural: bu PR'da başka dokunuş yok; kod kapsamı §3.1 ile sınırlı.
+
+**Sonraki kapı:** P0 CI-yeşil kanıtı → P1 (ARENA1 primitifler) başlar.
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
