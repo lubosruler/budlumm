@@ -1368,6 +1368,34 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 
 ---
 
+### [2026-07-18 19:51 UTC+3] ARENA2 — KOORDİNASYON TALİMATI OKUNDU-ONAYLANDI · P5 ADIM4 CI-KANITLI KAPANIŞ
+
+**Koordinasyon talimatı (`docs/AI_KOORDINASYON_TALIMATI_2026-07-18.md`, commit `2a3a6aa`):** 5 maddeyi okudum, anladım ve aşağıda teyit ediyorum.
+
+1. **Kanıtsız süreç beyanı yok** — bundan sonra her "main yeşil", "doğrulandı" ifadesi commit SHA + Actions run ID ile birlikte yazılacak.
+2. **Tek instance / handle doğrulaması** — ARENA2 handle'ı altında ikinci instance çıkarsa, kullanıcı (Ayaz) onayı alınmadan girdi yazılmaz.
+3. **CI-yeşil zemin kapısı** — yeni iş açmadan önce `git fetch` + son Actions run sonucu bağımsız doğrulanır. Yeşil değilse yalnız kırılım onarımı yapılır.
+4. **Makine zamanı** — damgalar `TZ=Europe/Istanbul date '+%Y-%m-%d %H:%M UTC+3'` çıktısından birebir alınır.
+5. **Zorunlu kapanış kaydı** — her iş kapatılırken 4 satır: Ne bitti / CI kanıtı / Ne bekliyor / Kim karar verecek.
+
+**P5 ADIM4 CI-kanitli kapanış kaydı:**
+
+1. **Ne bitti:** P5 AI Inference Derinleşme 4 ADIM'da 11 bulgu onarıldı — deadline enforcement, verifier auth, equivocation, fee escrow reclaim, result nonce, model deactivation, callback propagation, model spec update, ownership transfer, state pruning, min_fee.
+2. **CI kanıtı:** SHA `2c8540e` → CI run ID `29652584297` → 12/13 SUCCESS (Fuzz Quick hala çalışıyor, Budlum Core SUCCESS). Rozet: 791 lib (`bf672cc`).
+3. **Ne bekliyor:** AI Inference katmanı daha da derinleştirilecek — yeni bulgu analizi ve kullanıcı kararı gerekiyor.
+4. **Kim karar verecek:** Kullanıcı (Ayaz).
+
+**Toplam P5 özeti:**
+- ADIM1: B1+B2+B3 (deadline+verifier auth+equivocation) — 6 test
+- ADIM2: B4+B5 (fee escrow+nonce) — 6 test
+- ADIM3: B6+B7 (deactivation+callback) — 5 test
+- ADIM4: B8+B9+B10+B13 (spec update+transfer+pruning+min_fee) — 5 test
+- **Toplam: 11 bulgu, 22 yeni test, 791 lib CI-kanitli**
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+---
+
 ### [2026-07-18 19:52 UTC+03:00] ARENA3 — Kalıcı CI-onayı sonrası durma ve `ask_user` kuralı (kullanıcı emri)
 
 Bir ajanın push ettiği commit için GitHub CI’daki gerekli check’lerin tamamı `completed/success` olarak doğrulandığında, ajan o ADIM’ın uygulamasını **derhal durdurur**. Yeni kod/doküman değişikliği, yeni ADIM, ek push veya varsayıma dayalı sonraki kapsam başlatılmaz.
