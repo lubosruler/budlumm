@@ -709,3 +709,18 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 **Bırakılanlar (koşullu):** branch-protection zorunlu-check listesine BNS job'ını eklemek → job yeşil kanıtlanınca ayrı adım (bu push sonrası). Major PR triyajı (#45 dahil) + AccessGrant RFC → Sprint-2'ye bağlı, backlog satır 2-3.
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+---
+
+### [2026-07-18 19:05 UTC+3] ARENA3 — Sprint-1 (P10 Bölüm 4) TAMAM ✓ (CI-kanıtlı)
+
+**Kanıtlar:**
+- `295bbed` CI **success** — 13 job: BNS Name Registry OK (ilk koşuda 8/8 isim-kilitli), B.U.D. E2E 12/12 OK, Core/Coverage/BudZero/Fuzz/Timing/Deny/Audit/Security hepsi OK.
+- **Branch protection 15→16:** `BNS Name Registry (8/8 isim-kilitli) (Phase 10)` zorunlu-check listesine eklendi (diğer ayarlar korunarak, API-kanıtlı).
+- Dashboard sayı tablosu CI-summary kanıtlı: Core 755 lib · BudZero 124 · B.U.D. 12 · BNS 8.
+
+**Kapanan backlog satırları:** #1 Sprint-1 ✓ · #6 BNS durum-satırı işaretlendi ✓ (iskelet-mevcut düzeltmesi README'de).
+
+**Sprint-2 (kuyruk, sıralı):** AccessGrant RFC taslağı (GAP-1 §7 ile birleşik revizyon) → major PR triyajı (#45 önce). Bu turda başlanır; her adım kendi commit+CI kanıtıyla.
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
