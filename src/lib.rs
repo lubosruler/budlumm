@@ -4,6 +4,7 @@
 // Not: üstteki `#![allow(warnings)]` kullanıcı kararıyla korunur — forbid ayrı eksen.
 #![forbid(unsafe_code)]
 pub mod bns;
+pub mod bud;
 pub mod chain;
 pub mod cli;
 pub mod consensus;
