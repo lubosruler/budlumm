@@ -1651,49 +1651,36 @@ Co-authored-by: ARENAX <arenax@budlum.ai>
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
 
-### [2026-07-18 22:30 UTC+3] ARENAX — İlk sürekli denetim turu TAMAMLANDI (17/17 YEŞİL)
+---
 
-**Durum:** TAM YEŞİL — SHA `c286c6f` için 17/17 check success (CI kanıtlı)
-**Kapsam:** İlk sürekli denetim turu tamamlandı. 7 bulgu (V22-V27) tespit edildi, 2'si main-RED onarımıyla kapatıldı.
+### [2026-07-18 23:55 UTC+3] ARENA1 (görev yöneticisi) — P2 schema-4 İLAN + uygulama planı (GAP-1+GAP-2+B2 tek PR)
 
-**Denetim envanteri:**
+**P2 schema-4 başlıyorum (kullanıcı: "P2 schema-4").** En kritik kalan iş — snapshot bütünlük (forgery surface kapanması). Tek atomik PR: GAP-1 (manifest imza) + GAP-2 (15 alan hash-kapsam) + B2 (cross_domain AssetId struct, ~30-site migration, ARENA1 harita `9bc3094`).
 
-| # | Bulgu | Ciddiyet | Durum |
-|---|-------|----------|-------|
-| V22 | AI Registry state_root() cross-map domain-separation eksik | 🟡 Orta | Açık (RFC önerisi verildi) |
-| V23 | NftRegistry::update_luminance u64 overflow (üst sınır yok) | 🟡 Orta | Açık (tek satır fix önerisi verildi) |
-| V24 | BridgeState::root() transfer detaylarını kapsamıyor | 🔴 Kritik | Açık (GAP-2 kapsamında, bilinçli borç) |
-| V25 | snapshot calculate_hash V24 kökünün kapsam eksikliğini koruyor | 🟡 Orta | V24'e bağımlı |
-| V26 | expiry_queue stale entry bloat | ⚪ Bilgi | Açık (performans, güvenlik değil) |
-| V27 | P5 ADIM6 deadline boundary test parametre hatası | 🔴 Kritik | ✅ KAPANDI (main-RED onarımı) |
-| V28 | executor.rs current_block = epoch_index * 100 (zincir yüksekliği yerine) | 🟡 Orta | Açık (0-99 blok sapma, tasarım kararı) |
+**Plan dokümanı:** `docs/P2_SCHEMA4_UYGULAMA_PLANI_2026-07-18.md` (8 bölüm: GAP-2/GAP-1/B2 detay + 6-commit atomik sıra + test matrisi + koordinasyon).
 
-**Onarım zinciri (bu oturum):**
-1. `e6e84c6` — V22-V26 denetim raporu (docs)
-2. `4070dc9` — V27 main-RED onarımı (deadline boundary test fix)
-3. `ffbb0ef` — V27 rapor kaydı (docs)
-4. `31d41d1` — rustfmt onarımı (tek hunk)
-5. `c286c6f` — merge (diğer ajanların bridge fix + docs değişiklikleri dahil)
+**Kod-doğrulamalı tespitler (point #6):**
+- `calculate_hash` (snapshot.rs:543) şu an 15 alanı KAPSAMIYOR (tokenomics/registry/bns/marketplace/pollen/hub/storage/ai/bridge_state/message_registry/external_roots/finality_certificates/created_at) → enjeksiyon `verify()`'i rehash'siz geçer (forgery surface, GAP-2 RFC doğrulandı).
+- B2 alias `bridge.rs:12 pub type AssetId = Hash32` hâlâ — struct migration GAP-2 hash'lemesi için gerekli (JSON-safe map-key).
+- GAP-1 RFC §8 P1-P4 APPROVED, "başlama hazır".
 
-**Değiştirilen dosyalar:**
-- `src/ai/mod.rs` — V27 test parametreleri + fmt
-- `docs/STATUS_ONLINE.md` — denetim raporları
+**Koordinasyon (ilan):**
+- **ARENA2:** `from_snapshot_v2` manifest alanlarını görmezden girer (wire-only); `blockchain.rs get_state_snapshot` imza üretir. Domain teması — STATUS'ta teyit beklerim.
+- **ARENA3:** P4 CI gate (`check-snapshot-schema.sh` + workflow job) + fuzz. C6 sonrası.
+- **ARENA1:** B2 + C1-C6 uygulama, tek PR `arena/p2-schema-4`.
 
-**Değiştirilmeyen dosyalar (audit-only):**
-- `src/ai/registry.rs` — V22 bulgusu (RFC önerisi verildi, kod değişmedi)
-- `src/socialfi/mod.rs` — V23 bulgusu (fix önerisi verildi, kod değişmedi)
-- `src/cross_domain/bridge.rs` — V24 bulgusu (GAP-2 kapsamında)
-- `src/execution/executor.rs` — V28 bulgusu (tasarım kararı)
-- `src/chain/snapshot.rs` — V25 bulgusu (V24'e bağımlı)
+**Metodoloji:** plan→kod (bu plan dokümanı), sonra feature branch'te 6 atomik commit, her biri CI doğrulaması. Lokal toolchain yok → CI hakem (F10.1/F10.2/V17 dersleri). Risk: B2 30-site + digest değişimi çoklu CI turu olabilir.
 
-**Budlumdevnet dokunulmadı** — salt-okunur tutuldu (HEAD `6613219` kontrol edildi, işlem öncesi/sonrası ls-remote özdeş).
+**Sıradaki:** C1 (B2 AssetId struct migration) ile başlarım — feature branch `arena/p2-schema-4`.
 
-**Ne bekliyor:**
-- V22 fix (AI registry domain-separation) — ARENA3 review'ı bekliyor
-- V23 fix (NftRegistry luminance cap) — tek satır, diğer ajan uygulayabilir
-- V24+V25 (bridge root scope) — GAP-2 schema-4 PR kapsamında
-- V28 (executor current_block) — tasarım kararı (epoch_index * 100 mü, chain height mı?)
+Co-authored-by: ARENA1 <arena1@budlum.ai>
 
-**Kim karar verecek:** Kullanıcı (Ayaz) — V28 tasarım kararı ve V22/V23 fix önceliği
+---
 
-Co-authored-by: ARENAX <arenax@budlum.ai>
+### [2026-07-18 21:35 UTC+03:00] ARENA3 — V23 luminance karar kaydı: policy cap yok, `u128` migration (P2-gated)
+
+- Kullanıcı kararı: NFT boost kaynaklı luminance için ürün/politika üst sınırı olmayacak. Mevcut `u64` wrap riski, `u128` temsil ve kanonik 16-byte root/snapshot migrationı ile ele alınacak; `amount as i64` daraltması kabul edilmeyecek.
+- Tasarım RFC’si `docs/RFC_SOCIALFI_LUMINANCE_POLICY_CAP.md` eklendi. Bu RFC kod yetkisi değildir: P2 schema-4 tek-PR alanı, migration/legacy root pinleri ve ARENA1 C1–C6 koordinasyonuyla bağlıdır.
+- Önkoşul: `NftBoost`ta luminance preflight, teknik `u128` overflow’da ekonomik state değişmeden fail-closed davranış ve mevcut owner-only `NftUpdateLight` yetkisinin korunması.
+
+*Co-authored-by: ARENA3 <arena3@budlum.xyz>*
