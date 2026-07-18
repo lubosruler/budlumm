@@ -1393,3 +1393,40 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 - **Toplam: 11 bulgu, 22 yeni test, 791 lib CI-kanitli**
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+---
+
+### [2026-07-18 19:52 UTC+03:00] ARENA3 — Kalıcı CI-onayı sonrası durma ve `ask_user` kuralı (kullanıcı emri)
+
+Bir ajanın push ettiği commit için GitHub CI’daki gerekli check’lerin tamamı `completed/success` olarak doğrulandığında, ajan o ADIM’ın uygulamasını **derhal durdurur**. Yeni kod/doküman değişikliği, yeni ADIM, ek push veya varsayıma dayalı sonraki kapsam başlatılmaz.
+
+Bu noktada ajan, süreci açık bırakmak için `ask_user` ile kullanıcıdan **bir sonraki açık komutu** ister. CI başarısızsa `ask_user` ile yeni kapsam istemek yerine önce kök neden bulunur, minimal onarım yapılır ve aynı CI kapısı yeniden geçilir. Bu kural tüm ARENA handle’ları, tüm phase’ler ve tüm PR/push zincirleri için geçerlidir.
+
+*Co-authored-by: ARENA3 <arena3@budlum.xyz>*
+
+---
+
+### [2026-07-18 19:55 UTC+3] ARENA1 — F10.1 MERGED ✓ (PR #52): in-tree RLP + MPT verifier (H4 kriptografik temel)
+
+**F10 RFC (onaylı approve_f101 + f10_before_mainnet) Faz 1 tamam:** `docs/RFC_F10_EVM_CHAIN_ADAPTER.md` planının temel teslimi. PR #52 merged `a174533` → `src/cross_domain/evm/` (RLP + MPT, ~1000 satır + 30 test).
+
+**Teslim:**
+- `rlp.rs` (453 satır): in-tree Recursive Length Prefix (Yellow Paper App. B). Canonical encode/decode + strict validation (leading-zero/minimal-len/trailing/truncation → Err). `encode_uint`/`decode_uint` integer kuralı. 16 KAT + negatif test (Ethereum test-vector'leri).
+- `mpt.rs` (520 satır): Merkle-Patricia trie **verifier** (App. D, verify-only — RFC Q1 relayer_produces). `hp_encode`/`hp_decode`, `keccak256` (sha3 reuse — **yeni dependency YOK**), `EMPTY_TRIE_ROOT` CI-kanıtlı sabit, `verify(proof, root, key) → value`. Leaf/extension/branch + **inline node** desteği. Recursive walk (depth path-bounded). 14 test: hp KAT, single/multi-key branch/extension/inline, negatif matris (missing node/wrong root/garbage-no-panic DoS güvenliği).
+
+**CI yolculuğu (5 tur — lokal toolchain yok → CI hakem):**
+1. `1ce3584` — ilk push: Budlum Core fmt (3 hunk test formatı) + kendi testlerim.
+2. `d145cf7` — fmt fix. Sonra E0382 (verify_two_keys_share_branch children move sonrası erişim) → restructure.
+3. `ce2fd55` — E0382 fix. Sonra Coverage'de **kendi sabitim yanlış**: `EMPTY_TRIE_ROOT` keccak256(0x80) değerini ezberden yazmıştım, CI assertion left=gerçek-deger → otoriteyi aldım.
+4. `78577b7` — root fix. Sonra `verify_inline_branch_child` precondition yanılmış (keccak256("x") 63-nibble path → RLP>32 → inline değil) → yapay kısa path ile test.
+5. `cd9687f` — inline fix. Sonra `rlp_bytes_serde_roundtrip` assertion yanılmış (`#[serde(transparent)] Vec<u8>` byte-array, hex değil) → assertion gerçek davranışa.
+6. **`3aa5f35` — 14/15 yeşil (Fuzz tail), SIFIR FAIL.** PR #52 merged.
+
+**Ders (görev yöneticisi özeleştirisi):** lokal toolchain olmadan 5 CI turu = her turda bir test/sabit hatası yakalandı. ARENA3'ün "push öncesi 4 kapı" metodolojisi (cargo fmt/check/clippy/test lokalde) bu maliyeti önlerdi. Şu an ortamım bu kapıyı veremiyor → CI'a güveniyorum ama her turda dikkatli. RLP+MPT güvenlik açısından sağlam (compile + 30 test + negatif matris + garbage-no-panic). Sabitleri/assumption'ları ezberden YAZMAMA (CI otorite).
+
+**Sıradaki (görev yöneticisi):**
+- F10.2 (receipt + header + adapter + ETH→Bud mint akışı + N-conf finality + negatif matris) — F10.1'in üstüne. RFC Faz 2.
+- VEYA diğer Phase 10.5 🔴 (F27 ceremony / F29 bug bounty) — mainnet-prep paralel.
+- Kullanıcı kararı.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
