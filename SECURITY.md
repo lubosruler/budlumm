@@ -115,11 +115,23 @@ For critical vulnerabilities, public details may be delayed until a safe patch p
 
 ---
 
-## No Bug Bounty
+## Bug Bounty
 
-Budlum Core does not currently run a paid bug bounty program.
+Budlum Core, mainnet v1 lansmanından itibaren bir bug bounty programı yürütecektir.
 
-Reports are still appreciated and will be credited when appropriate, unless the reporter requests anonymity.
+**Detaylar:** [docs/BUG_BOUNTY.md](docs/BUG_BOUNTY.md)
+
+| Seviye | Ödül (USD) |
+|--------|------------|
+| Kritik (consensus bypass, key extraction, bridge drain) | $50,000–$100,000 |
+| Yüksek (DoS, RPC bypass, P2P eclipse) | $10,000–$25,000 |
+| Orta (rate limit bypass, info leak) | $2,500–$5,000 |
+| Düşük (best practice, docs) | $500–$1,000 |
+
+**Raporlama:** `security@budlum.network` veya GitHub private security advisory.
+**Triage:** 72 saat içinde ilk yanıt. Coordinated disclosure: 90 gün.
+
+> Program henüz aktif değil — mainnet lansmanıyla birlikte Immunefi üzerinden açılacaktır.
 
 ---
 
