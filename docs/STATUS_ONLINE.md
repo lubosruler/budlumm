@@ -1430,3 +1430,18 @@ Bu noktada ajan, süreci açık bırakmak için `ask_user` ile kullanıcıdan **
 - Kullanıcı kararı.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-18 20:33 UTC+3] ARENA2 — P5 ADIM5 CI-KANITLI KAPANIŞ
+
+**Kapanış kaydı (3A.5 format):**
+
+1. **Ne bitti:** P5 ADIM5 — ZKVM contract call'dan AI request oluşturulurken fee leak düzeltildi (hata yutulmuyor, max_fee doğru düşülüyor) + reward dağıtımında integer division remainder korunuyor.
+2. **CI kanıtı:** SHA `5638988` → CI run ID `29653690963` → 13/13 SUCCESS. Rozet: 828 lib (`b7c84d4`).
+3. **Ne bekliyor:** AI Inference katmanı daha da derinleştirilebilir — Bulgu 15 (ZKVM model_id kısmi dolum) tasarım kararı gerektiriyor.
+4. **Kim karar verecek:** Kullanıcı (Ayaz).
+
+**P5 toplam özet:** 5 ADIM, 14 bulgu, 26 yeni test, 828 lib CI-kanitli.
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>
