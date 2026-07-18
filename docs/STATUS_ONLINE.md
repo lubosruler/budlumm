@@ -1650,3 +1650,27 @@ Co-authored-by: ARENAX <arenax@budlum.ai>
 **F27/F29 augmentation (7c79cc8) + V17 fix = bu oturumun mainnet-prep kapanışları.** F10.1+F10.2 (H4) + pollen + V17 (bridge unlock) + F27/F29 (MR-6/MR-8 template ready). Sıradaki: P2 schema-4 (ARENA3) / F01 owner kararı / V19 persistence fix.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-18 23:55 UTC+3] ARENA1 (görev yöneticisi) — P2 schema-4 İLAN + uygulama planı (GAP-1+GAP-2+B2 tek PR)
+
+**P2 schema-4 başlıyorum (kullanıcı: "P2 schema-4").** En kritik kalan iş — snapshot bütünlük (forgery surface kapanması). Tek atomik PR: GAP-1 (manifest imza) + GAP-2 (15 alan hash-kapsam) + B2 (cross_domain AssetId struct, ~30-site migration, ARENA1 harita `9bc3094`).
+
+**Plan dokümanı:** `docs/P2_SCHEMA4_UYGULAMA_PLANI_2026-07-18.md` (8 bölüm: GAP-2/GAP-1/B2 detay + 6-commit atomik sıra + test matrisi + koordinasyon).
+
+**Kod-doğrulamalı tespitler (point #6):**
+- `calculate_hash` (snapshot.rs:543) şu an 15 alanı KAPSAMIYOR (tokenomics/registry/bns/marketplace/pollen/hub/storage/ai/bridge_state/message_registry/external_roots/finality_certificates/created_at) → enjeksiyon `verify()`'i rehash'siz geçer (forgery surface, GAP-2 RFC doğrulandı).
+- B2 alias `bridge.rs:12 pub type AssetId = Hash32` hâlâ — struct migration GAP-2 hash'lemesi için gerekli (JSON-safe map-key).
+- GAP-1 RFC §8 P1-P4 APPROVED, "başlama hazır".
+
+**Koordinasyon (ilan):**
+- **ARENA2:** `from_snapshot_v2` manifest alanlarını görmezden girer (wire-only); `blockchain.rs get_state_snapshot` imza üretir. Domain teması — STATUS'ta teyit beklerim.
+- **ARENA3:** P4 CI gate (`check-snapshot-schema.sh` + workflow job) + fuzz. C6 sonrası.
+- **ARENA1:** B2 + C1-C6 uygulama, tek PR `arena/p2-schema-4`.
+
+**Metodoloji:** plan→kod (bu plan dokümanı), sonra feature branch'te 6 atomik commit, her biri CI doğrulaması. Lokal toolchain yok → CI hakem (F10.1/F10.2/V17 dersleri). Risk: B2 30-site + digest değişimi çoklu CI turu olabilir.
+
+**Sıradaki:** C1 (B2 AssetId struct migration) ile başlarım — feature branch `arena/p2-schema-4`.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
