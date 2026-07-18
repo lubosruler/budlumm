@@ -40,6 +40,7 @@ impl std::fmt::Display for RoleId {
             roles::RELAYER => write!(f, "relayer"),
             roles::PROVER => write!(f, "prover"),
             roles::STORAGE_OPERATOR => write!(f, "storage_operator"),
+            roles::AI_VERIFIER => write!(f, "ai_verifier"),
             RoleId(id) => write!(f, "role#{id}"),
         }
     }
@@ -78,6 +79,14 @@ pub mod roles {
     /// `PermissionlessRegistry::params`. No whitelist, no admin gate
     /// (master context, CLAUDE.md §2).
     pub const STORAGE_OPERATOR: RoleId = RoleId(5);
+
+    /// AI Inference Verifier (Phase 10, §1).
+    ///
+    /// Like every other role, registration is permissionless: any account can
+    /// register by staking the `min_stake` floor from `PermissionlessRegistry::params`.
+    /// Active `AI_VERIFIER` nodes perform off-chain model execution and submit
+    /// attestation results for consensus agreement thresholds.
+    pub const AI_VERIFIER: RoleId = RoleId(6);
 }
 
 #[cfg(test)]
@@ -99,6 +108,7 @@ mod tests {
         assert_eq!(format!("{}", roles::RELAYER), "relayer");
         assert_eq!(format!("{}", roles::PROVER), "prover");
         assert_eq!(format!("{}", roles::STORAGE_OPERATOR), "storage_operator");
+        assert_eq!(format!("{}", roles::AI_VERIFIER), "ai_verifier");
     }
 
     #[test]
@@ -106,5 +116,10 @@ mod tests {
         // Pin the protocol-level role id (5) so a future bump is a
         // deliberate, audited change.
         assert_eq!(roles::STORAGE_OPERATOR.value(), 5);
+    }
+
+    #[test]
+    fn ai_verifier_role_id_value_is_6() {
+        assert_eq!(roles::AI_VERIFIER.value(), 6);
     }
 }

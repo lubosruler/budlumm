@@ -109,6 +109,7 @@ pub struct AccountState {
     pub marketplace: crate::marketplace::MarketplaceRegistry,
     pub hub: crate::hub::HubRegistry,
     pub storage_registry: StorageRegistry,
+    pub ai_registry: crate::ai::registry::AiRegistry,
     pub bridge_state: BridgeState,
     pub message_registry: CrossDomainMessageRegistry,
     pub external_roots: BTreeMap<crate::domain::types::DomainId, crate::domain::types::Hash32>,
@@ -166,6 +167,7 @@ impl AccountState {
             nft_registry: crate::nft::NftRegistry::new(),
             marketplace: crate::marketplace::MarketplaceRegistry::new(),
             storage_registry: StorageRegistry::new(),
+            ai_registry: crate::ai::registry::AiRegistry::new(),
             bridge_state: BridgeState::new(),
             message_registry: CrossDomainMessageRegistry::new(),
             hub: crate::hub::HubRegistry::new(),
@@ -200,6 +202,7 @@ impl AccountState {
             last_epoch_time: 0,
             governance: GovernanceState::default(),
             storage_registry: StorageRegistry::new(),
+            ai_registry: crate::ai::registry::AiRegistry::new(),
             bridge_state: BridgeState::new(),
             message_registry: CrossDomainMessageRegistry::new(),
             bns_registry: crate::bns::BnsRegistry::new(),
@@ -249,6 +252,7 @@ impl AccountState {
             unbonding_queue: Vec::new(),
             storage: None,
             storage_registry: StorageRegistry::new(),
+            ai_registry: crate::ai::registry::AiRegistry::new(),
             bridge_state: BridgeState::new(),
             message_registry: CrossDomainMessageRegistry::new(),
             epoch_index: snapshot.height / 100,
@@ -316,6 +320,7 @@ impl AccountState {
             timed_burn,
             burn_reserve_address,
             storage_registry: snapshot.storage_registry.clone().unwrap_or_default(),
+            ai_registry: snapshot.ai_registry.clone().unwrap_or_default(),
             bridge_state: snapshot.bridge_state.clone().unwrap_or_default(),
             message_registry: snapshot.message_registry.clone().unwrap_or_default(),
             team_vesting,
@@ -1188,6 +1193,10 @@ impl AccountState {
         final_hasher.update(self.bridge_root);
         final_hasher.update(self.message_root);
         final_hasher.update(self.settlement_root);
+        if !self.ai_registry.is_empty() {
+            final_hasher.update(b"ai_v1");
+            final_hasher.update(self.ai_registry.state_root());
+        }
         final_hasher.update(self.global_header_summary);
         final_hasher.update(b"gov_disabled"); // governance version/enabled flags
 

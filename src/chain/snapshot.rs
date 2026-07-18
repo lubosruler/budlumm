@@ -435,6 +435,8 @@ pub struct StateSnapshotV2 {
     #[serde(default)]
     pub storage_registry: Option<crate::domain::storage_deal::StorageRegistry>,
     #[serde(default)]
+    pub ai_registry: Option<crate::ai::registry::AiRegistry>,
+    #[serde(default)]
     pub bridge_state: Option<crate::cross_domain::BridgeState>,
     #[serde(default)]
     pub message_registry: Option<crate::cross_domain::message_registry::CrossDomainMessageRegistry>,
@@ -514,6 +516,7 @@ impl StateSnapshotV2 {
             marketplace: Some(account_state.marketplace.clone()),
             hub: Some(account_state.hub.clone()),
             storage_registry: Some(account_state.storage_registry.clone()),
+            ai_registry: Some(account_state.ai_registry.clone()),
             bridge_state: Some(account_state.bridge_state.clone()),
             message_registry: Some(account_state.message_registry.clone()),
             external_roots: Some(account_state.external_roots.clone()),

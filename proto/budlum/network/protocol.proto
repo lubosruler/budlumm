@@ -8,6 +8,24 @@ enum ProtoTransactionType {
     UNSTAKE = 2;
     VOTE = 3;
     CONTRACT_CALL = 4;
+    BNS_REGISTER = 5;
+    BNS_SET_CONTENT = 6;
+    BNS_REGISTER_SUBDOMAIN = 7;
+    BNS_SET_STORAGE = 8;
+    NFT_MINT = 9;
+    NFT_TRANSFER = 10;
+    NFT_BURN = 11;
+    NFT_BOOST = 12;
+    NFT_UPDATE_LIGHT = 13;
+    NFT_TAG = 14;
+    UNIVERSAL_RELAY = 15;
+    RELAYER_RESULT = 16;
+    AI_OFFER_DATA = 17;
+    AI_PURCHASE_DATA = 18;
+    HUB_REGISTER_APP = 19;
+    AI_MODEL_REGISTER = 20;
+    AI_INFERENCE_REQUEST = 21;
+    AI_INFERENCE_RESULT = 22;
 }
 
 message ProtoTransaction {
@@ -22,6 +40,153 @@ message ProtoTransaction {
     bytes signature = 9;
     uint64 chain_id = 10;
     ProtoTransactionType tx_type = 11;
+    uint32 wire_version = 12;
+    oneof type_payload {
+        ProtoNftBoost nft_boost = 20;
+        ProtoNftUpdateLight nft_update_light = 21;
+        ProtoNftTag nft_tag = 22;
+        ProtoUniversalRelay universal_relay = 23;
+        ProtoRelayerResult relayer_result = 24;
+        ProtoAiOfferData ai_offer_data = 25;
+        ProtoAiPurchaseData ai_purchase_data = 26;
+        ProtoHubRegisterApp hub_register_app = 27;
+        ProtoAiModelRegister ai_model_register = 28;
+        ProtoAiInferenceRequest ai_inference_request = 29;
+        ProtoAiInferenceResult ai_inference_result = 30;
+    }
+}
+
+message ProtoNftBoost {
+    uint64 nft_id = 1;
+    uint64 amount = 2;
+}
+
+message ProtoNftUpdateLight {
+    uint64 nft_id = 1;
+    int64 delta_mcd = 2;
+}
+
+message ProtoNftTag {
+    uint64 nft_id = 1;
+    string tag = 2;
+}
+
+message ProtoExternalChain {
+    enum ChainType {
+        ETHEREUM = 0;
+        SOLANA = 1;
+        BITCOIN = 2;
+        AVALANCHE = 3;
+        POLYGON = 4;
+        ARBITRUM = 5;
+        OPTIMISM = 6;
+        CUSTOM = 7;
+    }
+    ChainType chain_type = 1;
+    uint32 custom_id = 2;
+}
+
+message ProtoUniversalRelay {
+    ProtoExternalChain chain = 1;
+    string target_address = 2;
+    bytes payload = 3;
+    uint64 external_nonce = 4;
+}
+
+message ProtoMessageKind {
+    enum KindType {
+        BRIDGE_LOCK = 0;
+        BRIDGE_MINT = 1;
+        BRIDGE_BURN = 2;
+        BRIDGE_UNLOCK = 3;
+        CUSTOM = 4;
+    }
+    KindType kind_type = 1;
+    bytes custom_bytes = 2;
+}
+
+message ProtoCrossDomainMessagePayload {
+    string message_id = 1;
+    string correlation_id = 2;
+    string source_domain = 3;
+    string target_domain = 4;
+    uint64 source_height = 5;
+    uint32 event_index = 6;
+    uint64 nonce = 7;
+    string sender = 8;
+    string recipient = 9;
+    string payload_hash = 10;
+    ProtoMessageKind kind = 11;
+    uint64 expiry_height = 12;
+}
+
+message ProtoRelayerResult {
+    ProtoExternalChain chain = 1;
+    string tx_hash = 2;
+    bool success = 3;
+    ProtoCrossDomainMessagePayload message = 4;
+    bytes receipt_proof = 5;
+    bytes external_state_root = 6;
+}
+
+message ProtoAiOfferData {
+    bytes cid = 1;
+    uint64 price = 2;
+}
+
+message ProtoAiPurchaseData {
+    uint64 offer_id = 1;
+}
+
+message ProtoHubRegisterApp {
+    string name = 1;
+    enum AppCategoryProto {
+        SOCIAL_FI = 0;
+        DE_FI = 1;
+        STORAGE = 2;
+        GAMING = 3;
+        INFRASTRUCTURE = 4;
+        OTHER = 5;
+    }
+    AppCategoryProto category = 2;
+    string website_url = 3;
+    bytes manifest_id = 4;
+}
+
+message ProtoAiModelRegister {
+    bytes model_id = 1;
+    bytes model_hash = 2;
+    string owner = 3;
+    uint32 min_verifier_count = 4;
+    uint32 agreement_threshold = 5;
+    uint64 max_input_ref_bytes = 6;
+    uint64 max_output_ref_bytes = 7;
+    uint64 request_deadline_blocks = 8;
+    uint64 result_deadline_blocks = 9;
+    uint32 version = 10;
+    bool active = 11;
+}
+
+message ProtoAiInferenceRequest {
+    bytes request_id = 1;
+    string requester = 2;
+    bytes model_id = 3;
+    bytes input_commitment = 4;
+    bytes input_ref = 5;
+    uint64 max_fee = 6;
+    string callback = 7;
+    uint64 submitted_at_block = 8;
+    uint64 deadline_block = 9;
+}
+
+message ProtoAiInferenceResult {
+    bytes request_id = 1;
+    string verifier = 2;
+    bytes output_commitment = 3;
+    bytes output_ref = 4;
+    uint64 result_nonce = 5;
+    bytes signature = 6;
+    uint64 submitted_at_block = 7;
 }
 
 message ProtoSlashingEvidence {

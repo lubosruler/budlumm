@@ -105,6 +105,7 @@ impl Network {
                 finality_quorum_numerator: 2,
                 finality_quorum_denominator: 3,
                 max_votes_per_msg: 128,
+                transport_v2_activation_height: 0,
             },
             Network::Testnet => ConsensusParams {
                 epoch_len: 50,
@@ -114,6 +115,7 @@ impl Network {
                 finality_quorum_numerator: 2,
                 finality_quorum_denominator: 3,
                 max_votes_per_msg: 128,
+                transport_v2_activation_height: 0,
             },
             Network::Devnet => ConsensusParams {
                 epoch_len: 10,
@@ -123,6 +125,7 @@ impl Network {
                 finality_quorum_numerator: 1,
                 finality_quorum_denominator: 2,
                 max_votes_per_msg: 64,
+                transport_v2_activation_height: 0,
             },
         }
     }
@@ -259,6 +262,8 @@ pub struct ConsensusParams {
     pub finality_quorum_numerator: u64,
     pub finality_quorum_denominator: u64,
     pub max_votes_per_msg: usize,
+    /// Phase 10 (§1.3 / P0 Transport v2): activation block height for fail-closed v2 wire transport.
+    pub transport_v2_activation_height: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

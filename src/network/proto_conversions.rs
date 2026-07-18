@@ -25,6 +25,114 @@ fn serialize_payload_or_log<T: serde::Serialize>(what: &str, value: &T) -> Vec<u
 
 impl From<&Transaction> for pb::ProtoTransaction {
     fn from(tx: &Transaction) -> Self {
+        let (tx_type_i32, type_payload) = match &tx.tx_type {
+            TransactionType::Transfer => (pb::ProtoTransactionType::Transfer as i32, None),
+            TransactionType::Stake => (pb::ProtoTransactionType::Stake as i32, None),
+            TransactionType::Unstake => (pb::ProtoTransactionType::Unstake as i32, None),
+            TransactionType::Vote => (pb::ProtoTransactionType::Vote as i32, None),
+            TransactionType::ContractCall => (pb::ProtoTransactionType::ContractCall as i32, None),
+            TransactionType::BnsRegister => (pb::ProtoTransactionType::BnsRegister as i32, None),
+            TransactionType::BnsSetContent => (pb::ProtoTransactionType::BnsSetContent as i32, None),
+            TransactionType::BnsRegisterSubdomain => (pb::ProtoTransactionType::BnsRegisterSubdomain as i32, None),
+            TransactionType::BnsSetStorage => (pb::ProtoTransactionType::BnsSetStorage as i32, None),
+            TransactionType::NftMint => (pb::ProtoTransactionType::NftMint as i32, None),
+            TransactionType::NftTransfer => (pb::ProtoTransactionType::NftTransfer as i32, None),
+            TransactionType::NftBurn => (pb::ProtoTransactionType::NftBurn as i32, None),
+            TransactionType::NftBoost { nft_id, amount } => (
+                pb::ProtoTransactionType::NftBoost as i32,
+                Some(pb::proto_transaction::TypePayload::NftBoost(pb::ProtoNftBoost {
+                    nft_id: *nft_id,
+                    amount: *amount,
+                })),
+            ),
+            TransactionType::NftUpdateLight { nft_id, delta_mcd } => (
+                pb::ProtoTransactionType::NftUpdateLight as i32,
+                Some(pb::proto_transaction::TypePayload::NftUpdateLight(pb::ProtoNftUpdateLight {
+                    nft_id: *nft_id,
+                    delta_mcd: *delta_mcd,
+                })),
+            ),
+            TransactionType::NftTag { nft_id, tag } => (
+                pb::ProtoTransactionType::NftTag as i32,
+                Some(pb::proto_transaction::TypePayload::NftTag(pb::ProtoNftTag {
+                    nft_id: *nft_id,
+                    tag: tag.clone(),
+                })),
+            ),
+            TransactionType::UniversalRelay(ext_tx) => (
+                pb::ProtoTransactionType::UniversalRelay as i32,
+                Some(pb::proto_transaction::TypePayload::UniversalRelay(convert_ext_tx_to_proto(ext_tx))),
+            ),
+            TransactionType::RelayerResult(res) => (
+                pb::ProtoTransactionType::RelayerResult as i32,
+                Some(pb::proto_transaction::TypePayload::RelayerResult(convert_relayer_result_to_proto(res))),
+            ),
+            TransactionType::AiOfferData { cid, price } => (
+                pb::ProtoTransactionType::AiOfferData as i32,
+                Some(pb::proto_transaction::TypePayload::AiOfferData(pb::ProtoAiOfferData {
+                    cid: cid.0.to_vec(),
+                    price: *price,
+                })),
+            ),
+            TransactionType::AiPurchaseData { offer_id } => (
+                pb::ProtoTransactionType::AiPurchaseData as i32,
+                Some(pb::proto_transaction::TypePayload::AiPurchaseData(pb::ProtoAiPurchaseData {
+                    offer_id: *offer_id,
+                })),
+            ),
+            TransactionType::HubRegisterApp { name, category, website_url, manifest_id } => (
+                pb::ProtoTransactionType::HubRegisterApp as i32,
+                Some(pb::proto_transaction::TypePayload::HubRegisterApp(pb::ProtoHubRegisterApp {
+                    name: name.clone(),
+                    category: convert_app_category_to_proto(category) as i32,
+                    website_url: website_url.clone(),
+                    manifest_id: manifest_id.map(|m| m.0.to_vec()).unwrap_or_default(),
+                })),
+            ),
+            TransactionType::AiModelRegister(spec) => (
+                pb::ProtoTransactionType::AiModelRegister as i32,
+                Some(pb::proto_transaction::TypePayload::AiModelRegister(pb::ProtoAiModelRegister {
+                    model_id: spec.model_id.0.to_vec(),
+                    model_hash: spec.model_hash.to_vec(),
+                    owner: spec.owner.to_string(),
+                    min_verifier_count: spec.min_verifier_count,
+                    agreement_threshold: spec.agreement_threshold,
+                    max_input_ref_bytes: spec.max_input_ref_bytes,
+                    max_output_ref_bytes: spec.max_output_ref_bytes,
+                    request_deadline_blocks: spec.request_deadline_blocks,
+                    result_deadline_blocks: spec.result_deadline_blocks,
+                    version: spec.version,
+                    active: spec.active,
+                })),
+            ),
+            TransactionType::AiInferenceRequest(req) => (
+                pb::ProtoTransactionType::AiInferenceRequest as i32,
+                Some(pb::proto_transaction::TypePayload::AiInferenceRequest(pb::ProtoAiInferenceRequest {
+                    request_id: req.request_id.0.to_vec(),
+                    requester: req.requester.to_string(),
+                    model_id: req.model_id.0.to_vec(),
+                    input_commitment: req.input_commitment.to_vec(),
+                    input_ref: req.input_ref.as_slice().to_vec(),
+                    max_fee: req.max_fee,
+                    callback: req.callback.map(|addr| addr.to_string()).unwrap_or_default(),
+                    submitted_at_block: req.submitted_at_block,
+                    deadline_block: req.deadline_block,
+                })),
+            ),
+            TransactionType::AiInferenceResult(res) => (
+                pb::ProtoTransactionType::AiInferenceResult as i32,
+                Some(pb::proto_transaction::TypePayload::AiInferenceResult(pb::ProtoAiInferenceResult {
+                    request_id: res.request_id.0.to_vec(),
+                    verifier: res.verifier.to_string(),
+                    output_commitment: res.output_commitment.to_vec(),
+                    output_ref: res.output_ref.as_slice().to_vec(),
+                    result_nonce: res.result_nonce,
+                    signature: res.signature.clone(),
+                    submitted_at_block: res.submitted_at_block,
+                })),
+            ),
+        };
+
         pb::ProtoTransaction {
             from: tx.from.to_string(),
             to: tx.to.to_string(),
@@ -36,16 +144,223 @@ impl From<&Transaction> for pb::ProtoTransaction {
             hash: tx.hash.clone(),
             signature: tx.signature.clone().unwrap_or_default(),
             chain_id: tx.chain_id,
-            tx_type: match tx.tx_type {
-                TransactionType::Transfer => pb::ProtoTransactionType::Transfer as i32,
-                TransactionType::Stake => pb::ProtoTransactionType::Stake as i32,
-                TransactionType::Unstake => pb::ProtoTransactionType::Unstake as i32,
-                TransactionType::Vote => pb::ProtoTransactionType::Vote as i32,
-                TransactionType::ContractCall => pb::ProtoTransactionType::ContractCall as i32,
-                _ => pb::ProtoTransactionType::Transfer as i32,
-            },
+            tx_type: tx_type_i32,
+            wire_version: 2,
+            type_payload,
         }
     }
+}
+
+fn convert_ext_tx_to_proto(ext: &crate::core::transaction::ExternalTransaction) -> pb::ProtoUniversalRelay {
+    let (chain_type, custom_id) = match ext.chain {
+        crate::core::transaction::ExternalChain::Ethereum => (pb::proto_external_chain::ChainType::Ethereum as i32, 0),
+        crate::core::transaction::ExternalChain::Solana => (pb::proto_external_chain::ChainType::Solana as i32, 0),
+        crate::core::transaction::ExternalChain::Bitcoin => (pb::proto_external_chain::ChainType::Bitcoin as i32, 0),
+        crate::core::transaction::ExternalChain::Avalanche => (pb::proto_external_chain::ChainType::Avalanche as i32, 0),
+        crate::core::transaction::ExternalChain::Polygon => (pb::proto_external_chain::ChainType::Polygon as i32, 0),
+        crate::core::transaction::ExternalChain::Arbitrum => (pb::proto_external_chain::ChainType::Arbitrum as i32, 0),
+        crate::core::transaction::ExternalChain::Optimism => (pb::proto_external_chain::ChainType::Optimism as i32, 0),
+        crate::core::transaction::ExternalChain::Custom(id) => (pb::proto_external_chain::ChainType::Custom as i32, id),
+    };
+    pb::ProtoUniversalRelay {
+        chain: Some(pb::ProtoExternalChain { chain_type, custom_id }),
+        target_address: ext.target_address.clone(),
+        payload: ext.payload.clone(),
+        external_nonce: ext.external_nonce,
+    }
+}
+
+fn convert_proto_to_ext_tx(proto: &pb::ProtoUniversalRelay) -> Result<crate::core::transaction::ExternalTransaction, String> {
+    let chain_proto = proto.chain.as_ref().ok_or("Missing external chain")?;
+    let chain = match pb::proto_external_chain::ChainType::try_from(chain_proto.chain_type) {
+        Ok(pb::proto_external_chain::ChainType::Ethereum) => crate::core::transaction::ExternalChain::Ethereum,
+        Ok(pb::proto_external_chain::ChainType::Solana) => crate::core::transaction::ExternalChain::Solana,
+        Ok(pb::proto_external_chain::ChainType::Bitcoin) => crate::core::transaction::ExternalChain::Bitcoin,
+        Ok(pb::proto_external_chain::ChainType::Avalanche) => crate::core::transaction::ExternalChain::Avalanche,
+        Ok(pb::proto_external_chain::ChainType::Polygon) => crate::core::transaction::ExternalChain::Polygon,
+        Ok(pb::proto_external_chain::ChainType::Arbitrum) => crate::core::transaction::ExternalChain::Arbitrum,
+        Ok(pb::proto_external_chain::ChainType::Optimism) => crate::core::transaction::ExternalChain::Optimism,
+        Ok(pb::proto_external_chain::ChainType::Custom) => crate::core::transaction::ExternalChain::Custom(chain_proto.custom_id),
+        Err(_) => return Err("Invalid external chain type".into()),
+    };
+    Ok(crate::core::transaction::ExternalTransaction {
+        chain,
+        target_address: proto.target_address.clone(),
+        payload: proto.payload.clone(),
+        external_nonce: proto.external_nonce,
+    })
+}
+
+fn convert_app_category_to_proto(cat: &crate::hub::types::AppCategory) -> pb::proto_hub_register_app::AppCategoryProto {
+    match cat {
+        crate::hub::types::AppCategory::SocialFi => pb::proto_hub_register_app::AppCategoryProto::SocialFi,
+        crate::hub::types::AppCategory::DeFi => pb::proto_hub_register_app::AppCategoryProto::DeFi,
+        crate::hub::types::AppCategory::Storage => pb::proto_hub_register_app::AppCategoryProto::Storage,
+        crate::hub::types::AppCategory::Gaming => pb::proto_hub_register_app::AppCategoryProto::Gaming,
+        crate::hub::types::AppCategory::Infrastructure => pb::proto_hub_register_app::AppCategoryProto::Infrastructure,
+        crate::hub::types::AppCategory::Other => pb::proto_hub_register_app::AppCategoryProto::Other,
+    }
+}
+
+fn convert_proto_to_app_category(cat_i32: i32) -> Result<crate::hub::types::AppCategory, String> {
+    match pb::proto_hub_register_app::AppCategoryProto::try_from(cat_i32) {
+        Ok(pb::proto_hub_register_app::AppCategoryProto::SocialFi) => Ok(crate::hub::types::AppCategory::SocialFi),
+        Ok(pb::proto_hub_register_app::AppCategoryProto::DeFi) => Ok(crate::hub::types::AppCategory::DeFi),
+        Ok(pb::proto_hub_register_app::AppCategoryProto::Storage) => Ok(crate::hub::types::AppCategory::Storage),
+        Ok(pb::proto_hub_register_app::AppCategoryProto::Gaming) => Ok(crate::hub::types::AppCategory::Gaming),
+        Ok(pb::proto_hub_register_app::AppCategoryProto::Infrastructure) => Ok(crate::hub::types::AppCategory::Infrastructure),
+        Ok(pb::proto_hub_register_app::AppCategoryProto::Other) => Ok(crate::hub::types::AppCategory::Other),
+        Err(_) => Err("Invalid AppCategoryProto value".into()),
+    }
+}
+
+fn convert_relayer_result_to_proto(res: &crate::core::transaction::RelayerExternalResult) -> pb::ProtoRelayerResult {
+    let (chain_type, custom_id) = match res.chain {
+        crate::core::transaction::ExternalChain::Ethereum => (pb::proto_external_chain::ChainType::Ethereum as i32, 0),
+        crate::core::transaction::ExternalChain::Solana => (pb::proto_external_chain::ChainType::Solana as i32, 0),
+        crate::core::transaction::ExternalChain::Bitcoin => (pb::proto_external_chain::ChainType::Bitcoin as i32, 0),
+        crate::core::transaction::ExternalChain::Avalanche => (pb::proto_external_chain::ChainType::Avalanche as i32, 0),
+        crate::core::transaction::ExternalChain::Polygon => (pb::proto_external_chain::ChainType::Polygon as i32, 0),
+        crate::core::transaction::ExternalChain::Arbitrum => (pb::proto_external_chain::ChainType::Arbitrum as i32, 0),
+        crate::core::transaction::ExternalChain::Optimism => (pb::proto_external_chain::ChainType::Optimism as i32, 0),
+        crate::core::transaction::ExternalChain::Custom(id) => (pb::proto_external_chain::ChainType::Custom as i32, id),
+    };
+    let proto_chain = pb::ProtoExternalChain { chain_type, custom_id };
+    let proto_msg = res.message.as_ref().map(|msg| {
+        let kind = match &msg.kind {
+            crate::cross_domain::message::MessageKind::BridgeLock => pb::ProtoMessageKind {
+                kind_type: pb::proto_message_kind::KindType::BridgeLock as i32,
+                custom_bytes: Vec::new(),
+            },
+            crate::cross_domain::message::MessageKind::BridgeMint => pb::ProtoMessageKind {
+                kind_type: pb::proto_message_kind::KindType::BridgeMint as i32,
+                custom_bytes: Vec::new(),
+            },
+            crate::cross_domain::message::MessageKind::BridgeBurn => pb::ProtoMessageKind {
+                kind_type: pb::proto_message_kind::KindType::BridgeBurn as i32,
+                custom_bytes: Vec::new(),
+            },
+            crate::cross_domain::message::MessageKind::BridgeUnlock => pb::ProtoMessageKind {
+                kind_type: pb::proto_message_kind::KindType::BridgeUnlock as i32,
+                custom_bytes: Vec::new(),
+            },
+            crate::cross_domain::message::MessageKind::Custom(b) => pb::ProtoMessageKind {
+                kind_type: pb::proto_message_kind::KindType::Custom as i32,
+                custom_bytes: b.clone(),
+            },
+        };
+        pb::ProtoCrossDomainMessagePayload {
+            message_id: hex::encode(msg.message_id),
+            correlation_id: msg.correlation_id.map(hex::encode).unwrap_or_default(),
+            source_domain: format!("{}", msg.source_domain.0),
+            target_domain: format!("{}", msg.target_domain.0),
+            source_height: msg.source_height,
+            event_index: msg.event_index,
+            nonce: msg.nonce,
+            sender: msg.sender.to_string(),
+            recipient: msg.recipient.to_string(),
+            payload_hash: hex::encode(msg.payload_hash),
+            kind: Some(kind),
+            expiry_height: msg.expiry_height,
+        }
+    });
+
+    pb::ProtoRelayerResult {
+        chain: Some(proto_chain),
+        tx_hash: res.tx_hash.clone(),
+        success: res.success,
+        message: proto_msg,
+        receipt_proof: res.receipt_proof.clone(),
+        external_state_root: res.external_state_root.to_vec(),
+    }
+}
+
+fn convert_proto_to_relayer_result(proto: &pb::ProtoRelayerResult) -> Result<crate::core::transaction::RelayerExternalResult, String> {
+    let chain_proto = proto.chain.as_ref().ok_or("Missing external chain in RelayerResult")?;
+    let chain = match pb::proto_external_chain::ChainType::try_from(chain_proto.chain_type) {
+        Ok(pb::proto_external_chain::ChainType::Ethereum) => crate::core::transaction::ExternalChain::Ethereum,
+        Ok(pb::proto_external_chain::ChainType::Solana) => crate::core::transaction::ExternalChain::Solana,
+        Ok(pb::proto_external_chain::ChainType::Bitcoin) => crate::core::transaction::ExternalChain::Bitcoin,
+        Ok(pb::proto_external_chain::ChainType::Avalanche) => crate::core::transaction::ExternalChain::Avalanche,
+        Ok(pb::proto_external_chain::ChainType::Polygon) => crate::core::transaction::ExternalChain::Polygon,
+        Ok(pb::proto_external_chain::ChainType::Arbitrum) => crate::core::transaction::ExternalChain::Arbitrum,
+        Ok(pb::proto_external_chain::ChainType::Optimism) => crate::core::transaction::ExternalChain::Optimism,
+        Ok(pb::proto_external_chain::ChainType::Custom) => crate::core::transaction::ExternalChain::Custom(chain_proto.custom_id),
+        Err(_) => return Err("Invalid external chain type".into()),
+    };
+
+    let message = if let Some(ref p_msg) = proto.message {
+        let msg_id_bytes = hex::decode(&p_msg.message_id).map_err(|e| format!("Invalid message_id hex: {e}"))?;
+        let mut message_id = [0u8; 32];
+        if msg_id_bytes.len() != 32 {
+            return Err("message_id must be 32 bytes".into());
+        }
+        message_id.copy_from_slice(&msg_id_bytes);
+
+        let correlation_id = if p_msg.correlation_id.is_empty() {
+            None
+        } else {
+            let corr_bytes = hex::decode(&p_msg.correlation_id).map_err(|e| format!("Invalid correlation_id hex: {e}"))?;
+            if corr_bytes.len() != 32 {
+                return Err("correlation_id must be 32 bytes".into());
+            }
+            let mut arr = [0u8; 32];
+            arr.copy_from_slice(&corr_bytes);
+            Some(arr)
+        };
+
+        let src_dom = p_msg.source_domain.parse::<u32>().map_err(|e| format!("Invalid source_domain: {e}"))?;
+        let tgt_dom = p_msg.target_domain.parse::<u32>().map_err(|e| format!("Invalid target_domain: {e}"))?;
+
+        let payload_hash_bytes = hex::decode(&p_msg.payload_hash).map_err(|e| format!("Invalid payload_hash hex: {e}"))?;
+        let mut payload_hash = [0u8; 32];
+        if payload_hash_bytes.len() != 32 {
+            return Err("payload_hash must be 32 bytes".into());
+        }
+        payload_hash.copy_from_slice(&payload_hash_bytes);
+
+        let p_kind = p_msg.kind.as_ref().ok_or("Missing message kind")?;
+        let kind = match pb::proto_message_kind::KindType::try_from(p_kind.kind_type) {
+            Ok(pb::proto_message_kind::KindType::BridgeLock) => crate::cross_domain::message::MessageKind::BridgeLock,
+            Ok(pb::proto_message_kind::KindType::BridgeMint) => crate::cross_domain::message::MessageKind::BridgeMint,
+            Ok(pb::proto_message_kind::KindType::BridgeBurn) => crate::cross_domain::message::MessageKind::BridgeBurn,
+            Ok(pb::proto_message_kind::KindType::BridgeUnlock) => crate::cross_domain::message::MessageKind::BridgeUnlock,
+            Ok(pb::proto_message_kind::KindType::Custom) => crate::cross_domain::message::MessageKind::Custom(p_kind.custom_bytes.clone()),
+            Err(_) => return Err("Invalid cross domain message kind".into()),
+        };
+
+        Some(crate::cross_domain::message::CrossDomainMessage {
+            message_id,
+            correlation_id,
+            source_domain: crate::domain::types::DomainId(src_dom),
+            target_domain: crate::domain::types::DomainId(tgt_dom),
+            source_height: p_msg.source_height,
+            event_index: p_msg.event_index,
+            nonce: p_msg.nonce,
+            sender: Address::from_hex(&p_msg.sender).map_err(|e| format!("Invalid message sender: {e}"))?,
+            recipient: Address::from_hex(&p_msg.recipient).map_err(|e| format!("Invalid message recipient: {e}"))?,
+            payload_hash,
+            kind,
+            expiry_height: p_msg.expiry_height,
+        })
+    } else {
+        None
+    };
+
+    let mut external_state_root = [0u8; 32];
+    if proto.external_state_root.len() != 32 {
+        return Err("external_state_root must be 32 bytes".into());
+    }
+    external_state_root.copy_from_slice(&proto.external_state_root);
+
+    Ok(crate::core::transaction::RelayerExternalResult {
+        chain,
+        tx_hash: proto.tx_hash.clone(),
+        success: proto.success,
+        message,
+        receipt_proof: proto.receipt_proof.clone(),
+        external_state_root,
+    })
 }
 
 impl TryFrom<pb::ProtoTransaction> for Transaction {
@@ -60,13 +375,191 @@ impl TryFrom<pb::ProtoTransaction> for Transaction {
         } else {
             Some(proto.signature)
         };
-        let tx_type = match pb::ProtoTransactionType::try_from(proto.tx_type) {
-            Ok(pb::ProtoTransactionType::Transfer) => TransactionType::Transfer,
-            Ok(pb::ProtoTransactionType::Stake) => TransactionType::Stake,
-            Ok(pb::ProtoTransactionType::Unstake) => TransactionType::Unstake,
-            Ok(pb::ProtoTransactionType::Vote) => TransactionType::Vote,
-            Ok(pb::ProtoTransactionType::ContractCall) => TransactionType::ContractCall,
-            Err(_) => return Err("Invalid transaction type in proto payload".into()),
+        let tx_type_proto = pb::ProtoTransactionType::try_from(proto.tx_type)
+            .map_err(|_| "Invalid transaction type in proto payload")?;
+
+        let tx_type = match tx_type_proto {
+            pb::ProtoTransactionType::Transfer => TransactionType::Transfer,
+            pb::ProtoTransactionType::Stake => TransactionType::Stake,
+            pb::ProtoTransactionType::Unstake => TransactionType::Unstake,
+            pb::ProtoTransactionType::Vote => TransactionType::Vote,
+            pb::ProtoTransactionType::ContractCall => TransactionType::ContractCall,
+            pb::ProtoTransactionType::BnsRegister => TransactionType::BnsRegister,
+            pb::ProtoTransactionType::BnsSetContent => TransactionType::BnsSetContent,
+            pb::ProtoTransactionType::BnsRegisterSubdomain => TransactionType::BnsRegisterSubdomain,
+            pb::ProtoTransactionType::BnsSetStorage => TransactionType::BnsSetStorage,
+            pb::ProtoTransactionType::NftMint => TransactionType::NftMint,
+            pb::ProtoTransactionType::NftTransfer => TransactionType::NftTransfer,
+            pb::ProtoTransactionType::NftBurn => TransactionType::NftBurn,
+            pb::ProtoTransactionType::NftBoost => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::NftBoost(p)) => p,
+                    _ => return Err("Missing or mismatched NftBoost payload".into()),
+                };
+                TransactionType::NftBoost {
+                    nft_id: payload.nft_id,
+                    amount: payload.amount,
+                }
+            }
+            pb::ProtoTransactionType::NftUpdateLight => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::NftUpdateLight(p)) => p,
+                    _ => return Err("Missing or mismatched NftUpdateLight payload".into()),
+                };
+                TransactionType::NftUpdateLight {
+                    nft_id: payload.nft_id,
+                    delta_mcd: payload.delta_mcd,
+                }
+            }
+            pb::ProtoTransactionType::NftTag => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::NftTag(p)) => p,
+                    _ => return Err("Missing or mismatched NftTag payload".into()),
+                };
+                TransactionType::NftTag {
+                    nft_id: payload.nft_id,
+                    tag: payload.tag,
+                }
+            }
+            pb::ProtoTransactionType::UniversalRelay => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::UniversalRelay(p)) => p,
+                    _ => return Err("Missing or mismatched UniversalRelay payload".into()),
+                };
+                TransactionType::UniversalRelay(convert_proto_to_ext_tx(&payload)?)
+            }
+            pb::ProtoTransactionType::RelayerResult => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::RelayerResult(p)) => p,
+                    _ => return Err("Missing or mismatched RelayerResult payload".into()),
+                };
+                TransactionType::RelayerResult(convert_proto_to_relayer_result(&payload)?)
+            }
+            pb::ProtoTransactionType::AiOfferData => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::AiOfferData(p)) => p,
+                    _ => return Err("Missing or mismatched AiOfferData payload".into()),
+                };
+                let mut cid_bytes = [0u8; 32];
+                if payload.cid.len() != 32 {
+                    return Err("AiOfferData cid must be 32 bytes".into());
+                }
+                cid_bytes.copy_from_slice(&payload.cid);
+                TransactionType::AiOfferData {
+                    cid: crate::storage::content_id::ContentId(cid_bytes),
+                    price: payload.price,
+                }
+            }
+            pb::ProtoTransactionType::AiPurchaseData => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::AiPurchaseData(p)) => p,
+                    _ => return Err("Missing or mismatched AiPurchaseData payload".into()),
+                };
+                TransactionType::AiPurchaseData {
+                    offer_id: payload.offer_id,
+                }
+            }
+            pb::ProtoTransactionType::HubRegisterApp => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::HubRegisterApp(p)) => p,
+                    _ => return Err("Missing or mismatched HubRegisterApp payload".into()),
+                };
+                let manifest_id = if payload.manifest_id.is_empty() {
+                    None
+                } else {
+                    if payload.manifest_id.len() != 32 {
+                        return Err("HubRegisterApp manifest_id must be 32 bytes".into());
+                    }
+                    let mut arr = [0u8; 32];
+                    arr.copy_from_slice(&payload.manifest_id);
+                    Some(crate::storage::content_id::ContentId(arr))
+                };
+                TransactionType::HubRegisterApp {
+                    name: payload.name,
+                    category: convert_proto_to_app_category(payload.category)?,
+                    website_url: payload.website_url,
+                    manifest_id,
+                }
+            }
+            pb::ProtoTransactionType::AiModelRegister => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::AiModelRegister(p)) => p,
+                    _ => return Err("Missing or mismatched AiModelRegister payload".into()),
+                };
+                if payload.model_id.len() != 32 || payload.model_hash.len() != 32 {
+                    return Err("AiModelRegister model_id and model_hash must be 32 bytes".into());
+                }
+                let mut mid = [0u8; 32];
+                mid.copy_from_slice(&payload.model_id);
+                let mut mhash = [0u8; 32];
+                mhash.copy_from_slice(&payload.model_hash);
+                TransactionType::AiModelRegister(crate::ai::types::AiModelSpec {
+                    model_id: crate::ai::types::AiModelId(mid),
+                    model_hash: mhash,
+                    owner: Address::from_hex(&payload.owner).map_err(|e| format!("Invalid owner address: {e}"))?,
+                    min_verifier_count: payload.min_verifier_count,
+                    agreement_threshold: payload.agreement_threshold,
+                    max_input_ref_bytes: payload.max_input_ref_bytes,
+                    max_output_ref_bytes: payload.max_output_ref_bytes,
+                    request_deadline_blocks: payload.request_deadline_blocks,
+                    result_deadline_blocks: payload.result_deadline_blocks,
+                    version: payload.version,
+                    active: payload.active,
+                })
+            }
+            pb::ProtoTransactionType::AiInferenceRequest => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::AiInferenceRequest(p)) => p,
+                    _ => return Err("Missing or mismatched AiInferenceRequest payload".into()),
+                };
+                if payload.request_id.len() != 32 || payload.model_id.len() != 32 || payload.input_commitment.len() != 32 {
+                    return Err("AiInferenceRequest ids and commitment must be 32 bytes".into());
+                }
+                let mut rid = [0u8; 32];
+                rid.copy_from_slice(&payload.request_id);
+                let mut mid = [0u8; 32];
+                mid.copy_from_slice(&payload.model_id);
+                let mut icom = [0u8; 32];
+                icom.copy_from_slice(&payload.input_commitment);
+                let callback = if payload.callback.is_empty() {
+                    None
+                } else {
+                    Some(Address::from_hex(&payload.callback).map_err(|e| format!("Invalid callback address: {e}"))?)
+                };
+                TransactionType::AiInferenceRequest(crate::ai::types::AiInferenceRequest {
+                    request_id: crate::ai::types::AiRequestId(rid),
+                    requester: Address::from_hex(&payload.requester).map_err(|e| format!("Invalid requester address: {e}"))?,
+                    model_id: crate::ai::types::AiModelId(mid),
+                    input_commitment: icom,
+                    input_ref: crate::ai::types::BoundedBytes::try_new(payload.input_ref)?,
+                    max_fee: payload.max_fee,
+                    callback,
+                    submitted_at_block: payload.submitted_at_block,
+                    deadline_block: payload.deadline_block,
+                })
+            }
+            pb::ProtoTransactionType::AiInferenceResult => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::AiInferenceResult(p)) => p,
+                    _ => return Err("Missing or mismatched AiInferenceResult payload".into()),
+                };
+                if payload.request_id.len() != 32 || payload.output_commitment.len() != 32 {
+                    return Err("AiInferenceResult request_id and output_commitment must be 32 bytes".into());
+                }
+                let mut rid = [0u8; 32];
+                rid.copy_from_slice(&payload.request_id);
+                let mut ocom = [0u8; 32];
+                ocom.copy_from_slice(&payload.output_commitment);
+                TransactionType::AiInferenceResult(crate::ai::types::AiInferenceResult {
+                    request_id: crate::ai::types::AiRequestId(rid),
+                    verifier: Address::from_hex(&payload.verifier).map_err(|e| format!("Invalid verifier address: {e}"))?,
+                    output_commitment: ocom,
+                    output_ref: crate::ai::types::BoundedBytes::try_new(payload.output_ref)?,
+                    result_nonce: payload.result_nonce,
+                    signature: payload.signature,
+                    submitted_at_block: payload.submitted_at_block,
+                })
+            }
         };
 
         Ok(Transaction {
@@ -668,6 +1161,125 @@ mod tests {
             Transaction::try_from(proto_tx).expect("Failed to decode proto transaction");
 
         assert_eq!(tx, decoded_tx);
+    }
+
+    #[test]
+    fn test_all_23_transaction_types_lossless_roundtrip() {
+        let kp = KeyPair::generate().unwrap();
+        let from = Address::from(kp.public_key_bytes());
+        let to = Address::from_hex("0000000000000000000000000000000000000000000000000000000000000001").unwrap();
+
+        let test_cases = vec![
+            TransactionType::Transfer,
+            TransactionType::Stake,
+            TransactionType::Unstake,
+            TransactionType::Vote,
+            TransactionType::ContractCall,
+            TransactionType::BnsRegister,
+            TransactionType::BnsSetContent,
+            TransactionType::BnsRegisterSubdomain,
+            TransactionType::BnsSetStorage,
+            TransactionType::NftMint,
+            TransactionType::NftTransfer,
+            TransactionType::NftBurn,
+            TransactionType::NftBoost { nft_id: 42, amount: 1000 },
+            TransactionType::NftUpdateLight { nft_id: 42, delta_mcd: -15 },
+            TransactionType::NftTag { nft_id: 42, tag: "legendary".into() },
+            TransactionType::UniversalRelay(crate::core::transaction::ExternalTransaction {
+                chain: crate::core::transaction::ExternalChain::Ethereum,
+                target_address: "0xabc".into(),
+                payload: vec![1, 2, 3],
+                external_nonce: 99,
+            }),
+            TransactionType::RelayerResult(crate::core::transaction::RelayerExternalResult {
+                chain: crate::core::transaction::ExternalChain::Solana,
+                tx_hash: "hash123".into(),
+                success: true,
+                message: None,
+                receipt_proof: vec![9, 9, 9],
+                external_state_root: [5u8; 32],
+            }),
+            TransactionType::AiOfferData {
+                cid: crate::storage::content_id::ContentId([7u8; 32]),
+                price: 500,
+            },
+            TransactionType::AiPurchaseData { offer_id: 888 },
+            TransactionType::HubRegisterApp {
+                name: "BudApp".into(),
+                category: crate::hub::types::AppCategory::DeFi,
+                website_url: "https://budlum.ai".into(),
+                manifest_id: Some(crate::storage::content_id::ContentId([8u8; 32])),
+            },
+            TransactionType::AiModelRegister(crate::ai::types::AiModelSpec {
+                model_id: crate::ai::types::AiModelId([1u8; 32]),
+                model_hash: [2u8; 32],
+                owner: from,
+                min_verifier_count: 3,
+                agreement_threshold: 2,
+                max_input_ref_bytes: 1024,
+                max_output_ref_bytes: 2048,
+                request_deadline_blocks: 100,
+                result_deadline_blocks: 50,
+                version: 1,
+                active: true,
+            }),
+            TransactionType::AiInferenceRequest(crate::ai::types::AiInferenceRequest {
+                request_id: crate::ai::types::AiRequestId([3u8; 32]),
+                requester: from,
+                model_id: crate::ai::types::AiModelId([1u8; 32]),
+                input_commitment: [4u8; 32],
+                input_ref: crate::ai::types::BoundedBytes::try_new(vec![10, 20, 30]).unwrap(),
+                max_fee: 50,
+                callback: Some(to),
+                submitted_at_block: 10,
+                deadline_block: 110,
+            }),
+            TransactionType::AiInferenceResult(crate::ai::types::AiInferenceResult {
+                request_id: crate::ai::types::AiRequestId([3u8; 32]),
+                verifier: from,
+                output_commitment: [5u8; 32],
+                output_ref: crate::ai::types::BoundedBytes::try_new(vec![40, 50, 60]).unwrap(),
+                result_nonce: 1,
+                signature: vec![7, 7, 7],
+                submitted_at_block: 15,
+            }),
+        ];
+
+        for tx_type in test_cases {
+            let mut tx = Transaction::new_with_chain_id(from, to, 100, 10, 1, vec![1], 1337, tx_type.clone());
+            tx.sign(&kp);
+
+            let proto_tx = pb::ProtoTransaction::from(&tx);
+            let decoded_tx = Transaction::try_from(proto_tx.clone())
+                .unwrap_or_else(|e| panic!("Failed to decode {:?}: {}", tx_type, e));
+
+            assert_eq!(tx, decoded_tx, "Mismatch on roundtrip for {:?}", tx_type);
+            assert_eq!(tx.hash, decoded_tx.hash);
+        }
+    }
+
+    #[test]
+    fn test_p0_fail_closed_unknown_or_corrupt_payload() {
+        let mut proto = pb::ProtoTransaction {
+            from: "0000000000000000000000000000000000000000000000000000000000000001".into(),
+            to: "0000000000000000000000000000000000000000000000000000000000000002".into(),
+            amount: 10,
+            fee: 1,
+            nonce: 0,
+            data: vec![],
+            timestamp: "1000".into(),
+            hash: "abc".into(),
+            signature: vec![],
+            chain_id: 1337,
+            tx_type: pb::ProtoTransactionType::NftBoost as i32,
+            wire_version: 2,
+            type_payload: None, // Missing payload for NftBoost!
+        };
+
+        assert!(Transaction::try_from(proto.clone()).is_err());
+
+        proto.tx_type = 999; // Unknown transaction type tag
+        assert!(Transaction::try_from(proto).is_err());
     }
 
     #[test]

@@ -1027,3 +1027,26 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 - `src/ai/mod.rs` (yeni modül & `src/lib.rs` kaydı): `AiModelId`, `AiRequestId`, `AiResultId`, `AiModelSpec`, `AiInferenceRequest`, `AiInferenceResult`, `AiInferenceOutcome` kanonik tipleri + 10+ deterministik unit/serde roundtrip testi.
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+---
+
+### [2026-07-18 15:41 UTC+3] ARENA2 — P0 Transport Seçenek A & Phase 10 Bölüm 1 AI Inference Tek ADIM Push & CI Takibi
+
+**Durum:** Kullanıcı onaylı birleşik ADIM (`seq_combined`) ve P0 Transport v2 (`Seçenek A`) uygulaması tamamlanıp `main` dalına push edildi; CI doğrulama sürecine geçildi.
+**Kapsam (`proto/`, `src/network/`, `src/ai/`, `src/core/`, `src/execution/`):**
+1. **P0 Transport v2 (`protocol.proto` & `proto_conversions.rs`):**
+   - `ProtoTransactionType` enum'una tüm 20 mevcut işlem türü (`0..19`) ve 3 yeni AI türü (`20..22`) eksiksiz eklendi.
+   - `ProtoTransaction` mesajına `uint32 wire_version = 12;` ve `oneof type_payload` (alanlar 20..30) eklendi.
+   - Outbound `From<&Transaction>` ve inbound `TryFrom<ProtoTransaction>` dönüşümlerindeki `_ => Transfer` fallback'i tamamen kaldırıldı; 23 işlem türünün tamamı için kayıpsız P2P roundtrip ve fail-closed doğrulama sağlandı (`test_all_23_transaction_types_lossless_roundtrip`, `test_p0_fail_closed_unknown_or_corrupt_payload`).
+2. **Phase 10 Bölüm 1 AI Inference Primitifleri (`src/ai/` & `src/registry/role.rs`):**
+   - `RoleId::AI_VERIFIER = RoleId(6)` rolü eklendi.
+   - Kanonik AI tipleri: `AiModelId`, `AiRequestId`, `AiResultId`, `BoundedBytes` (maks. 64 KiB korumalı), `AiModelSpec`, `AiInferenceRequest`, `AiInferenceResult`, `AiInferenceOutcome`.
+   - `AiRegistry`: model kaydı (`register_model`), attestation talebi (`submit_request`), verifier attestation kabulü (`submit_result` + `agreement_threshold` uzlaşması) ve deterministik SHA-256 Merkle kökü (`state_root`).
+3. **Zincir ve State Entegrasyonu:**
+   - `AccountState` ve `StateSnapshotV2` içerisine `ai_registry` bağlandı.
+   - `calculate_state_root` içine `if !self.ai_registry.is_empty() { final_hasher.update(b"ai_v1"); final_hasher.update(self.ai_registry.state_root()); }` koşulu eklendi; böylece genesis ve mevcut boş durum hash'leri mutlak deterministik korunurken, AI işlemlerinde tam kriptografik attestation demiri sağlandı.
+   - `executor.rs` içine `AiModelRegister`, `AiInferenceRequest`, `AiInferenceResult` işlemleri için bakiye, ücret ve state transition kuralları entegre edildi.
+
+**Sıradaki:** CI kontrolünün (`gh run list` / `checks`) tamamlanmasını takip etmek ve doğrulama sonucunu rapora işlemek.
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>

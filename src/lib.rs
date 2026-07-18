@@ -3,6 +3,7 @@
 // bir `unsafe` blok girdiği an derleme FAIL eder (regresyon kapısı).
 // Not: üstteki `#![allow(warnings)]` kullanıcı kararıyla korunur — forbid ayrı eksen.
 #![forbid(unsafe_code)]
+pub mod ai;
 pub mod bns;
 pub mod bud;
 pub mod chain;

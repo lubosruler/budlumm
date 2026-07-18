@@ -141,6 +141,12 @@ pub enum TransactionType {
         website_url: String,
         manifest_id: Option<crate::storage::content_id::ContentId>,
     },
+    /// Phase 10 (§1): Register AI model specification (`AiVerifier` attestation target).
+    AiModelRegister(crate::ai::types::AiModelSpec),
+    /// Phase 10 (§1): Submit AI inference attestation request.
+    AiInferenceRequest(crate::ai::types::AiInferenceRequest),
+    /// Phase 10 (§1): Submit AI inference attestation result by an `AiVerifier`.
+    AiInferenceResult(crate::ai::types::AiInferenceResult),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -333,6 +339,9 @@ impl Transaction {
             TransactionType::AiOfferData { .. } => 17,
             TransactionType::AiPurchaseData { .. } => 18,
             TransactionType::HubRegisterApp { .. } => 19,
+            TransactionType::AiModelRegister(_) => 20,
+            TransactionType::AiInferenceRequest(_) => 21,
+            TransactionType::AiInferenceResult(_) => 22,
         };
         hasher.update([type_byte]);
 
@@ -469,6 +478,9 @@ impl Transaction {
                 schedule.transfer_gas * 5
             }
             TransactionType::HubRegisterApp { .. } => schedule.contract_call_gas * 2,
+            TransactionType::AiModelRegister(_) => schedule.contract_call_gas * 3,
+            TransactionType::AiInferenceRequest(_) => schedule.contract_call_gas * 2,
+            TransactionType::AiInferenceResult(_) => schedule.contract_call_gas,
         };
         let signature_gas = if self.signature.is_some() {
             schedule.gas_per_signature

@@ -573,6 +573,81 @@ impl Executor {
                     .saturating_sub(crate::hub::HUB_REGISTER_MIN_FEE);
                 sender.nonce = sender.nonce.saturating_add(1);
             }
+            TransactionType::AiModelRegister(spec) => {
+                let mut spec = spec.clone();
+                if spec.owner != tx.from {
+                    spec.owner = tx.from;
+                }
+                state
+                    .ai_registry
+                    .register_model(spec)
+                    .map_err(|e| BudlumError::validation("ai_model_registration_failed", e))?;
+                let sender = state.get_or_create(&tx.from);
+                sender.balance = sender.balance.saturating_sub(tx.fee);
+                sender.nonce = sender.nonce.saturating_add(1);
+            }
+            TransactionType::AiInferenceRequest(req) => {
+                let mut req = req.clone();
+                if req.requester != tx.from {
+                    req.requester = tx.from;
+                }
+                {
+                    let sender = state.get_or_create(&tx.from);
+                    if sender.balance < req.max_fee.saturating_add(tx.fee) {
+                        return Err(BudlumError::validation(
+                            "ai_insufficient_fee_balance",
+                            "Sender balance insufficient for AI inference request max_fee",
+                        ));
+                    }
+                }
+                state
+                    .ai_registry
+                    .submit_request(req.clone())
+                    .map_err(|e| BudlumError::validation("ai_request_failed", e))?;
+                let sender = state.get_or_create(&tx.from);
+                sender.balance = sender
+                    .balance
+                    .saturating_sub(tx.fee)
+                    .saturating_sub(req.max_fee);
+                sender.nonce = sender.nonce.saturating_add(1);
+            }
+            TransactionType::AiInferenceResult(res) => {
+                {
+                    let validator = state.validators.get(&tx.from);
+                    let is_validator = validator.map(|v| v.active && v.stake >= 1_000).unwrap_or(false);
+                    if !is_validator && state.get_balance(&tx.from) == 0 {
+                        return Err(BudlumError::validation(
+                            "ai_verifier_unauthorized",
+                            "Verifier account not authorized or has zero stake/balance",
+                        ));
+                    }
+                }
+                let mut res = res.clone();
+                if res.verifier != tx.from {
+                    res.verifier = tx.from;
+                }
+                let outcome = state
+                    .ai_registry
+                    .submit_result(res.clone())
+                    .map_err(|e| BudlumError::validation("ai_result_failed", e))?;
+
+                if let Some(finalized) = outcome {
+                    let req = state.ai_registry.requests.get(&finalized.request_id);
+                    if let Some(req) = req {
+                        if !finalized.agreeing_verifiers.is_empty() {
+                            let reward_per_verifier = req.max_fee / finalized.agreeing_verifiers.len() as u64;
+                            for verifier_addr in &finalized.agreeing_verifiers {
+                                let acc = state.get_or_create(verifier_addr);
+                                acc.balance = acc.balance.saturating_add(reward_per_verifier);
+                            }
+                        }
+                    }
+                }
+
+                let sender = state.get_or_create(&tx.from);
+                sender.balance = sender.balance.saturating_sub(tx.fee);
+                sender.nonce = sender.nonce.saturating_add(1);
+            }
         }
 
         Ok(())
