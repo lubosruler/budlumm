@@ -2,6 +2,7 @@ pub mod bridge;
 pub mod bridge_relayer;
 pub mod chain_adapter;
 pub mod event_tree;
+pub mod evm;
 pub mod message;
 pub mod message_registry;
 pub mod nonce;
