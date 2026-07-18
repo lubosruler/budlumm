@@ -819,8 +819,7 @@ mod v29_signing_tests {
         let mut tx = signed_variant(TransactionType::AiFeeReclaim(
             crate::ai::types::AiRequestId([1u8; 32]),
         ));
-        tx.tx_type =
-            TransactionType::AiFeeReclaim(crate::ai::types::AiRequestId([2u8; 32]));
+        tx.tx_type = TransactionType::AiFeeReclaim(crate::ai::types::AiRequestId([2u8; 32]));
         assert!(!tx.verify());
     }
 }

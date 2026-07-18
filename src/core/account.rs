@@ -847,11 +847,11 @@ impl AccountState {
                 // The target address must have at least one slashing record in history.
                 // The evidence_hash serves as a commitment to specific evidence
                 // (defense-in-depth: prevents arbitrary slashing without proof).
-                let has_evidence =
-                    self.registry
-                        .slashing_history_for(address)
-                        .iter()
-                        .any(|record| record.report.offender == *address);
+                let has_evidence = self
+                    .registry
+                    .slashing_history_for(address)
+                    .iter()
+                    .any(|record| record.report.offender == *address);
                 if !has_evidence {
                     tracing::warn!(
                         "Rejecting SlashValidator {}: no slashing evidence in registry history",
