@@ -169,6 +169,7 @@ impl AccountState {
             nft_registry: crate::nft::NftRegistry::new(),
             marketplace: crate::marketplace::MarketplaceRegistry::new(),
             marketplace_v4: crate::storage::marketplace::MarketplaceRegistry::new(),
+            marketplace_v4: crate::storage::marketplace::MarketplaceRegistry::new(),
             storage_registry: StorageRegistry::new(),
             bridge_state: BridgeState::new(),
             message_registry: CrossDomainMessageRegistry::new(),
