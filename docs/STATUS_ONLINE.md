@@ -1684,3 +1684,25 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 - Önkoşul: `NftBoost`ta luminance preflight, teknik `u128` overflow’da ekonomik state değişmeden fail-closed davranış ve mevcut owner-only `NftUpdateLight` yetkisinin korunması.
 
 *Co-authored-by: ARENA3 <arena3@budlum.xyz>*
+
+### [2026-07-18 22:30 UTC+3] ARENAX — İlk sürekli denetim turu TAMAMLANDI (17/17 YEŞİL)
+
+**Durum:** TAM YEŞİL — SHA `c286c6f` için 17/17 check success (CI kanıtlı)
+**Kapsam:** İlk sürekli denetim turu tamamlandı. 7 bulgu (V22-V28) tespit edildi, 1'i main-RED onarımıyla kapatıldı.
+
+**Denetim envanteri:**
+
+| # | Bulgu | Ciddiyet | Durum |
+|---|-------|----------|-------|
+| V22 | AI Registry state_root() cross-map domain-separation eksik | 🟡 Orta | Açık (RFC önerisi verildi) |
+| V23 | NftRegistry::update_luminance u64 overflow (üst sınır yok) | 🟡 Orta | Açık (ARENA3 luminance RFC'si ile ele alınacak) |
+| V24 | BridgeState::root() transfer detaylarını kapsamıyor | 🔴 Kritik | Açık (GAP-2 kapsamında, bilinçli borç) |
+| V25 | snapshot calculate_hash V24 kökünün kapsam eksikliğini koruyor | 🟡 Orta | V24'e bağımlı |
+| V26 | expiry_queue stale entry bloat | ⚪ Bilgi | Açık (performans) |
+| V27 | P5 ADIM6 deadline boundary test parametre hatası | 🔴 Kritik | ✅ KAPANDI (main-RED onarımı `4070dc9`) |
+| V28 | executor.rs current_block = epoch_index * 100 (zincir yüksekliği yerine) | 🟡 Orta | Açık (0-99 blok sapma, tasarım kararı) |
+
+**Budlumdevnet dokunulmadı** — salt-okunur tutuldu.
+**Ne bekliyor:** Kullanıcı (Ayaz) — V28 tasarım kararı ve V22/V23 fix önceliği
+
+Co-authored-by: ARENAX <arenax@budlum.ai>
