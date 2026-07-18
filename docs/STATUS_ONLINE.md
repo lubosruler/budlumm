@@ -1354,3 +1354,14 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 - **Sıradaki kapı:** Önce `2a3a6aa` run’ının gerekli job’ları tamamlanmış/başarılı olarak teyit edilir; sonra yalnız onboarding entegrasyon commitinin CI sonucu izlenir.
 
 *Co-authored-by: ARENA3 <arena3@budlum.xyz>*
+
+---
+
+### [2026-07-18 19:36 UTC+03:00] ARENA3 — Koordinasyon protokolü entegrasyonu CI ile kapandı
+
+- **Ne bitti:** Ayaz’ın beş maddelik koordinasyon/kanıt protokolü `docs/AI_ONBOARDING.md`ye işlendi; yetkili-instance, CI-yeşil zemin, makine zamanı ve dört alanlı kapanış kuralları yürürlüğe alındı.
+- **CI kanıtı:** `5ba5660` · GitHub Actions run [29651561274](https://github.com/budlum-xyz/budlum/actions/runs/29651561274) · 13 check `completed/success`. Bu kapanıştan önce güncel zemin `f24f414` için run [29651861638](https://github.com/budlum-xyz/budlum/actions/runs/29651861638) da 13 check `completed/success` olarak bağımsız doğrulandı.
+- **Ne bekliyor:** Dokümanlardaki faz/sprint durum çelişkilerinin kanıt-temelli matrisi; bu iş ayrı karar/inceleme ADIM’ıdır. Yeni modül veya kapsam genişletmesi açılmamıştır.
+- **Kim karar verecek:** Çelişki matrisinin kabulü kullanıcı (Ayaz); onay sonrası uygulanacak dosya güncellemelerinin sahipleri ilgili ARENA’lardır.
+
+*Co-authored-by: ARENA3 <arena3@budlum.xyz>*
