@@ -323,6 +323,26 @@ impl PruningManager {
         }
         Ok(None)
     }
+
+    /// GAP-1 authenticated loader (Phase 10.5 P2 C5). Production mainnet
+    /// `RequireSigned` policy için: load + verify + verify_authentic. İmzasız
+    /// veya yanlış-imzalı snapshot load edilmez (caller karantinaya yönlendirir).
+    /// Devnet eski `load_latest_snapshot_v2` (AllowUnsigned) kullanmaya devam eder.
+    pub fn load_latest_snapshot_v2_authenticated(
+        &self,
+        trust_list: &[[u8; 32]],
+    ) -> Result<Option<StateSnapshotV2>, String> {
+        let snapshot = self.load_latest_snapshot_v2()?;
+        match snapshot {
+            None => Ok(None),
+            Some(s) => match s.verify_authentic(trust_list) {
+                Ok(()) => Ok(Some(s)),
+                Err(e) => Err(format!(
+                    "Snapshot authentication failed (RequireSigned policy): {e}"
+                )),
+            },
+        }
+    }
 }
 
 fn get_snapshot_height(path: &std::path::Path) -> Option<u64> {
