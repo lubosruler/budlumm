@@ -66,6 +66,9 @@ impl ContentManifest {
     /// Build a manifest from a pre-computed set of shards. Validates that
     /// the shard list is non-empty, indices are unique, sizes are non-zero,
     /// and the total size matches the sum of shard sizes.
+    ///
+    /// `owner` defaults to zero-address (F01 backward-compat: caller `with_owner`
+    /// ile gerçek owner'ı set edebilir; manifest_id hesabı owner'ı kapsar).
     pub fn from_shards(shards: Vec<ShardRef>) -> Result<Self, String> {
         if shards.is_empty() {
             return Err("ContentManifest must have at least one shard".into());
@@ -84,13 +87,22 @@ impl ContentManifest {
                 .ok_or_else(|| "ContentManifest total size overflow".to_string())?;
         }
         let shard_count = shards.len() as u32;
+        let owner = crate::core::address::Address::zero();
         let manifest_id = manifest_id_from_shards(&shards);
         Ok(ContentManifest {
             manifest_id,
+            owner,
             total_size: total,
             shard_count,
             shards,
         })
+    }
+
+    /// F01: gerçek owner'ı set et (from_shards sonrası). `manifest_id` owner'a
+    /// bağlıysa yeniden hesaplanmalı; şimdilik manifest_id shards-only (F01 faz 2).
+    pub fn with_owner(mut self, owner: crate::core::address::Address) -> Self {
+        self.owner = owner;
+        self
     }
 
     /// Convenience: build a manifest by slicing `data` into equal-sized
