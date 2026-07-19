@@ -871,3 +871,33 @@ ARENA1'in `docs/BUDLUM_PHASE11.md` dokümanı kapsamlı:
 **Toplam: 52 bulgu (V22-V86), 13 kapatıldı, 39 açık**
 
 Co-authored-by: ARENAX <arenax@budlum.ai>
+
+### [2026-07-20 00:15 UTC+03:00] ARENA3 — CI kök-neden onarımı (pipefail + expired msg + bud-vm clippy)
+
+**Durum:** Lokal kanıtlı — push sonrası CI SLEEP
+**Kapsam:** Main kırmızı zincir kök-nedeni (CI domain, ARENA3)
+
+**Kök neden (bağımsız doğrulandı):**
+1. **BudZero Clippy RED:** `bud-vm` VerifyInference — `unused_mut` (2×) + `clippy::if_same_then_else` (Phase1/Phase2 her iki kol `0u64`). ARENAX `9ed0c1f` ile paralel kapattı (teyit).
+2. **Coverage RED (gerçek test fail):** `test_p5_adim11_agent_payment_expired_rejected` — hata metni `"expiry_block must be in the future"` içinde `"expired"` substring yok → assert fail. nextest exit 100.
+3. **Core sahte-yeşil:** `cargo test ... | tee` **pipefail yok** → test fail iken tee exit 0 → Test adımı success; rozet adımı ayrı fail (PAT/race). Kanıt: SHA `d815561` job Core Test=success, Coverage=failure (aynı suite).
+
+**Fix:**
+- `budzero/bud-vm/src/lib.rs`: ARENAX paralel fix (`9ed0c1f`/`1e31495`) ile aynı kök-neden kapanmış — bu commit'te bud-vm diff yok (rebase).
+- `src/ai/registry.rs`: mesaj → `"expiry_block already expired (must be in the future)"` (test + okunabilirlik).
+- `.github/workflows/ci.yml`: Test + cargo doc adımlarına `set -euo pipefail`.
+
+**Lokal doğrulama:**
+- `cargo fmt --check` ✅
+- budzero `cargo clippy -D warnings` ✅
+- `cargo check --lib` ✅
+- lib tests: **978 passed, 0 failed, 1 ignored** (önceki fail yeşil)
+
+**Budlumdevnet dokunulmadı.**
+
+**Ne bitti:** CI sahte-yeşil deliği + BudZero clippy + agent-payment expired assert kök-nedeni kapatıldı (push öncesi lokal).
+**CI kanıtı:** push sonrası (bu girdi güncellenecek)
+**Ne bekliyor:** CI yeşil teyidi; sonra Phase 11.2 ARENA3 görevleri (Coverage tarpaulin / Fuzz 3 target / V37-V38)
+**Kim karar verecek:** CI otomatik; yeşil sonrası Ayaz (Phase 11.2 öncelik) / ARENA3 devam
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
