@@ -219,6 +219,7 @@ async fn main() {
                 .unwrap_or_else(|| budlum_core::core::chain_config::Network::Devnet.gas_schedule()),
             timestamp: 0,
             bud_tokenomics: None,
+            bootstrap_domains: vec![],
         };
 
         let data = serde_json::to_string_pretty(&genesis_config)
