@@ -199,6 +199,18 @@ impl From<&Transaction> for pb::ProtoTransaction {
                     },
                 )),
             ),
+            TransactionType::AiDisputeSlash {
+                request_id,
+                verifier,
+            } => (
+                pb::ProtoTransactionType::AiDisputeSlash as i32,
+                Some(pb::proto_transaction::TypePayload::AiDisputeSlash(
+                    pb::ProtoAiDisputeSlash {
+                        request_id: request_id.0.to_vec(),
+                        verifier: verifier.0.to_vec(),
+                    },
+                )),
+            ),
         };
 
         pb::ProtoTransaction {
@@ -814,6 +826,26 @@ impl TryFrom<pb::ProtoTransaction> for Transaction {
                 let mut rid = [0u8; 32];
                 rid.copy_from_slice(&payload.request_id);
                 TransactionType::AiRequestCancel(crate::ai::types::AiRequestId(rid))
+            }
+            pb::ProtoTransactionType::AiDisputeSlash => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::AiDisputeSlash(p)) => p,
+                    _ => return Err("Missing or mismatched AiDisputeSlash payload".into()),
+                };
+                if payload.request_id.len() != 32 {
+                    return Err("AiDisputeSlash request_id must be 32 bytes".into());
+                }
+                if payload.verifier.len() != 32 {
+                    return Err("AiDisputeSlash verifier must be 32 bytes".into());
+                }
+                let mut rid = [0u8; 32];
+                rid.copy_from_slice(&payload.request_id);
+                let mut vid = [0u8; 32];
+                vid.copy_from_slice(&payload.verifier);
+                TransactionType::AiDisputeSlash {
+                    request_id: crate::ai::types::AiRequestId(rid),
+                    verifier: crate::core::address::Address::from(vid),
+                }
             }
         };
 
@@ -1721,6 +1753,7 @@ mod tests {
             proposer: None,
             settlement_finality_root: [7u8; 32],
             storage_root: None,
+            ai_root: None,
         };
         let msg = NetworkMessage::GlobalHeader(header.clone());
         let proto_msg = pb::ProtoNetworkMessage::from(&msg);

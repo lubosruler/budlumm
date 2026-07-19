@@ -784,6 +784,24 @@ impl Executor {
                 sender.balance = sender.balance.saturating_sub(tx.fee);
                 sender.nonce = sender.nonce.saturating_add(1);
             }
+            TransactionType::AiDisputeSlash {
+                request_id,
+                verifier,
+            } => {
+                // P5 ADIM8 Bulgu 23: Slash a verifier for equivocation.
+                let slashed_verifier = state
+                    .ai_registry
+                    .slash_equivocator(&request_id, &verifier)
+                    .map_err(|e| BudlumError::validation("ai_dispute_slash_failed", e))?;
+                if let Some(validator) = state.validators.get_mut(&slashed_verifier) {
+                    validator.slashed = true;
+                    validator.active = false;
+                    validator.stake = 0;
+                }
+                let sender = state.get_or_create(&tx.from);
+                sender.balance = sender.balance.saturating_sub(tx.fee);
+                sender.nonce = sender.nonce.saturating_add(1);
+            }
         }
 
         Ok(())

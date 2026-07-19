@@ -30,6 +30,7 @@ enum ProtoTransactionType {
     AI_MODEL_DEACTIVATE = 24;
     AI_MODEL_REACTIVATE = 25;
     AI_REQUEST_CANCEL = 26;
+    AI_DISPUTE_SLASH = 27;
 }
 
 message ProtoTransaction {
@@ -62,6 +63,7 @@ message ProtoTransaction {
         ProtoAiModelDeactivate ai_model_deactivate = 32;
         ProtoAiModelDeactivate ai_model_reactivate = 33;
         ProtoAiFeeReclaim ai_request_cancel = 34;
+        ProtoAiDisputeSlash ai_dispute_slash = 35;
     }
 }
 
@@ -405,4 +407,9 @@ message ProtoAiFeeReclaim {
 
 message ProtoAiModelDeactivate {
     bytes model_id = 1;
+}
+
+message ProtoAiDisputeSlash {
+    bytes request_id = 1;
+    bytes verifier = 2;
 }

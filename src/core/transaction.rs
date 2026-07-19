@@ -158,6 +158,11 @@ pub enum TransactionType {
     /// Phase 10 (§1 P5 ADIM7): Cancel a pending AI inference request (requester-only).
     /// Returns escrowed max_fee for refund by the executor layer.
     AiRequestCancel(crate::ai::types::AiRequestId),
+    /// Phase 10 (§1 P5 ADIM8): Slash a verifier for equivocation.
+    AiDisputeSlash {
+        request_id: crate::ai::types::AiRequestId,
+        verifier: crate::core::address::Address,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -494,6 +499,7 @@ impl Transaction {
             TransactionType::AiModelDeactivate(_) => schedule.contract_call_gas,
             TransactionType::AiModelReactivate(_) => schedule.contract_call_gas,
             TransactionType::AiRequestCancel(_) => schedule.contract_call_gas,
+            TransactionType::AiDisputeSlash { .. } => schedule.contract_call_gas,
         };
         let signature_gas = if self.signature.is_some() {
             schedule.gas_per_signature
@@ -636,6 +642,7 @@ fn transaction_type_tag(tx_type: &TransactionType) -> u8 {
         TransactionType::AiModelDeactivate(_) => 24,
         TransactionType::AiModelReactivate(_) => 25,
         TransactionType::AiRequestCancel(_) => 26,
+        TransactionType::AiDisputeSlash { .. } => 27,
     }
 }
 fn encode_chain(chain: ExternalChain, out: &mut Vec<u8>) {
@@ -800,6 +807,13 @@ fn encode_transaction_type_payload(tx_type: &TransactionType, out: &mut Vec<u8>)
         TransactionType::AiModelDeactivate(model_id) => put_fixed(out, &model_id.0),
         TransactionType::AiModelReactivate(model_id) => put_fixed(out, &model_id.0),
         TransactionType::AiRequestCancel(request_id) => put_fixed(out, &request_id.0),
+        TransactionType::AiDisputeSlash {
+            request_id,
+            verifier,
+        } => {
+            put_fixed(out, &request_id.0);
+            put_fixed(out, &verifier.0);
+        }
     }
 }
 

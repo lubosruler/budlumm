@@ -603,6 +603,7 @@ impl Blockchain {
             ConsensusKind::StorageAttestation(_) => {
                 domain.finality_adapter == "storage-attestation-v1"
             }
+            ConsensusKind::AiInference => domain.finality_adapter == "ai-inference-threshold",
             ConsensusKind::Custom(name) => {
                 if name.trim().is_empty() {
                     return Err(format!(
@@ -963,6 +964,16 @@ impl Blockchain {
                 self.ensure_adapter_name(domain, adapter.adapter_name())?;
                 adapter.verify_finality(domain, commitment, proof)
             }
+            ConsensusKind::AiInference => {
+                // P5 ADIM8: AI Inference domain uses threshold-based finality.
+                // An outcome is finalized when agreement_threshold verifiers
+                // submit matching output_commitments — verified in AiRegistry.
+                // At the settlement layer, we verify the outcome root matches
+                // the commitment's claimed root.
+                let adapter = crate::domain::StorageAttestationFinalityAdapter;
+                self.ensure_adapter_name(domain, adapter.adapter_name())?;
+                adapter.verify_finality(domain, commitment, proof)
+            }
         }
         .map_err(|e| e.to_string())?;
 
@@ -1056,6 +1067,15 @@ impl Blockchain {
             proposer,
             settlement_finality_root,
             storage_root,
+            // P5 ADIM8: Anchor AI Inference Layer into global settlement.
+            // When AiRegistry has any state, its root is committed here;
+            // when empty, None ensures no bloat. This fulfills Paradigma
+            // §5 — AI outcomes are cryptographically provable at settlement.
+            ai_root: if self.state.ai_registry.is_empty() {
+                None
+            } else {
+                Some(self.state.ai_registry.state_root())
+            },
         }
     }
 

@@ -2857,4 +2857,81 @@ mod tests {
             "Pruned cancelled request should be removed"
         );
     }
+
+    // ===================== P5 ADIM8 — AI Settlement Layer Deepening Tests =====================
+
+    #[test]
+    fn test_p5_adim8_slash_equivocator_succeeds() {
+        let (mut registry, model_id, owner) = p5_adim6_setup_registry(3, 2);
+        let req_id = p5_adim6_submit_request(&mut registry, model_id, owner, 10, 110, 100);
+        let v1 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000011")
+                .unwrap();
+        p5_adim6_submit_result(&mut registry, req_id, v1, [9u8; 32], 1, 15).unwrap();
+        let _ = p5_adim6_submit_result(&mut registry, req_id, v1, [88u8; 32], 2, 16);
+        assert!(registry.has_equivocated(&req_id, &v1));
+        let slashed = registry.slash_equivocator(&req_id, &v1).unwrap();
+        assert_eq!(slashed, v1);
+        assert!(!registry.has_equivocated(&req_id, &v1));
+    }
+
+    #[test]
+    fn test_p5_adim8_slash_double_slash_rejected() {
+        let (mut registry, model_id, owner) = p5_adim6_setup_registry(3, 2);
+        let req_id = p5_adim6_submit_request(&mut registry, model_id, owner, 10, 110, 100);
+        let v1 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000011")
+                .unwrap();
+        p5_adim6_submit_result(&mut registry, req_id, v1, [9u8; 32], 1, 15).unwrap();
+        let _ = p5_adim6_submit_result(&mut registry, req_id, v1, [88u8; 32], 2, 16);
+        registry.slash_equivocator(&req_id, &v1).unwrap();
+        assert!(registry.slash_equivocator(&req_id, &v1).is_err());
+    }
+
+    #[test]
+    fn test_p5_adim8_slash_no_equivocation_rejected() {
+        let (mut registry, _, _) = p5_adim6_setup_registry(2, 2);
+        let fake_req = AiRequestId::new([0xAA; 32]);
+        let fake_v =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000011")
+                .unwrap();
+        assert!(registry.slash_equivocator(&fake_req, &fake_v).is_err());
+    }
+
+    #[test]
+    fn test_p5_adim8_slash_changes_state_root() {
+        let (mut registry, model_id, owner) = p5_adim6_setup_registry(3, 2);
+        let req_id = p5_adim6_submit_request(&mut registry, model_id, owner, 10, 110, 100);
+        let v1 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000011")
+                .unwrap();
+        p5_adim6_submit_result(&mut registry, req_id, v1, [9u8; 32], 1, 15).unwrap();
+        let _ = p5_adim6_submit_result(&mut registry, req_id, v1, [88u8; 32], 2, 16);
+        let root_before = registry.state_root();
+        registry.slash_equivocator(&req_id, &v1).unwrap();
+        assert_ne!(root_before, registry.state_root());
+    }
+
+    #[test]
+    fn test_p5_adim8_state_root_non_empty() {
+        let (registry, _, _) = p5_adim6_setup_registry(2, 2);
+        assert_ne!(registry.state_root(), [0u8; 32]);
+    }
+
+    #[test]
+    fn test_p5_adim8_consensus_kind_ai_inference() {
+        use crate::domain::types::ConsensusKind;
+        let ai_kind = ConsensusKind::AiInference;
+        assert!(ai_kind.is_ai());
+        assert!(!ai_kind.is_storage());
+        assert_eq!(ai_kind.as_bytes(), b"ai_inference");
+    }
+
+    #[test]
+    fn test_p5_adim8_consensus_kind_ai_distinct_from_custom() {
+        use crate::domain::types::ConsensusKind;
+        let ai_kind = ConsensusKind::AiInference;
+        let custom_kind = ConsensusKind::Custom("ai_inference".to_string());
+        assert_ne!(ai_kind.as_bytes(), custom_kind.as_bytes());
+    }
 }

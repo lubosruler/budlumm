@@ -594,6 +594,23 @@ impl AiRegistry {
         self.cancelled_requests.contains(request_id)
     }
 
+    /// P5 ADIM8 Bulgu 23: Slash a verifier for equivocation.
+    pub fn slash_equivocator(
+        &mut self,
+        request_id: &AiRequestId,
+        verifier: &Address,
+    ) -> Result<Address, String> {
+        let key = (*request_id, verifier.0);
+        if !self.equivocation_events.remove(&key) {
+            return Err(format!(
+                "No equivocation record for verifier {} on request {}",
+                verifier.to_hex(),
+                request_id.to_hex()
+            ));
+        }
+        Ok(*verifier)
+    }
+
     /// Calculate deterministic Merkle/SHA256 root of all AI registry maps.
     /// P5 Bulgu 19 (ADIM7): Domain-separated map roots prevent cross-map
     /// collision attacks (ARENAX V38). Each map gets a unique domain prefix
