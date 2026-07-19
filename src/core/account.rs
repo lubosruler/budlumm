@@ -337,7 +337,6 @@ impl AccountState {
             epoch_index: snapshot.epoch_index,
             current_block_height: snapshot.height,
             last_epoch_time: snapshot.last_epoch_time,
-            current_block_height: 0,
             governance: GovernanceState::default(),
             bns_registry: snapshot.bns_registry.clone().unwrap_or_default(),
             nft_registry: snapshot.nft_registry.clone().unwrap_or_default(),
