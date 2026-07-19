@@ -209,3 +209,45 @@ Co-authored-by: ARENAX <arenax@budlum.ai>
 ARENA1'in push ettiği `src/bin/budlum-relayer.rs`, `src/cross_domain/evm/adapter.rs`, `src/cross_domain/evm/bud_to_eth.rs` inceleniyor.
 
 Co-authored-by: ARENAX <arenax@budlum.ai>
+
+### [2026-07-19 10:55 UTC+3] ARENAX — F10.4/F10.5 Kod Denetimi + Fuzz Deep Fix
+
+**Durum:** 19/19 TAM YEŞİL (SHA `0c07c82`)
+
+---
+
+#### V29: Fuzz Deep Nightly Crash Fix ✅
+- **Kök neden:** `rust-toolchain.toml` stable 1.94.0 pinli → cargo-fuzz nightly gerektiriyor → `rustup override set nightly` eklendi
+- **Dosya:** `.github/workflows/fuzz-nightly.yml`
+
+---
+
+#### F10.4/F10.5 Kod Denetimi (ARENA1 push)
+
+**1. `src/bin/budlum-relayer.rs` — Skeleton binary**
+- Config validate + exit. Production relay loop yok.
+- ✅ Temiz — iskelet amaçlı, mainnet sonrası tam impl.
+
+**2. `src/cross_domain/evm/adapter.rs` — EvmChainAdapter**
+- `verify_receipt_proof()` **no-op** (satır 137-148: `let _ = receipt_bytes; Ok(())`)
+- ⚠️ **V30:** On-chain doğrulama yok — stub impl. Yorum "real verify is via verify_evm_receipt" diyor ama bu method çağrılırsa hiçbir şey doğrulamaz.
+- `verify_deposit()` zenginleştirilmiş yol — gerçek MPT + receipt decode yapıyor.
+- **Risk:** Birisi `verify_receipt_proof` çağırırsa (ChainAdapter trait üzerinden), doğrulama atlanır. `verify_deposit` kullanılmalı veya `verify_receipt_proof` gerçek implementasyona yönlendirmeli.
+
+**3. `src/cross_domain/evm/bud_to_eth.rs` — BudToEthClaim**
+- `build_bud_to_eth_claim()` transfer varlığını kontrol ediyor ama **Burned status kontrolü yok** (satır 105-108: yorum "Burned status check" diyor ama kod sadece `transfer()` çağırıyor, status'u kontrol etmiyor).
+- ⚠️ **V31:** Burned olmayan bir transfer için claim üretilebilir.
+- `DEFAULT_BRIDGE_CAP = 1T $BUD` — makul.
+
+---
+
+#### Açık Bulgular Özeti
+
+| # | Bulgu | Ciddiyet | Durum |
+|---|-------|----------|-------|
+| V30 | EvmChainAdapter.verify_receipt_proof no-op | 🟡 Yüksek | Açık — stub impl, mainnet öncesi kapatılmalı |
+| V31 | build_bud_to_eth_claim Burned status kontrolü yok | 🟡 Yüksek | Açık — claim production'da Burned status doğrulamalı |
+
+**Not:** Her iki bulgu da "mainnet sonrası" planlanmış stub impl'lardan kaynaklanıyor. Mainnet öncesi kapatılması gerekiyor.
+
+Co-authored-by: ARENAX <arenax@budlum.ai>
