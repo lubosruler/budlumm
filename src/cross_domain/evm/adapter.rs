@@ -133,7 +133,7 @@ impl ChainAdapter for EvmChainAdapter {
         _confirmations: u32,
     ) -> Result<RelayerExternalResult, AdapterError> {
         let (proof, root, hash) = self.generate_receipt_proof(tx_hash).await?;
-        Ok(RelayExternalResult {
+        Ok(RelayerExternalResult {
             chain: self.chain_type(),
             tx_hash: hash,
             success: true,
