@@ -14,6 +14,75 @@ pub const GENESIS_ALLOCATION: u64 = 1_000_000_000;
 
 pub const GENESIS_TIMESTAMP: u128 = 0;
 
+/// Phase 11.2: Genesis'te bootstrap edilecek domain konfigürasyonu.
+/// Serialization-safe (serde), ceremony'de placeholder adreslerle başlar.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BootstrapDomainConfig {
+    /// Domain ID (1=PoW, 2=PoS, 3=BFT, 4=PoA).
+    pub id: u32,
+    /// Consensus türü ("pow", "pos", "bft", "poa").
+    pub kind: String,
+    /// Finality adapter adı (örn "pow-confirmation-depth", "pos-qc-finality").
+    pub finality_adapter: String,
+    /// Bridge enabled (köprü lifecycle'a katılım).
+    pub bridge_enabled: bool,
+    /// Min confirmation (PoW için header-chain depth).
+    pub min_confirmations: u64,
+    /// PoA authority placeholder adresleri (yalnızca PoA domain için).
+    /// Ceremony'de gerçek kurum adresleriyle değiştirilir.
+    #[serde(default)]
+    pub poa_authorities: Vec<String>,
+}
+
+impl BootstrapDomainConfig {
+    /// Mainnet için 4 domain bootstrap listesi (PoW/PoS/BFT/PoA placeholder).
+    pub fn mainnet_defaults() -> Vec<Self> {
+        vec![
+            Self {
+                id: 1,
+                kind: "pow".to_string(),
+                finality_adapter: "pow-confirmation-depth".to_string(),
+                bridge_enabled: true,
+                min_confirmations: 6,
+                poa_authorities: vec![],
+            },
+            Self {
+                id: 2,
+                kind: "pos".to_string(),
+                finality_adapter: "pos-qc-finality".to_string(),
+                bridge_enabled: true,
+                min_confirmations: 1,
+                poa_authorities: vec![],
+            },
+            Self {
+                id: 3,
+                kind: "bft".to_string(),
+                finality_adapter: "bft-aggregate-sig".to_string(),
+                bridge_enabled: true,
+                min_confirmations: 1,
+                poa_authorities: vec![],
+            },
+            // PoA domain: placeholder authority adresleri (kullanıcı kararı:
+            // placeholder ile başla, ceremony'de gerçek adreslere dönüşür).
+            Self {
+                id: 4,
+                kind: "poa".to_string(),
+                finality_adapter: "poa-authority-quorum".to_string(),
+                bridge_enabled: false, // PoA domain bridge default kapalı
+                min_confirmations: 1,
+                poa_authorities: vec![
+                    "0x0000000000000000000000000000000000000000000000000000000000000AA1"
+                        .to_string(),
+                    "0x0000000000000000000000000000000000000000000000000000000000000AA2"
+                        .to_string(),
+                    "0x0000000000000000000000000000000000000000000000000000000000000AA3"
+                        .to_string(),
+                ],
+            },
+        ]
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenesisConfig {
     pub chain_id: u64,
@@ -36,6 +105,12 @@ pub struct GenesisConfig {
     /// vesting schedule. Default `None` — plain genesis is unchanged.
     #[serde(default)]
     pub bud_tokenomics: Option<crate::tokenomics::TokenomicsParams>,
+
+    /// Phase 11.2: Bootstrap domain listesi. Her domain genesis'te otomatik
+    /// register edilir (storage boşsa = yeni chain). PoW/PoS/BFT/PoA 4 domain
+    /// mainnet için varsayılan. Default boş (devnet/testnet backward-compat).
+    #[serde(default)]
+    pub bootstrap_domains: Vec<BootstrapDomainConfig>,
 }
 
 impl Default for GenesisConfig {
@@ -49,6 +124,7 @@ impl Default for GenesisConfig {
             gas_schedule: Network::Devnet.gas_schedule(),
             timestamp: GENESIS_TIMESTAMP,
             bud_tokenomics: None,
+            bootstrap_domains: vec![],
         }
     }
 }
@@ -259,6 +335,10 @@ pub fn mainnet_genesis() -> GenesisConfig {
 
         // Full tokenomics active
         bud_tokenomics: Some(tokenomics),
+
+        // Phase 11.2: 4 domain bootstrap (PoW/PoS/BFT/PoA).
+        // PoA: placeholder authorities (ceremony'de gerçek adreslere dönüşür).
+        bootstrap_domains: BootstrapDomainConfig::mainnet_defaults(),
     }
 }
 
@@ -275,6 +355,7 @@ pub fn testnet_genesis() -> GenesisConfig {
         gas_schedule: Network::Testnet.gas_schedule(),
         timestamp: 1_735_689_600_000,
         bud_tokenomics: None,
+        bootstrap_domains: vec![],
     }
 }
 
@@ -288,6 +369,7 @@ pub fn devnet_genesis() -> GenesisConfig {
         gas_schedule: Network::Devnet.gas_schedule(),
         timestamp: GENESIS_TIMESTAMP,
         bud_tokenomics: None,
+        bootstrap_domains: vec![],
     }
 }
 

@@ -3866,3 +3866,33 @@ Do not attempt to edit, create, or delete files in these directories. If Arena A
 
 ---
 **Durum:** Phase 5 Evrensel Mutabakat yolunda tüm ajanlar tam uyumla çalışmaktadır.
+
+---
+
+## AI-Ajan Etkileşim Kuralı (Kullanıcı Talimatı, 2026-07-19)
+
+Karar gerektiren noktalarda `ask_user` kullan. Her sorunun altına:
+
+1. **Teknik olmayan açıklama:** Kararı bir kullanıcı (yazılımıcı olmayan) da
+   anlayabilecek kadar sade dilde açıkla.
+2. **Önerilen seçenek:** Bir seçeneği "önerilen" olarak işaretle (gerekçesiyle).
+
+Bu kural, kullanıcının teknik derinliğe girmeden doğru kararlar verebilmesi için
+AI'ın sorumluluğudur. "Önerilen" etiketi bir talimat değil, bir tavsiyedir —
+kullanıcı her zaman farklı seçebilir.
+
+Örnek format:
+
+> **Soru:** PoA domain genesis'te nasıl başlasın?
+> - **Placeholder adreslerle başla (önerilen):** Tıpkı PoW/PoS gibi yer tutucu
+>   adreslerle başlar. Ceremony'de gerçek adreslere dönüşür. Genesis hash
+>   şimdiden dondurulabilir.
+> - **Boş başla:** Hiç validator olmadan başlar. Ceremony sonrası governance
+>   ile eklenir. Daha temiz ama domain 'henüz yok' gibi görünür.
+
+---
+
+## Görev Yöneticisi Notu (ARENA1, 2026-07-19)
+
+Bu dosya artık hem genel AI davranış prensiplerini hem de bu ek etkileşim
+kuralını taşır. Yeni AI'lar her iki bölümü de okumak zorundadır.
