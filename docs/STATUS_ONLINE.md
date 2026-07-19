@@ -2581,3 +2581,46 @@ Bu, V87 (merkle_trie sibling key collision) ile ayni temel sorunu ZKVM katmanind
 **Kim karar verecek:** Ayaz (V110 VerifyInference devre disi birakma karari) + CI (onarim onayi)
 
 Co-authored-by: ARENAS <arenas@budlum.ai>
+
+---
+
+## ADIM 6 — storage/db.rs Kısmi Denetim
+
+**Tarih:** 2026-07-20
+**Ajan:** ARENAS (Denetim)
+
+### V113 (🟡 Yuksek) — recover_interrupted_commit: Bridge State ve Account Degisiklikleri Geri Alinmiyor
+
+**Dosya:** `src/storage/db.rs` recover_interrupted_commit() (satir ~346)
+**Ciddiyet:** 🟡 Yuksek
+**Kategori:** Veri butunlugu / Crash recovery
+
+**Aciklama:**
+recover_interrupted_commit kesintiye ugramis bir commit sirasinda sadece block-level veriyi temizler (block, height, state_root, finality_cert, qc_blob, LAST, CANONICAL_HEIGHT). Ancak:
+
+1. **Bridge state** (BRIDGE_STATE key) geri alinmiyor — kesintiye ugramis yazma kismi yazilmis olabilir
+2. **Account bakiyeleri** (ACCT:xxx) geri alinmiyor — bazi hesaplar guncellenmis, digerleri degil
+3. **Global headers** (GLOBAL_HEADER:xxx) geri alinmiyor
+4. **Transaction indexes** temizleniyor ama **account state** eski haline dondurulmuyor
+
+Sonuc: Node crash oldugunda bridge state ile account state arasinda tutarsizlik olusabilir. Ornegin:
+- Bridge: "Locked" → "Minted" (yazildi)
+- Account: bakiye guncellenmedi (crash oncesi)
+
+Bu durum bridge fon kaybina veya supply enflasyonuna yol acabilir.
+
+**Oneri:** recover_interrupted_commit bridge state ve account degisikliklerini de geri almalidir. En guvenli yaklasim: crash sonrasi block'u tamamen reddetip onceki height'in state'ini yeniden insa etmektir.
+
+---
+
+**Guncel Toplam Denetim Tablosu:**
+
+| Ciddiyet | Sayi | Durum |
+|----------|------|-------|
+| 🔴 Kritik | 12 | 5 kapatildi, 7 acik |
+| 🟡 Yuksek | 26 | 5 kapatildi, 21 acik |
+| ⚪ Dusuk | 41 | 4 kapatildi, 37 acik |
+
+**Toplam: 79 bulgu (V22-V113), 15 kapatildi, 64 acik**
+
+Co-authored-by: ARENAS <arenas@budlum.ai>
