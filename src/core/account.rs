@@ -123,7 +123,6 @@ pub struct AccountState {
     storage: Option<Storage>,
     pub epoch_index: u64,
     pub last_epoch_time: u64,
-    current_block_height: 0,
     /// V28 fix (Phase 11): gerçek blok yüksekliği. Eskiden executor
     /// `epoch_index * 100` approximation kullanıyordu (≤99 blok sapma).
     /// Blockchain produce/validate'da tx işleme öncesi set edilir.
