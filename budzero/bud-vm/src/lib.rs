@@ -580,9 +580,7 @@ impl Vm {
                 let proof_end = proof_addr.wrapping_add(proof_size);
                 let model_end = model_addr.wrapping_add(model_size);
 
-                let result = if proof_end <= self.memory.len()
-                    && model_end <= self.memory.len()
-                {
+                let result = if proof_end <= self.memory.len() && model_end <= self.memory.len() {
                     let mut read_u64 = |addr: usize| -> u64 {
                         let mut bytes = [0u8; 8];
                         bytes.copy_from_slice(&self.memory[addr..addr + 8]);
