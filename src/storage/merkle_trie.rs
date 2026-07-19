@@ -1,117 +1,77 @@
-//! Merkle Patricia Trie for account state.
+//! Sparse fixed-depth (256) binary Merkle trie for account state.
 //!
-//! Provides O(log N) incremental updates and Merkle proofs for
-//! account state verification. Replaces the flat hash approach in
-//! `AccountState::calculate_state_root()` for production use.
+//! - Leaf: `SHA-256(0x01 || address || balance_le || nonce_le)`
+//! - Internal: `SHA-256(0x00 || left || right)`
+//! - Empty subtree: 32 zero bytes
+//! - Root: `SHA-256(BDLM_MERKLE_TRIE_V1 || raw_root)`
 //!
-//! ## Design
-//! - Fixed-depth (64-level) binary trie keyed by 256-bit addresses.
-//! - Each internal node = SHA-256(left_child || right_child).
-//! - Leaf nodes = SHA-256(0x01 || address || balance || nonce).
-//! - `update()` recalculates only the path from leaf to root (O(64)).
-//! - `proof()` returns sibling hashes along the path for verification.
-//! - Domain-separated: `BDLM_MERKLE_TRIE_V1` prefix prevents cross-trie collision.
+//! Path bits are MSB-first (address bit 0 = root branch).
 
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 
-/// Depth of the trie (256-bit addresses → 256 levels).
 const TRIE_DEPTH: usize = 256;
-
-/// Domain separator for the trie root hash.
 const DOMAIN_PREFIX: &[u8] = b"BDLM_MERKLE_TRIE_V1";
 
-/// A Merkle proof for a single account.
+/// Merkle proof for one address (present or absent).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MerkleProof {
-    /// The address being proved.
     pub address: [u8; 32],
-    /// Sibling hashes from leaf to root (TRIE_DEPTH elements).
-    /// `siblings[i]` is the sibling at level `i` (0 = leaf level).
+    /// Sibling hashes from leaf toward root (`TRIE_DEPTH` entries).
     pub siblings: Vec<[u8; 32]>,
-    /// Direction bits: `true` = right child, `false` = left child.
-    /// `directions[i]` indicates which child the path takes at level `i`.
+    /// At each step, `true` means the proved node is the right child.
     pub directions: Vec<bool>,
-    /// The leaf hash (balance + nonce encoded).
     pub leaf_hash: [u8; 32],
 }
 
 impl MerkleProof {
-    /// Verify this proof against an expected root.
     pub fn verify(&self, expected_root: &[u8; 32]) -> bool {
         if self.siblings.len() != TRIE_DEPTH || self.directions.len() != TRIE_DEPTH {
             return false;
         }
-
         let mut current = self.leaf_hash;
         for i in 0..TRIE_DEPTH {
             let (left, right) = if self.directions[i] {
-                (&self.siblings[i], &current)
+                (self.siblings[i], current)
             } else {
-                (&current, &self.siblings[i])
+                (current, self.siblings[i])
             };
-            current = hash_internal(left, right);
+            current = combine_nodes(&left, &right);
         }
-
-        let root = finalize_root(&current);
-        &root == expected_root
+        &finalize_root(&current) == expected_root
     }
 }
 
-/// Binary Merkle Patricia Trie for 256-bit keys.
-///
-/// Nodes are stored sparsely — only non-zero subtrees are materialized.
-/// The trie uses a simple binary tree with 256 levels (one per address bit).
-#[derive(Debug, Clone)]
+/// Sparse binary Merkle trie keyed by 256-bit addresses.
+#[derive(Debug, Clone, Default)]
 pub struct MerkleTrie {
-    /// Root hash.
-    root: [u8; 32],
-    /// Leaf data: address → (balance, nonce).
-    leaves: std::collections::BTreeMap<[u8; 32], (u64, u64)>,
-    /// Cached internal nodes: (level, path_bits) → hash.
-    /// `level` 0 = leaf level, `level` 255 = just below root.
-    internal: std::collections::BTreeMap<(usize, u64), [u8; 32]>,
-    /// Dirty flag — set on any mutation, cleared after recompute.
-    dirty: bool,
+    leaves: BTreeMap<[u8; 32], (u64, u64)>,
 }
 
 impl MerkleTrie {
     pub fn new() -> Self {
         Self {
-            root: empty_trie_root(),
-            leaves: std::collections::BTreeMap::new(),
-            internal: std::collections::BTreeMap::new(),
-            dirty: false,
+            leaves: BTreeMap::new(),
         }
     }
 
-    /// Insert or update an account's (balance, nonce).
-    /// O(log N) incremental path update.
     pub fn insert(&mut self, address: &[u8; 32], balance: u64, nonce: u64) {
-        let leaf_hash = hash_leaf(address, balance, nonce);
         self.leaves.insert(*address, (balance, nonce));
-
-        // Update the path from leaf to root.
-        self.update_path(address, leaf_hash);
-        self.dirty = true;
     }
 
-    /// Remove an account from the trie.
     pub fn remove(&mut self, address: &[u8; 32]) {
         self.leaves.remove(address);
-        // Recompute the path with a zero leaf.
-        self.update_path(address, [0u8; 32]);
-        self.dirty = true;
     }
 
-    /// Get the current root hash.
     pub fn root(&mut self) -> [u8; 32] {
-        if self.dirty {
-            self.recompute_root();
-        }
-        self.root
+        self.root_ref()
     }
 
-    /// Generate a Merkle proof for an address.
+    pub fn root_ref(&self) -> [u8; 32] {
+        let leaves: Vec<_> = self.leaves.iter().map(|(a, (b, n))| (*a, *b, *n)).collect();
+        finalize_root(&hash_leaves(&leaves, 0))
+    }
+
     pub fn proof(&self, address: &[u8; 32]) -> MerkleProof {
         let leaf_hash = self
             .leaves
@@ -122,13 +82,25 @@ impl MerkleTrie {
         let mut siblings = Vec::with_capacity(TRIE_DEPTH);
         let mut directions = Vec::with_capacity(TRIE_DEPTH);
 
-        for level in 0..TRIE_DEPTH {
-            let bit = get_bit(address, level);
+        // Leaf → root: step 0 uses address bit 255, step 255 uses bit 0.
+        for step in 0..TRIE_DEPTH {
+            let bit_index = TRIE_DEPTH - 1 - step;
+            let bit = get_bit(address, bit_index);
             directions.push(bit);
 
-            let sibling_key = compute_sibling_key(address, level);
-            let sibling = self.get_internal(level, sibling_key);
-            siblings.push(sibling);
+            // Sibling = hash of all leaves that share bits [0, bit_index)
+            // with `address` and have the opposite bit at `bit_index`.
+            let mut side: Vec<([u8; 32], u64, u64)> = Vec::new();
+            for (addr, (b, n)) in &self.leaves {
+                if !prefix_eq(addr, address, bit_index) {
+                    continue;
+                }
+                if get_bit(addr, bit_index) == bit {
+                    continue;
+                }
+                side.push((*addr, *b, *n));
+            }
+            siblings.push(hash_leaves(&side, bit_index + 1));
         }
 
         MerkleProof {
@@ -139,7 +111,6 @@ impl MerkleTrie {
         }
     }
 
-    /// Number of leaves in the trie.
     pub fn len(&self) -> usize {
         self.leaves.len()
     }
@@ -148,99 +119,18 @@ impl MerkleTrie {
         self.leaves.is_empty()
     }
 
-    /// Bulk insert from an iterator — more efficient than individual inserts
-    /// because it avoids redundant path traversals.
     pub fn bulk_insert(&mut self, entries: &[([u8; 32], u64, u64)]) {
         for (addr, balance, nonce) in entries {
-            let leaf_hash = hash_leaf(addr, *balance, *nonce);
             self.leaves.insert(*addr, (*balance, *nonce));
-            self.update_path(addr, leaf_hash);
         }
-        self.dirty = true;
-    }
-
-    // ─── Internal ──────────────────────────────────────────────────
-
-    fn update_path(&mut self, address: &[u8; 32], leaf_hash: [u8; 32]) {
-        // Bottom-up: update each level from leaf to root.
-        let mut child_hash = leaf_hash;
-
-        for level in 0..TRIE_DEPTH {
-            let bit = get_bit(address, level);
-            let sibling_key = compute_sibling_key(address, level);
-            let sibling = self.get_internal(level, sibling_key);
-
-            let (left, right) = if bit {
-                (sibling, child_hash)
-            } else {
-                (child_hash, sibling)
-            };
-
-            child_hash = hash_internal(&left, &right);
-
-            // Store internal node at the parent path.
-            let parent_key = compute_parent_key(address, level);
-            self.internal.insert((level + 1, parent_key), child_hash);
-        }
-    }
-
-    fn get_internal(&self, level: usize, key: u64) -> [u8; 32] {
-        // For levels 0-5, we can use the full key; for deeper levels,
-        // we use a truncated prefix.
-        self.internal
-            .get(&(level, key))
-            .copied()
-            .unwrap_or([0u8; 32])
-    }
-
-    fn recompute_root(&mut self) {
-        if self.leaves.is_empty() {
-            self.root = empty_trie_root();
-            self.dirty = false;
-            return;
-        }
-
-        // The root is stored at level TRIE_DEPTH in internal.
-        // After update_path, the root should be at (TRIE_DEPTH, 0).
-        self.root = self.get_internal(TRIE_DEPTH, 0);
-
-        // If the root is zero but we have leaves, do a full recompute.
-        if self.root == [0u8; 32] && !self.leaves.is_empty() {
-            self.full_recompute();
-        }
-
-        self.dirty = false;
-    }
-
-    fn full_recompute(&mut self) {
-        self.internal.clear();
-
-        // Collect leaves first to avoid borrow conflict.
-        let entries: Vec<_> = self
-            .leaves
-            .iter()
-            .map(|(addr, (balance, nonce))| (*addr, hash_leaf(addr, *balance, *nonce)))
-            .collect();
-
-        for (addr, leaf_hash) in entries {
-            self.update_path(&addr, leaf_hash);
-        }
-
-        self.root = self.get_internal(TRIE_DEPTH, 0);
     }
 }
 
-impl Default for MerkleTrie {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-// ─── Hash helpers ────────────────────────────────────────────────────
+// ─── Hashing ─────────────────────────────────────────────────────────
 
 fn hash_leaf(address: &[u8; 32], balance: u64, nonce: u64) -> [u8; 32] {
     let mut h = Sha256::new();
-    h.update([0x01]); // leaf prefix
+    h.update([0x01]);
     h.update(address);
     h.update(balance.to_le_bytes());
     h.update(nonce.to_le_bytes());
@@ -249,10 +139,18 @@ fn hash_leaf(address: &[u8; 32], balance: u64, nonce: u64) -> [u8; 32] {
 
 fn hash_internal(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     let mut h = Sha256::new();
-    h.update([0x00]); // internal prefix
+    h.update([0x00]);
     h.update(left);
     h.update(right);
     h.finalize().into()
+}
+
+/// Sparse rule: two empty children collapse to empty (not H(0||0)).
+fn combine_nodes(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
+    if *left == [0u8; 32] && *right == [0u8; 32] {
+        return [0u8; 32];
+    }
+    hash_internal(left, right)
 }
 
 fn finalize_root(raw: &[u8; 32]) -> [u8; 32] {
@@ -266,7 +164,29 @@ fn empty_trie_root() -> [u8; 32] {
     finalize_root(&[0u8; 32])
 }
 
-/// Get bit `level` of address (0 = MSB of first byte).
+/// Recursively hash a leaf set under a fixed prefix of `from_bit` bits.
+fn hash_leaves(leaves: &[([u8; 32], u64, u64)], from_bit: usize) -> [u8; 32] {
+    if leaves.is_empty() {
+        return [0u8; 32];
+    }
+    if from_bit >= TRIE_DEPTH {
+        let (addr, b, n) = leaves[0];
+        return hash_leaf(&addr, b, n);
+    }
+    let mut left = Vec::new();
+    let mut right = Vec::new();
+    for &entry in leaves {
+        if get_bit(&entry.0, from_bit) {
+            right.push(entry);
+        } else {
+            left.push(entry);
+        }
+    }
+    let l = hash_leaves(&left, from_bit + 1);
+    let r = hash_leaves(&right, from_bit + 1);
+    combine_nodes(&l, &r)
+}
+
 fn get_bit(address: &[u8; 32], level: usize) -> bool {
     let byte_idx = level / 8;
     let bit_idx = 7 - (level % 8);
@@ -276,24 +196,13 @@ fn get_bit(address: &[u8; 32], level: usize) -> bool {
     (address[byte_idx] >> bit_idx) & 1 == 1
 }
 
-/// Compute the key for the sibling node at a given level.
-/// Uses first 8 bytes of address as a compact key.
-fn compute_sibling_key(address: &[u8; 32], level: usize) -> u64 {
-    let mut key = compute_parent_key(address, level);
-    // Flip the bit at this level to get the sibling's key.
-    key ^= 1u64 << (63 - level.min(63));
-    key
-}
-
-/// Compute the parent key at a given level.
-fn compute_parent_key(address: &[u8; 32], level: usize) -> u64 {
-    let mut key = 0u64;
-    for i in 0..level.min(64) {
-        if get_bit(address, i) {
-            key |= 1u64 << (63 - i);
+fn prefix_eq(a: &[u8; 32], b: &[u8; 32], bits: usize) -> bool {
+    for i in 0..bits {
+        if get_bit(a, i) != get_bit(b, i) {
+            return false;
         }
     }
-    key
+    true
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────
@@ -313,72 +222,58 @@ mod tests {
         let mut trie = MerkleTrie::new();
         let root = trie.root();
         assert_ne!(root, [0u8; 32]);
-        assert_eq!(root, trie.root()); // deterministic
+        assert_eq!(root, empty_trie_root());
+        assert_eq!(root, trie.root());
     }
 
     #[test]
     fn insert_changes_root() {
         let mut trie = MerkleTrie::new();
-        let root_before = trie.root();
-
+        let before = trie.root();
         trie.insert(&addr(1), 1000, 5);
-        let root_after = trie.root();
-
-        assert_ne!(root_before, root_after);
+        assert_ne!(before, trie.root());
     }
 
     #[test]
     fn same_entries_same_root() {
-        let mut trie1 = MerkleTrie::new();
-        let mut trie2 = MerkleTrie::new();
-
-        trie1.insert(&addr(1), 1000, 5);
-        trie1.insert(&addr(2), 2000, 10);
-
-        trie2.insert(&addr(1), 1000, 5);
-        trie2.insert(&addr(2), 2000, 10);
-
-        assert_eq!(trie1.root(), trie2.root());
+        let mut a = MerkleTrie::new();
+        let mut b = MerkleTrie::new();
+        a.insert(&addr(1), 1000, 5);
+        a.insert(&addr(2), 2000, 10);
+        b.insert(&addr(1), 1000, 5);
+        b.insert(&addr(2), 2000, 10);
+        assert_eq!(a.root(), b.root());
     }
 
     #[test]
     fn different_order_same_root() {
-        let mut trie1 = MerkleTrie::new();
-        let mut trie2 = MerkleTrie::new();
-
-        trie1.insert(&addr(1), 1000, 5);
-        trie1.insert(&addr(2), 2000, 10);
-
-        trie2.insert(&addr(2), 2000, 10);
-        trie2.insert(&addr(1), 1000, 5);
-
-        assert_eq!(trie1.root(), trie2.root());
+        let mut a = MerkleTrie::new();
+        let mut b = MerkleTrie::new();
+        a.insert(&addr(1), 1000, 5);
+        a.insert(&addr(2), 2000, 10);
+        b.insert(&addr(2), 2000, 10);
+        b.insert(&addr(1), 1000, 5);
+        assert_eq!(a.root(), b.root());
     }
 
     #[test]
     fn update_balance_changes_root() {
         let mut trie = MerkleTrie::new();
         trie.insert(&addr(1), 1000, 5);
-        let root1 = trie.root();
-
+        let r1 = trie.root();
         trie.insert(&addr(1), 2000, 5);
-        let root2 = trie.root();
-
-        assert_ne!(root1, root2);
+        assert_ne!(r1, trie.root());
     }
 
     #[test]
     fn remove_restores_previous_root() {
         let mut trie = MerkleTrie::new();
         trie.insert(&addr(1), 1000, 5);
-        let root_with = trie.root();
-
+        let with = trie.root();
         trie.insert(&addr(2), 2000, 10);
-        assert_ne!(root_with, trie.root());
-
+        assert_ne!(with, trie.root());
         trie.remove(&addr(2));
-        // Root should be back to the state with only addr(1).
-        assert_eq!(root_with, trie.root());
+        assert_eq!(with, trie.root());
     }
 
     #[test]
@@ -387,21 +282,15 @@ mod tests {
         trie.insert(&addr(1), 1000, 5);
         trie.insert(&addr(2), 2000, 10);
         trie.insert(&addr(3), 3000, 15);
-
         let root = trie.root();
-        let proof = trie.proof(&addr(2));
-
-        assert!(proof.verify(&root));
+        assert!(trie.proof(&addr(2)).verify(&root));
     }
 
     #[test]
     fn proof_fails_with_wrong_root() {
         let mut trie = MerkleTrie::new();
         trie.insert(&addr(1), 1000, 5);
-
-        let proof = trie.proof(&addr(1));
-        let wrong_root = [0xFFu8; 32];
-        assert!(!proof.verify(&wrong_root));
+        assert!(!trie.proof(&addr(1)).verify(&[0xFF; 32]));
     }
 
     #[test]
@@ -409,57 +298,46 @@ mod tests {
         let mut trie = MerkleTrie::new();
         trie.insert(&addr(1), 1000, 5);
         trie.insert(&addr(2), 2000, 10);
-
         let root = trie.root();
         let mut proof = trie.proof(&addr(1));
-        proof.siblings[0] = [0xFFu8; 32]; // tamper
-
+        proof.siblings[0] = [0xFF; 32];
         assert!(!proof.verify(&root));
     }
 
     #[test]
     fn bulk_insert_produces_same_root() {
-        let mut trie1 = MerkleTrie::new();
-        let mut trie2 = MerkleTrie::new();
-
+        let mut a = MerkleTrie::new();
+        let mut b = MerkleTrie::new();
         let entries: Vec<_> = (0..50)
             .map(|i| (addr(i), (i as u64) * 100, i as u64))
             .collect();
-
-        for (a, b, n) in &entries {
-            trie1.insert(a, *b, *n);
+        for (x, y, z) in &entries {
+            a.insert(x, *y, *z);
         }
-        trie2.bulk_insert(&entries);
-
-        assert_eq!(trie1.root(), trie2.root());
+        b.bulk_insert(&entries);
+        assert_eq!(a.root(), b.root());
     }
 
     #[test]
     fn hundred_accounts_deterministic() {
-        let mut trie = MerkleTrie::new();
+        let mut a = MerkleTrie::new();
         for i in 0..100u8 {
-            trie.insert(&addr(i), (i as u64) * 1000, i as u64);
+            a.insert(&addr(i), (i as u64) * 1000, i as u64);
         }
-        let root1 = trie.root();
-
-        let mut trie2 = MerkleTrie::new();
+        let r1 = a.root();
+        let mut b = MerkleTrie::new();
         for i in (0..100u8).rev() {
-            trie2.insert(&addr(i), (i as u64) * 1000, i as u64);
+            b.insert(&addr(i), (i as u64) * 1000, i as u64);
         }
-        let root2 = trie2.root();
-
-        assert_eq!(root1, root2);
+        assert_eq!(r1, b.root());
     }
 
     #[test]
     fn proof_for_nonexistent_address() {
         let mut trie = MerkleTrie::new();
         trie.insert(&addr(1), 1000, 5);
-
-        let proof = trie.proof(&addr(99));
-        // The leaf hash is zero (not in trie), proof should still be valid
-        // against the current root (zero leaf is part of the trie structure).
         let root = trie.root();
+        let proof = trie.proof(&addr(99));
         assert!(proof.verify(&root));
     }
 }
