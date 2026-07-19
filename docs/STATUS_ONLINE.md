@@ -2477,3 +2477,107 @@ lock_bridge_transfer fonksiyonu bridge state'i gunceller ama owner adresinden ba
 **Kim karar verecek:** Ayaz (V106 + V107) + CI (push sonrasi)
 
 Co-authored-by: ARENAS <arenas@budlum.ai>
+
+---
+
+## ADIM 5 — budzero/ Alt-Projesi Denetimi + V106/V95 Onarım Push
+
+**Tarih:** 2026-07-20
+**Ajan:** ARENAS (Denetim)
+**Onarimlar:** V106 (sweep bakiye iadesi) + V95 (reorg split-brain) push edildi
+
+### V110 (🔴 Kritik) — VerifyInference Opcode: Zayıf Commitment Doğrulama — Herhangi Bir Input/Output Kabul Edilir
+
+**Dosya:** `budzero/bud-vm/src/lib.rs` Opcode::VerifyInference (satir ~570)
+**Ciddiyet:** 🔴 Kritik
+**Kategori:** ZKVM güvenliği / AI inference doğrulama
+
+**Aciklama:**
+VerifyInference opcode'inin "commitment chain" dogrulamasi matematiksel olarak anlamli bir baglama yapmiyor:
+
+```rust
+let commitment_hash = {
+    let mut acc = model_commitment;
+    for round in 0..8u8 {
+        acc = acc.wrapping_add(input_commitment)
+            .wrapping_mul(0x5851F42D4C957F2D)
+            .wrapping_add(output_commitment)
+            .wrapping_add(round as u64);
+        const P: u64 = 18446744069414584321;
+        if acc >= P { acc -= P; }
+    }
+    acc
+};
+if commitment_hash != 0 && (commitment_hash.wrapping_add(registered_model)) != 0 {
+    1u64  // SUCCESS — herhangi bir nonzero deger gecer!
+} else {
+    0u64
+}
+```
+
+Sorunlar:
+1. `commitment_hash != 0` — sadece sifir olmamasi yeterli. Hemen hemen her (model_commitment, input_commitment, output_commitment) uclemesi nonzero hash uretir.
+2. `commitment_hash.wrapping_add(registered_model) != 0` — yine sadece sifir disi kontrol.registered_model'in onemi yok — herhangi bir nonzero deger gecer.
+3. Dogru STARK/SNARK verification yapilmiyor — sadece basit bir aritmetik dongu. Gercek zkVM'lerde verification key + proof + public input uzerine pairing veya FRI verification yapilir.
+4. `proof_type` kontrolu sadece esitlik kontrolu — hicbir kriptografik icerik yok.
+
+**Etki:** Herhangi bir AI model sonucu, rastgele input/output ile dogrulanabilir. Bu, AI inference layer'in guveniligini tamamen ortadan kaldirir. Saldirgan herhangi bir sonuc uretip "verify edilmis" olarak sunabilir.
+
+**Oneri:** VerifyInference opcode'i tam STARK/SNARK verification implement edilene kadar disabled birakilmali (mainnet_mode ile gate edilmeli). Mevcut stub, dogrulama yapmadigi icin guvenlik yaniltisidir.
+
+---
+
+### V111 (🟡 Yuksek) — VerifyMerkle Opcode: 64-bit Key Uzunlugu 256-bit Merkle Trie ile Tutarsiz
+
+**Dosya:** `budzero/bud-vm/src/lib.rs` Opcode::VerifyMerkle (satir ~510)
+**Ciddiyet:** 🟡 Yuksek
+**Kategori:** ZKVM/Storage tutarsizligi
+
+**Aciklama:**
+VerifyMerkle opcode 64-bit key kullanarak 64 seviyelik path dogrulamasi yapiyor:
+```rust
+let key = u64::from_le_bytes(bytes);
+// ...
+for i in 0..64 {
+    let bit = (key >> i) & 1;
+    current = if bit == 0 { ... } else { ... };
+}
+```
+
+Ancak ana budlum depolama (merkle_trie.rs) 256-bit adresler kullanir. 64-bit key ile 256-bit trie arasinda path collision riski vardir — farkli 256-bit adresler ayni 64-bit prefix'e sahip olabilir.
+
+Bu, V87 (merkle_trie sibling key collision) ile ayni temel sorunu ZKVM katmaninda tekrarlar.
+
+**Oneri:** ZKVM'de de 256-bit key destegi saglanmali veya key truncation guvenli bir sekilde belgelenmeli.
+
+---
+
+### V112 (⚪ Dusuk) — plonky3_prover.rs Test Disi unwrap() Kullanimi
+
+**Dosya:** `budzero/bud-proof/src/plonky3_prover.rs`
+**Ciddiyet:** ⚪ Dusuk
+**Kategori:** Robustluk
+
+**Aciklama:** plonky3_prover.rs dosyasinda test disinda unwrap() kullanimlari var (satir 232, 552, 638). Bu, gecersiz proof veya hatali trace durumunda panic riski tasir. Production ZK prover'da panic kabul edilemez.
+
+**Oneri:** Tum unwrap()'lar Result/Option ile guvenli hale getirilmeli.
+
+---
+
+**Guncel Toplam Denetim Tablosu:**
+
+| Ciddiyet | Sayi | Durum |
+|----------|------|-------|
+| 🔴 Kritik | 12 | 5 kapatildi, 7 acik (V24, V37, V38, V86, V89, V95*, V106*, V110) |
+| 🟡 Yuksek | 25 | 5 kapatildi, 20 acik |
+| ⚪ Dusuk | 41 | 4 kapatildi, 37 acik |
+
+*V95 ve V106 onarildi (push edildi, CI bekleniyor)
+
+**Toplam: 78 bulgu (V22-V112), 15 kapatildi, 63 acik**
+
+**Ne bitti:** ADIM 5 — budzero/ alt-projesi denetlendi (15506 satir). 3 yeni bulgu (V110-V112). V110 (VerifyInference zayif commitment) kritik. V106 ve V95 onarimlari push edildi.
+**Ne bekliyor:** CI onayi (V95+V106 onarimlari) + V110 onarim karari + kalan modul denetimi.
+**Kim karar verecek:** Ayaz (V110 VerifyInference devre disi birakma karari) + CI (onarim onayi)
+
+Co-authored-by: ARENAS <arenas@budlum.ai>
