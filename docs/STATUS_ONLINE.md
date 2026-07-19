@@ -583,3 +583,96 @@ Co-authored-by: ARENAX <arenax@budlum.ai>
 - ✅ Snapshot: Quarantine, self-heal
 
 Co-authored-by: ARENAX <arenax@budlum.ai>
+
+### [2026-07-19 12:09 UTC+3] ARENAX — BNS + B.U.D. Derin Denetim Raporu
+
+**Durum:** 19/19 TAM YEŞİL (SHA `f6727c9`)
+**Kapsam:** BNS (Budlum Name Service) + B.U.D. (Broad Universal Database) modüllerinin hacker perspektifinden derin denetimi
+
+---
+
+## BNS (Budlum Name Service) Bulguları
+
+### V33: BNS calculate_cost Overflow Riski 🟡
+**Dosya:** `src/bns/registry.rs:27-34`
+**Sorun:** `base_cost * multiplier * duration` normal çarpma kullanıyor. `base_cost=100, multiplier=100, duration=u64::MAX` durumunda overflow olur.
+**Öneri:** `saturating_mul` veya `checked_mul` kullanılmalı.
+**Ciddiyet:** 🟡 Orta (duration makul değerlerde)
+
+### V34: BNS Subdomain Sınırsız Büyüme ⚪
+**Dosya:** `src/bns/registry.rs:116-132`
+**Sorun:** `register_subdomain` için subdomain sayısı sınırı yok. Bir isim sahibi binlerce subdomain oluşturarak state bloat yapabilir.
+**Öneri:** `MAX_SUBDOMAINS_PER_NAME` sabiti (ör. 1000) eklenmeli.
+**Ciddiyet:** ⚪ Düşük (state bloat, güvenlik değil)
+
+### V35: BNS Root Hash Kapsam Eksikliği 🟡
+**Dosya:** `src/bns/registry.rs:200-225`
+**Sorun:** `root()` fonksiyonu sadece `owner`, `content_id`, `luminance`, `author_name`, `tags` hash'liyor. Ama `address`, `consensus_domain_id`, `storage_root`, `storage_domain_id`, `storage_root_height` hash'e dahil DEĞİL.
+**Etki:** Bu alanlar manipüle edilirse root değişmez.
+**Öneri:** Tüm NameRecord alanları root'a dahil edilmeli.
+**Ciddiyet:** 🟡 Orta (GAP-2 ile birlikte kritik)
+
+### V36: BNS Grace Period Sabit ⚪
+**Dosya:** `src/bns/registry.rs:21`
+**Sorun:** `GRACE_PERIOD = 3000` epoch sabit. Epoch süresi değişirse grace period da değişir.
+**Öneri:** Config'den alınmalı.
+**Ciddiyet:** ⚪ Düşük (tasarım)
+
+---
+
+## B.U.D. (Broad Universal Database) Bulguları
+
+### V37: Challenge Answer Hash Doğrulaması Yok 🔴
+**Dosya:** `src/domain/storage_deal.rs:510-550`
+**Sorun:** `answer_challenge` fonksiyonu HERHANGİ bir `range_hash` kabul ediyor. Operatör doğru byte range'e sahip olmasa bile herhangi bir hash ile geçebilir.
+**Kök neden:** Zincir shard bytes'ı tutmuyor, bu yüzden hash doğrulayamıyor.
+**Etki:** Retrieval challenge tamamen bypass edilebilir. Operatör veriyi silse bile challenge'ı geçebilir.
+**Öneri:** ZK proof tabanlı doğrulama (VerifyMerkle) challenge seviyesinde de zorunlu olmalı.
+**Ciddiyet:** 🔴 Yüksek (ancak bilinçli limitation — "interim retrieval challenge")
+
+### V38: Merkle Proof Format-Only Doğrulama 🟡
+**Dosya:** `src/domain/storage_deal.rs:690-720`
+**Sorun:** `validate_merkle_proof_format` sadece format kontrolü yapıyor (≥64 byte + ProofEnvelope deserialize). Gerçek STARK doğrulaması yapılmıyor.
+**Kök neden:** Full STARK verification prover-capable node'lara bırakılmış.
+**Etki:** Sahte bir ProofEnvelope ile deal açılabilir.
+**Öneri:** Deal-open zamanında en azından minimal STARK verify eklenmeli.
+**Ciddiyet:** 🟡 Orta (bilinçli tasarım — prover-capable node'lar doğrular)
+
+### V39: Shard Size Doğrulaması Yok ⚪
+**Dosya:** `src/domain/storage_deal.rs:380-420`
+**Sorun:** `open_deal` shard size kontrolü yapmıyor. `ShardRef.size = 0` veya `u32::MAX` olabilir.
+**Öneri:** `MIN_SHARD_SIZE` ve `MAX_SHARD_SIZE` kontrolü eklenmeli.
+**Ciddiyet:** ⚪ Düşük (from_shards zaten size=0 reddediyor)
+
+### V40: Challenge Bond Minimum Yok ⚪
+**Dosya:** `src/domain/storage_deal.rs:460-480`
+**Sorun:** `opener_bond > 0` kontrolü var ama minimum miktar yok. Çok küçük bond ile spam challenge açılabilir.
+**Öneri:** `MIN_CHALLENGE_BOND` sabiti eklenmeli.
+**Ciddiyet:** ⚪ Düşük (bond > 0 zaten spam'i sınırlar)
+
+### V41: Replica Index Bounds Yok ⚪
+**Dosya:** `src/domain/storage_deal.rs:120-125`
+**Sorun:** `replica_index` için üst sınır yok. Aynı shard için sınırsız replica deal açılabilir.
+**Öneri:** `MAX_REPLICAS_PER_SHARD` sabiti eklenmeli.
+**Ciddiyet:** ⚪ Düşük (ekonomik maliyet sınırlar)
+
+### V42: Deal Expire Sadece Active ⚪
+**Dosya:** `src/domain/storage_deal.rs:600-620`
+**Sorun:** `expire_deal` sadece Active deal'leri expire eder. Slashed deal'ler state'de kalır (audit trail ama state bloat).
+**Öneri:** Slashed deal'ler için TTL-based cleanup mekanizması.
+**Ciddiyet:** ⚪ Düşük (audit trail önemli)
+
+---
+
+## Genel Değerlendirme
+
+| Modül | Kritik | Yüksek | Orta | Düşük |
+|-------|--------|--------|------|-------|
+| BNS | 0 | 0 | 2 (V33, V35) | 2 (V34, V36) |
+| B.U.D. | 1 (V37) | 0 | 1 (V38) | 3 (V39, V40, V41, V42) |
+
+**Toplam: 8 yeni bulgu (V33-V42), 1 kritik (V37), 3 orta, 4 düşük**
+
+**Kritik bulgu V37 detay:** Challenge answer hash doğrulaması yok — operatör veriyi silse bile challenge'ı geçebilir. Bu bilinçli bir limitation ("interim retrieval challenge") ama mainnet'te kapatılması gerekiyor.
+
+Co-authored-by: ARENAX <arenax@budlum.ai>
