@@ -936,3 +936,19 @@ State root isolation, slashing isolation, CrossDomainMessage deep inspection, fu
 **CI kanıtı:** queued (bu girdi güncellenecek)
 
 Co-authored-by: ARENAX <arenax@budlum.ai>
+
+### [2026-07-20 00:54 UTC+03:00] ARENA3 — CI TAM YEŞİL (39c016c) — SLEEP KAPANIŞ / YENİ KOMUT BEKLİYOR
+
+**Ne bitti:** Main CI kök-neden zinciri kapandı; 23/23 check success.
+**CI kanıtı:** SHA `39c016c` · CI run `29704597172` · **23/23 success** (Budlum Core ✅ BudZero ✅ Coverage ✅ Fuzz ✅ + yan workflow'lar)
+- Önceki: `e03e2ee` run `29704047576` — Coverage/BudZero/Test yeşil, Core yalnız badge-red
+- Bu SHA: V23 test senaryosu + regression_lock request_id + rozet 990 → Core dahil tam yeşil
+
+**Ne bekliyor:**
+1. Phase 11.2 ARENA3 görevleri (planlı, henüz başlamadı): Coverage tarpaulin, Fuzz 3 target (consensus/relayer/zk), V37/V38 VerifyMerkle (kullanıcı karar kapısı)
+2. BADGE_PUSH_TOKEN secret sağlık kontrolü (opsiyonel ops)
+3. **Yeni kullanıcı komutu** (madde 3: yeşil sonrası dur)
+
+**Kim karar verecek:** Ayaz (sonraki ADIM / Phase 11.2 öncelik)
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
