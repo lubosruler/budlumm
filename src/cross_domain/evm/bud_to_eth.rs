@@ -98,7 +98,9 @@ fn extract_burn_transfer<'a>(
     bridge: &'a BridgeState,
     message_id: &MessageId,
 ) -> Result<&'a BridgeTransfer, BudToEthError> {
-    bridge.transfer(message_id).ok_or(BudToEthError::BurnEventNotFound)
+    bridge
+        .transfer(message_id)
+        .ok_or(BudToEthError::BurnEventNotFound)
 }
 
 /// `AssetId` struct'ını (PR #50) sabit `[u8; 32]`'e dönüştür.
