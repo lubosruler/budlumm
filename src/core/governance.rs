@@ -142,11 +142,7 @@ impl GovernanceState {
 
     /// V71: Cancel a proposal. Only the original proposer can cancel.
     /// The proposal must still be Active.
-    pub fn cancel_proposal(
-        &mut self,
-        proposal_id: u64,
-        caller: &Address,
-    ) -> Result<(), String> {
+    pub fn cancel_proposal(&mut self, proposal_id: u64, caller: &Address) -> Result<(), String> {
         let proposal = self
             .proposals
             .iter_mut()
