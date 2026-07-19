@@ -22,17 +22,19 @@ use std::time::Duration;
 use budlum_core::core::account::AccountState;
 use budlum_core::core::address::Address;
 use budlum_core::core::block::Block;
+use budlum_core::core::chain_config::FIXED_POINT_SCALE;
+use budlum_core::core::hash::hash_fields_bytes;
 use budlum_core::core::transaction::{Transaction, TransactionType};
+use budlum_core::cross_domain::bridge::{AssetId, BridgeState};
 use budlum_core::crypto::primitives::KeyPair;
 use budlum_core::execution::executor::Executor;
-use budlum_core::registry::role::roles;
-use budlum_core::registry::permissionless::{PermissionlessRegistry, SlashingCondition, MIN_REGISTRATION_STAKE};
-use budlum_core::core::chain_config::FIXED_POINT_SCALE;
-use budlum_core::cross_domain::bridge::{AssetId, BridgeState};
-use budlum_core::core::hash::hash_fields_bytes;
-use budlum_core::storage::merkle_trie::MerkleTrie;
-use budlum_core::execution::proof_verifier::{ProofVerifier, ProofEnvelope, ExecutionPublicInputs};
+use budlum_core::execution::proof_verifier::{ExecutionPublicInputs, ProofEnvelope, ProofVerifier};
 use budlum_core::network::gossip_dedup::GossipDedup;
+use budlum_core::registry::permissionless::{
+    PermissionlessRegistry, SlashingCondition, MIN_REGISTRATION_STAKE,
+};
+use budlum_core::registry::role::roles;
+use budlum_core::storage::merkle_trie::MerkleTrie;
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -158,47 +160,39 @@ fn bench_state_root(c: &mut Criterion) {
         });
 
         // Merkle trie — single update
-        group.bench_with_input(
-            BenchmarkId::new("merkle_trie_update", n),
-            &n,
-            |b, &n| {
-                b.iter_with_setup(
-                    || {
-                        let mut trie = MerkleTrie::new();
-                        for i in 0..n as u8 {
-                            let a = addr(i);
-                            trie.insert(a.as_bytes(), (i as u64) * 1000, i as u64);
-                        }
-                        trie
-                    },
-                    |mut trie| {
-                        trie.insert(&addr(0xFF), 9999, 42);
-                        black_box(trie.root());
-                    },
-                )
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("merkle_trie_update", n), &n, |b, &n| {
+            b.iter_with_setup(
+                || {
+                    let mut trie = MerkleTrie::new();
+                    for i in 0..n as u8 {
+                        let a = addr(i);
+                        trie.insert(a.as_bytes(), (i as u64) * 1000, i as u64);
+                    }
+                    trie
+                },
+                |mut trie| {
+                    trie.insert(&addr(0xFF), 9999, 42);
+                    black_box(trie.root());
+                },
+            )
+        });
 
         // Merkle proof generation
-        group.bench_with_input(
-            BenchmarkId::new("merkle_proof_generate", n),
-            &n,
-            |b, &n| {
-                b.iter_with_setup(
-                    || {
-                        let mut trie = MerkleTrie::new();
-                        for i in 0..n as u8 {
-                            let a = addr(i);
-                            trie.insert(a.as_bytes(), (i as u64) * 1000, i as u64);
-                        }
-                        trie
-                    },
-                    |trie| {
-                        black_box(trie.proof(&addr(42)));
-                    },
-                )
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("merkle_proof_generate", n), &n, |b, &n| {
+            b.iter_with_setup(
+                || {
+                    let mut trie = MerkleTrie::new();
+                    for i in 0..n as u8 {
+                        let a = addr(i);
+                        trie.insert(a.as_bytes(), (i as u64) * 1000, i as u64);
+                    }
+                    trie
+                },
+                |trie| {
+                    black_box(trie.proof(&addr(42)));
+                },
+            )
+        });
     }
 
     group.finish();
@@ -301,7 +295,11 @@ fn bench_signatures(c: &mut Criterion) {
     let sig = kp.sign(msg);
     group.bench_function("ed25519_verify", |b| {
         b.iter(|| {
-            black_box(KeyPair::verify(black_box(msg), black_box(&sig), black_box(&kp.public_key_bytes())));
+            black_box(KeyPair::verify(
+                black_box(msg),
+                black_box(&sig),
+                black_box(&kp.public_key_bytes()),
+            ));
         })
     });
 
@@ -394,7 +392,8 @@ fn bench_registry(c: &mut Criterion) {
             || {
                 let mut reg = PermissionlessRegistry::new();
                 for i in 0..100u8 {
-                    reg.register_validator(addr(i), MIN_REGISTRATION_STAKE, 0).unwrap();
+                    reg.register_validator(addr(i), MIN_REGISTRATION_STAKE, 0)
+                        .unwrap();
                 }
                 reg
             },
@@ -417,9 +416,12 @@ fn bench_registry(c: &mut Criterion) {
                 reg
             },
             |mut reg| {
-                black_box(
-                    reg.slash(addr(50), roles::VALIDATOR, SlashingCondition::DoubleSign, FIXED_POINT_SCALE / 2),
-                );
+                black_box(reg.slash(
+                    addr(50),
+                    roles::VALIDATOR,
+                    SlashingCondition::DoubleSign,
+                    FIXED_POINT_SCALE / 2,
+                ));
             },
         )
     });
@@ -436,9 +438,12 @@ fn bench_registry(c: &mut Criterion) {
                 reg
             },
             |mut reg| {
-                black_box(
-                    reg.slash(addr(25), roles::VALIDATOR, SlashingCondition::DoubleSign, FIXED_POINT_SCALE / 2),
-                );
+                black_box(reg.slash(
+                    addr(25),
+                    roles::VALIDATOR,
+                    SlashingCondition::DoubleSign,
+                    FIXED_POINT_SCALE / 2,
+                ));
             },
         )
     });
@@ -449,7 +454,8 @@ fn bench_registry(c: &mut Criterion) {
             || {
                 let mut reg = PermissionlessRegistry::new();
                 for i in 0..100u8 {
-                    reg.register_validator(addr(i), MIN_REGISTRATION_STAKE, 0).unwrap();
+                    reg.register_validator(addr(i), MIN_REGISTRATION_STAKE, 0)
+                        .unwrap();
                 }
                 reg
             },
@@ -477,9 +483,7 @@ fn bench_bridge(c: &mut Criterion) {
                 (bridge, asset)
             },
             |(mut bridge, asset)| {
-                let _ = bridge.lock(
-                    1, 2, 10, 0, asset, addr(1), addr(2), 100, 1000,
-                );
+                let _ = bridge.lock(1, 2, 10, 0, asset, addr(1), addr(2), 100, 1000);
                 black_box(());
             },
         )
@@ -517,7 +521,17 @@ fn bench_bridge(c: &mut Criterion) {
                     let asset = AssetId(hash_fields_bytes(&[b"sweep", &[i]]));
                     bridge.register_asset(asset, 1).unwrap();
                     bridge
-                        .lock(1, 2, 10 + i as u64, i as u32, asset, addr(i), addr(i + 1), 100, 100 + i as u64)
+                        .lock(
+                            1,
+                            2,
+                            10 + i as u64,
+                            i as u32,
+                            asset,
+                            addr(i),
+                            addr(i + 1),
+                            100,
+                            100 + i as u64,
+                        )
                         .unwrap();
                 }
                 bridge
@@ -569,14 +583,20 @@ fn bench_proof(c: &mut Criterion) {
 
     group.bench_function("envelope_validate_structure", |b| {
         b.iter(|| {
-            black_box(ProofVerifier::validate_envelope_structure(black_box(&envelope)));
+            black_box(ProofVerifier::validate_envelope_structure(black_box(
+                &envelope,
+            )));
         })
     });
 
     // Full verify (structural + inputs hash)
     group.bench_function("full_verify", |b| {
         b.iter(|| {
-            black_box(ProofVerifier::verify(black_box(&envelope), black_box(&inputs), 1_000_000));
+            black_box(ProofVerifier::verify(
+                black_box(&envelope),
+                black_box(&inputs),
+                1_000_000,
+            ));
         })
     });
 

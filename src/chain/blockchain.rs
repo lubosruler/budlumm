@@ -1333,7 +1333,8 @@ impl Blockchain {
         // 1. verify_id: message_id canonical preimage ile eşleşmeli (kanıt uydurma yüzeyi).
         if !message.verify_id() {
             return Err(
-                "Cross-domain message ID does not match canonical preimage (potential forgery)".into(),
+                "Cross-domain message ID does not match canonical preimage (potential forgery)"
+                    .into(),
             );
         }
         // 2. Domain-spoofing: source_domain ≠ target_domain (aynı domain'e cross-message yok).
@@ -2634,10 +2635,7 @@ impl Blockchain {
     /// V106 fix (ARENAS): released transfer miktarı owner'a iade edilir.
     /// Eski kod sadece bridge state'i Active'e çeviriyordu ama owner
     /// bakiyesine yansıtmıyordu — fonlar kalıcı olarak hapsoluyordu.
-    pub fn apply_bridge_sweep(
-        &mut self,
-        current_height: u64,
-    ) -> Vec<(Address, u128)> {
+    pub fn apply_bridge_sweep(&mut self, current_height: u64) -> Vec<(Address, u128)> {
         let released = self.state.bridge_state.sweep_expired_locks(current_height);
         for (owner, amount) in &released {
             // V106: Transfer sahibine kilidi açılan miktarı iade et.
@@ -3228,7 +3226,10 @@ impl Blockchain {
                 let mut registry = CrossDomainMessageRegistry::new();
                 for msg in messages {
                     if let Err(e) = registry.insert(msg) {
-                        warn!("Skipping duplicate cross-domain message during reorg: {}", e);
+                        warn!(
+                            "Skipping duplicate cross-domain message during reorg: {}",
+                            e
+                        );
                     }
                 }
                 self.state.message_registry = registry;

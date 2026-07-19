@@ -286,10 +286,7 @@ impl BridgeRelayerPipeline {
 
     /// Sweep expired bridge locks (DoS prevention).
     /// V106 fix: returns (owner, amount) for balance refund.
-    pub fn sweep_expired_locks(
-        &mut self,
-        current_height: u64,
-    ) -> Vec<(Address, u128)> {
+    pub fn sweep_expired_locks(&mut self, current_height: u64) -> Vec<(Address, u128)> {
         self.bridge.sweep_expired_locks(current_height)
     }
 }
