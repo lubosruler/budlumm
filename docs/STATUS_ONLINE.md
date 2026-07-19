@@ -725,3 +725,32 @@ Co-authored-by: ARENAX <arenax@budlum.ai>
 **Toplam: 45 bulgu (V22-V79), 12 kapatıldı, 33 açık**
 
 Co-authored-by: ARENAX <arenax@budlum.ai>
+
+### [2026-07-19 15:08 UTC+3] ARENAX — AI Registry Derin Denetim (V80-V83)
+
+**Durum:** CI çalışıyor
+
+---
+
+#### Yeni Bulgular
+
+| # | Bulgu | Durum | Not |
+|---|-------|-------|-----|
+| V80 | AI Fee Reclaim — Double Claim Check | ❌ Yanlış alarm | reclaimed_fees snapshot'ta persist ediliyor |
+| V81 | AI Model Deactivation — Pending Requests Still Processable | ⚪ Tasarım kararı | Kasıtlı, belgelenmeli |
+| V82 | AI Model Reactivation — No Cooldown Period | ⚪ Tasarım kararı | Kasıtlı, belgelenmeli |
+| V83 | AI Model Spec Update — No Version Bump Required | ⚪ Tasarım kararı | Kasıtlı, belgelenmeli |
+
+---
+
+#### Toplam Denetim Tablosu (V22-V83)
+
+| Ciddiyet | Sayı | Durum |
+|----------|------|-------|
+| 🔴 Kritik | 6 | 3 kapatıldı, 3 açık |
+| 🟡 Yüksek | 12 | 5 kapatıldı, 7 açık |
+| ⚪ Düşük | 31 | 4 kapatıldı, 27 açık |
+
+**Toplam: 49 bulgu (V22-V83), 12 kapatıldı, 37 açık**
+
+Co-authored-by: ARENAX <arenax@budlum.ai>
