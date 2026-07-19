@@ -1,3 +1,5 @@
+#![allow(clippy::pedantic)]
+
 //! F10.5 Bud→ETH yönü — Budlum burn event + finality proof → Ethereum claim.
 //!
 //! RFC `docs/RFC_F10_EVM_CHAIN_ADAPTER.md` §4.2. İki taraf:

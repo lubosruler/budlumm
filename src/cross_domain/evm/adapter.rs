@@ -1,3 +1,5 @@
+#![allow(clippy::pedantic)]
+
 //! F10.4 EvmChainAdapter — gerçek ChainAdapter impl (H4 tam canlı yol).
 //!
 //! RFC `docs/RFC_F10_EVM_CHAIN_ADAPTER.md` §5. İki taraf:
