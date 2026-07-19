@@ -450,7 +450,9 @@ impl BridgeState {
     ///
     /// Idempotent: transfers already past `expiry_height` stay `Active`
     /// once released; subsequent calls are no-ops.
-    pub fn sweep_expired_locks(&mut self, current_height: u64) -> Vec<(AssetId, u128)> {
+    /// Sweep expired locks and return (owner, amount) for balance refund.
+    /// V106 fix (ARENAS): owner bilgisi döndürülür ki caller bakiye iadesi yapabilsin.
+    pub fn sweep_expired_locks(&mut self, current_height: u64) -> Vec<(Address, u128)> {
         let mut released = Vec::new();
 
         // Phase 9 (ARENA2): O(log N) sweep using the expiry queue.
@@ -469,7 +471,7 @@ impl BridgeState {
                             t.status = BridgeStatus::Active { domain };
                             self.asset_locations
                                 .insert(t.asset_id, BridgeStatus::Active { domain });
-                            released.push((t.asset_id, t.amount));
+                            released.push((t.owner, t.amount));
                         }
                     }
                 }

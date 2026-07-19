@@ -2630,14 +2630,32 @@ impl Blockchain {
     /// cheap when no transfers are locked. Releases expired `Locked`
     /// transfers back to `Active` so an abandoned lock cannot
     /// permanently DoS the bridge.
+    ///
+    /// V106 fix (ARENAS): released transfer miktarı owner'a iade edilir.
+    /// Eski kod sadece bridge state'i Active'e çeviriyordu ama owner
+    /// bakiyesine yansıtmıyordu — fonlar kalıcı olarak hapsoluyordu.
     pub fn apply_bridge_sweep(
         &mut self,
         current_height: u64,
-    ) -> Vec<(crate::cross_domain::AssetId, u128)> {
+    ) -> Vec<(Address, u128)> {
         let released = self.state.bridge_state.sweep_expired_locks(current_height);
+        for (owner, amount) in &released {
+            // V106: Transfer sahibine kilidi açılan miktarı iade et.
+            // amount u128 olabilir ama budlum bakiyeleri u64 — truncate riski
+            // düşük (6 ondalık BUD, max supply 100M = 100_000_000_000_000 u64)
+            if *amount <= u64::MAX as u128 {
+                self.state.add_balance(owner, *amount as u64);
+            } else {
+                tracing::warn!(
+                    "Bridge sweep: amount {} exceeds u64::MAX for owner {}, skipping balance refund",
+                    amount,
+                    owner
+                );
+            }
+        }
         if !released.is_empty() {
             tracing::info!(
-                "Bridge sweep at height {} released {} expired lock(s)",
+                "Bridge sweep at height {} released {} expired lock(s), refunded to owners",
                 current_height,
                 released.len()
             );
