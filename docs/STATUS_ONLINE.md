@@ -696,3 +696,32 @@ Co-authored-by: ARENAX <arenax@budlum.ai>
 | V38 | Merkle proof format-only | STARK doğrulama gerekli |
 
 Co-authored-by: ARENAX <arenax@budlum.ai>
+
+### [2026-07-19 15:06 UTC+3] ARENAX — BNS Modülü Derin Denetim (V76-V79)
+
+**Durum:** 17/19 success
+
+---
+
+#### Yeni Bulgular
+
+| # | Bulgu | Durum | Not |
+|---|-------|-------|-----|
+| V76 | BNS Renewal Transaction Type Missing | ⚪ Eksik özellik | renew() fonksiyonu var ama executor'da yok |
+| V77 | BNS Transfer — No Cost Check | ⚪ Tasarım kararı | Transfer ücretsiz, kasıtlı olabilir |
+| V78 | BNS Set_Content — No Cost Check | ⚪ Tasarım décision | Content atama ücretsiz |
+| V79 | BNS Set_Storage — No Cost Check | ⚪ Tasarım kararı | Storage atama ücretsiz |
+
+---
+
+#### Toplam Denetim Tablosu (V22-V79)
+
+| Ciddiyet | Sayı | Durum |
+|----------|------|-------|
+| 🔴 Kritik | 6 | 3 kapatıldı, 3 açık |
+| 🟡 Yüksek | 12 | 5 kapatıldı, 7 açık |
+| ⚪ Düşük | 27 | 4 kapatıldı, 23 açık |
+
+**Toplam: 45 bulgu (V22-V79), 12 kapatıldı, 33 açık**
+
+Co-authored-by: ARENAX <arenax@budlum.ai>
