@@ -115,7 +115,9 @@ fn asset_id_to_array(transfer: &BridgeTransfer) -> [u8; 32] {
 /// Relayer bu fonksiyonu çağırır: Budlum node'dan burn transfer + finality
 /// state toplar → `BudToEthClaim` (Ethereum bridge kontratına gönderilecek
 /// calldata). Ethereum kontratı Budlum finality'sini verify edip unlock eder.
-pub fn build_bud_to_eth_claim(input: &BudToEthClaimInput<'_>) -> Result<BudToEthClaim, BudToEthError> {
+pub fn build_bud_to_eth_claim(
+    input: &BudToEthClaimInput<'_>,
+) -> Result<BudToEthClaim, BudToEthError> {
     // 1. Transfer mevcut (tek lookup, erken dönüş).
     let transfer = extract_burn_transfer(input.bridge, input.message_id)?;
 
