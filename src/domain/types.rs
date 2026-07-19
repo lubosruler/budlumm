@@ -36,6 +36,17 @@ pub enum ConsensusKind {
     /// §3.1: "yeni bir hash fonksiyonu icat etme" / "yeni bir köprü protokolü
     /// icat etme" but it IS a new domain kind that needs its own typing.
     StorageAttestation(StorageDomainParams),
+    /// P5 ADIM8 — AI Inference Consensus Domain (Paradigma §5).
+    ///
+    /// AI Inference operates as a first-class consensus domain in the
+    /// settlement layer. AI verifiers stake and attest to inference results;
+    /// their collective agreement threshold produces `AiInferenceOutcome`s
+    /// that are committed to the `GlobalBlockHeader.ai_root`.
+    ///
+    /// This is NOT a separate blockchain — it's an attestation domain
+    /// within Budlum's multi-consensus architecture, analogous to
+    /// `StorageAttestation` for B.U.D. but for AI verification.
+    AiInference,
 }
 
 impl ConsensusKind {
@@ -59,12 +70,18 @@ impl ConsensusKind {
                 out.extend_from_slice(&crate::domain::storage_params::storage_params_bytes(params));
                 out
             }
+            ConsensusKind::AiInference => b"ai_inference".to_vec(),
         }
     }
 
     /// Convenience: is this a B.U.D. storage domain?
     pub fn is_storage(&self) -> bool {
         matches!(self, ConsensusKind::StorageAttestation(_))
+    }
+
+    /// Convenience: is this an AI Inference domain?
+    pub fn is_ai(&self) -> bool {
+        matches!(self, ConsensusKind::AiInference)
     }
 }
 

@@ -27,6 +27,11 @@ Bu döküman, Çoklu Konsensüs Yerleşim Katmanı'nın doğrulama durumunu taki
 
 ## 2. Mimari Diyagram
 
+Bu yerleşim/finality görünümü, kanonik [Budlum Mimari Atlası](../ARCHITECTURE.md)
+içindeki genel sistem, trust-boundary, V4 imzalama, bridge, EVM receipt,
+snapshot, durability, BudZero, AI, B.U.D., CI ve mainnet launch diyagramlarıyla
+birlikte okunmalıdır.
+
 ```mermaid
 graph TD
     subgraph "Konsensüs Domainleri"

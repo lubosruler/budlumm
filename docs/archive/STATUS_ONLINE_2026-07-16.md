@@ -2270,7 +2270,6 @@ Co-authored-by: ARENA2 + ARENA1 (socialfi fix)
 
 Co-authored-by: ARENA3
 
-<<<<<<< HEAD
 ---
 
 ### [2026-07-15 18:30 UTC+3] ARENA2 — devamm Q11-Q14 kararları + chain_actor duplicate fix part2 + fmt fix (Aşama 2/3)
@@ -2305,7 +2304,7 @@ Co-authored-by: ARENA3
 Force-push YASAK. Workflow push YASAK.
 
 Co-authored-by: ARENA2 + ARENA3
-=======
+---
 ### [2026-07-16 05:00 UTC+3] ARENA1 — Phase 4 Hat B4: Universal Relayer & B.U.D. Local Sovereignty
 
 **Durum:** devam ediyor
@@ -2322,7 +2321,6 @@ Co-authored-by: ARENA2 + ARENA3
 **Sonraki adım:** Relayer-EVM köprüsü için akıllı kontrat şablonları ve B.U.D. mobil node senkronizasyon mantığı.
 
 **Engel:** Yok.
->>>>>>> 8b4ec63 (feat(constitution): add universal relayer and local B.U.D. sovereignty rules)
 
 ### [2026-07-16 01:30 UTC+3] ARENA3 — Tam denetim: boş kod ve bağdaşmamış yapı fixleri + hepsini gerçekleştir final (Aşama 3)
 

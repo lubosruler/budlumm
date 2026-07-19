@@ -195,12 +195,12 @@ impl Executor {
                             ));
                         }
 
-                        state.governance.create_proposal(
-                            tx.from,
-                            p_type,
-                            state.epoch_index,
-                            duration,
-                        );
+                        state
+                            .governance
+                            .create_proposal(tx.from, p_type, state.epoch_index, duration)
+                            .map_err(|e| {
+                                BudlumError::validation("governance_proposal_creation_failed", e)
+                            })?;
                     }
                 }
             }
@@ -228,12 +228,28 @@ impl Executor {
                                 .unwrap_or_default(),
                             max_fee,
                             callback: Some(tx.from),
-                            submitted_at_block: state.epoch_index.saturating_mul(100),
+                            submitted_at_block: state.current_block_height,
                             deadline_block,
                         };
                         req.request_id = req.calculate_id();
-                        let current_block = state.epoch_index.saturating_mul(100);
-                        let _ = state.ai_registry.submit_request(req, current_block);
+                        let current_block = state.current_block_height;
+                        // P5 Bulgu 14+17: Previously the error was silently swallowed
+                        // with `let _ = ...`, and max_fee was never deducted from the
+                        // sender's balance. Now we properly handle the result:
+                        // - On success: deduct max_fee from sender balance (escrow)
+                        // - On failure: don't deduct max_fee, but the contract call
+                        //   fee was already consumed by the ZKVM execution
+                        match state.ai_registry.submit_request(req, current_block) {
+                            Ok(_) => {
+                                // Deduct max_fee from sender (escrow for verifiers)
+                                let sender = state.get_or_create(&tx.from);
+                                sender.balance = sender.balance.saturating_sub(max_fee);
+                            }
+                            Err(_) => {
+                                // Request rejected (deadline, max_fee=0, etc.)
+                                // max_fee NOT deducted — no fee leak
+                            }
+                        }
                     }
                 }
 
@@ -630,7 +646,7 @@ impl Executor {
                     }
                 }
                 // P5 Bulgu 1 — Executor-layer deadline enforcement (defense-in-depth):
-                let current_block = state.epoch_index.saturating_mul(100);
+                let current_block = state.current_block_height;
                 state
                     .ai_registry
                     .submit_request(req.clone(), current_block)
@@ -664,12 +680,22 @@ impl Executor {
                         }
                     }
                 }
+                // P5 ADIM11 Bulgu 33: Verifier whitelist check.
+                // If whitelist is active, only whitelisted+staked verifiers
+                // can submit results. This enables governance-controlled
+                // verifier onboarding for the Agentic Economy.
+                if !state.ai_registry.is_verifier_authorized(&tx.from) {
+                    return Err(BudlumError::validation(
+                        "ai_verifier_not_whitelisted",
+                        "Verifier is not authorized (whitelist mode active, verifier not whitelisted or not staked)",
+                    ));
+                }
                 let mut res = res.clone();
                 if res.verifier != tx.from {
                     res.verifier = tx.from;
                 }
                 // P5 Bulgu 1 — Executor-layer deadline enforcement (defense-in-depth):
-                let current_block = state.epoch_index.saturating_mul(100);
+                let current_block = state.current_block_height;
                 let outcome = state
                     .ai_registry
                     .submit_result(res.clone(), current_block)
@@ -679,11 +705,20 @@ impl Executor {
                     let req = state.ai_registry.requests.get(&finalized.request_id);
                     if let Some(req) = req {
                         if !finalized.agreeing_verifiers.is_empty() {
-                            let reward_per_verifier =
-                                req.max_fee / finalized.agreeing_verifiers.len() as u64;
-                            for verifier_addr in &finalized.agreeing_verifiers {
+                            // P5 Bulgu 16: Integer division remainder protection.
+                            // max_fee / verifier_count loses the remainder.
+                            // Distribute remaining units to verifiers in order
+                            // (first verifier gets the extra unit).
+                            let verifier_count = finalized.agreeing_verifiers.len() as u64;
+                            let reward_per_verifier = req.max_fee / verifier_count;
+                            let remainder = req.max_fee % verifier_count;
+                            for (i, verifier_addr) in
+                                finalized.agreeing_verifiers.iter().enumerate()
+                            {
                                 let acc = state.get_or_create(verifier_addr);
-                                acc.balance = acc.balance.saturating_add(reward_per_verifier);
+                                let extra = if (i as u64) < remainder { 1 } else { 0 };
+                                acc.balance =
+                                    acc.balance.saturating_add(reward_per_verifier + extra);
                             }
                         }
                     }
@@ -696,7 +731,7 @@ impl Executor {
             TransactionType::AiFeeReclaim(request_id) => {
                 // P5 Bulgu 4: Reclaim escrowed max_fee for expired unfinalized request.
                 // Only the original requester can reclaim their fee.
-                let current_block = state.epoch_index.saturating_mul(100);
+                let current_block = state.current_block_height;
                 let (requester, max_fee) = state
                     .ai_registry
                     .reclaim_fee(&request_id, current_block)
@@ -728,6 +763,90 @@ impl Executor {
                 let sender = state.get_or_create(&tx.from);
                 sender.balance = sender.balance.saturating_sub(tx.fee);
                 sender.nonce = sender.nonce.saturating_add(1);
+            }
+            TransactionType::AiModelReactivate(model_id) => {
+                // P5 ADIM7 Bulgu 6 extension: Reactivate a previously
+                // deactivated AI model (owner-only).
+                state
+                    .ai_registry
+                    .reactivate_model(&model_id, &tx.from)
+                    .map_err(|e| BudlumError::validation("ai_model_reactivate_failed", e))?;
+
+                let sender = state.get_or_create(&tx.from);
+                sender.balance = sender.balance.saturating_sub(tx.fee);
+                sender.nonce = sender.nonce.saturating_add(1);
+            }
+            TransactionType::AiRequestCancel(request_id) => {
+                // P5 ADIM7 Bulgu 21: Cancel a pending AI inference request.
+                // Only the original requester can cancel. Escrowed max_fee
+                // is refunded to the requester.
+                let current_block = state.current_block_height;
+                let (requester, max_fee) = state
+                    .ai_registry
+                    .cancel_request(&request_id, &tx.from, current_block)
+                    .map_err(|e| BudlumError::validation("ai_request_cancel_failed", e))?;
+
+                // Refund escrowed max_fee to the requester
+                let requester_acc = state.get_or_create(&requester);
+                requester_acc.balance = requester_acc.balance.saturating_add(max_fee);
+
+                let sender = state.get_or_create(&tx.from);
+                sender.balance = sender.balance.saturating_sub(tx.fee);
+                sender.nonce = sender.nonce.saturating_add(1);
+            }
+            TransactionType::AiDisputeSlash {
+                request_id,
+                verifier,
+            } => {
+                // P5 ADIM8 Bulgu 23 + ADIM9 Bulgu 25+26: Slash a verifier
+                // for equivocation (with dispute window enforcement).
+                let current_block = state.current_block_height;
+                let (slashed_verifier, seized_stake) = state
+                    .ai_registry
+                    .slash_equivocator(&request_id, &verifier, current_block)
+                    .map_err(|e| BudlumError::validation("ai_dispute_slash_failed", e))?;
+                if let Some(validator) = state.validators.get_mut(&slashed_verifier) {
+                    validator.slashed = true;
+                    validator.active = false;
+                    validator.stake = 0;
+                }
+                // P5 ADIM9 Bulgu 26: Burn seized verifier stake (or send to treasury).
+                // For now, burned — prevents economic incentive to slash falsely.
+                let _ = seized_stake; // Burned
+                let sender = state.get_or_create(&tx.from);
+                sender.balance = sender.balance.saturating_sub(tx.fee);
+                sender.nonce = sender.nonce.saturating_add(1);
+            }
+            TransactionType::AiAgentPayment(payment) => {
+                // P5 ADIM11 Bulgu 31: Agent-to-Agent payment in Agentic Economy.
+                let current_block = state.current_block_height;
+                let total_cost = payment.amount.saturating_add(tx.fee);
+                // Check sender has sufficient balance
+                if state.get_balance(&tx.from) < total_cost {
+                    return Err(BudlumError::validation(
+                        "ai_payment_insufficient_funds",
+                        "Insufficient funds for agent payment + fee",
+                    ));
+                }
+                // Validate and register the payment
+                state
+                    .ai_registry
+                    .submit_agent_payment(payment.clone(), current_block)
+                    .map_err(|e| BudlumError::validation("ai_payment_invalid", e))?;
+                // Deduct from sender immediately
+                let sender = state.get_or_create(&tx.from);
+                sender.balance = sender.balance.saturating_sub(total_cost);
+                sender.nonce = sender.nonce.saturating_add(1);
+                // If not escrowed, credit recipient immediately
+                if !payment.is_escrowed() {
+                    let recipient = state.get_or_create(&payment.to_agent);
+                    recipient.balance = recipient.balance.saturating_add(payment.amount);
+                    // Remove from registry (already settled)
+                    state.ai_registry.agent_payments.remove(&payment.payment_id);
+                }
+                // If escrowed, balance stays deducted but recipient is not
+                // credited until release_agent_payment is called (by executor
+                // on outcome finalization or by explicit release tx).
             }
         }
 

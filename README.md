@@ -4,8 +4,8 @@
 
 Budlum is a research-grade Layer-1 that does **not** replace other chains. It **settles** them: each domain keeps its own consensus (PoW, PoS, PoA, BFT, ZK, or custom); Budlum verifies finality proofs and records cross-domain value transfer as cryptographic fact.
 
-[![CI](https://github.com/lubosruler/budlum/actions/workflows/ci.yml/badge.svg)](https://github.com/lubosruler/budlum/actions)
-[![Tests](https://img.shields.io/badge/tests-791%20lib-blue)](https://github.com/lubosruler/budlum)
+[![CI](https://github.com/budlum-xyz/budlum/actions/workflows/ci.yml/badge.svg)](https://github.com/budlum-xyz/budlum/actions)
+[![Tests](https://img.shields.io/badge/tests-975%20lib-blue)](https://github.com/budlum-xyz/budlum)
 [![Rust](https://img.shields.io/badge/rust-1.94%2B-orange)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -29,6 +29,11 @@ modül satırında (ve modül README'sinde) kalır.
 | BudZero (BudZKVM) | **124** (`cargo test --workspace`, CI-kanıtlı) | `BudZero / BudZKVM` job | Z-B 64-derinlik Production-gated — ayrıntı: `budzero/README.md` |
 | B.U.D. | **12 zorunlu** (9 invariant + 3 e2e) | `B.U.D. E2E Invariants` job + `scripts/check-bud-e2e.sh` | devnet-only; sahte-yeşil riski işaretli — `src/storage/README.md` |
 | BNS (`.bud`) | **8 test** (`test_bns_*`) | `BNS Name Registry` job + `scripts/check-bns-gate.sh` | iskelet mevcut; genişletme ayrı talimat — `src/bns/README.md` |
+| EVM ChainAdapter | **58 test** (RLP+MPT+receipt+header+verify) | `Budlum Core` job (F10.1+F10.2 ship edildi) | H4 kapanması (kriptografik receipt verify); sync-committee opsiyonel — `src/cross_domain/evm/README.md` |
+| AI Inference | **76 test** (P0+P5 ship) | `Budlum Core` job | attestation model (zkML DEĞİL); F06 largely closed — `src/ai/README.md` |
+| Pollen (B.U.D. Marketplace) | **8 test** (P0 tipler) | `Budlum Core` job (P1+ sonrası gate adayı) | iskelet (P0); Faz-1 soft-enforcement — `src/pollen/README.md` |
+| Hub Registry | iskelet (parent suite) | — | mainnet v1 kapsam dışı (M10) — `src/hub/README.md` |
+| SocialFi/NFT | parent suite | — | mainnet v1 kapsam dışı (M10) — `src/socialfi/README.md` |
 
 Not: Core'un 755 sayısı B.U.D. ve BNS testlerini de içerir (paylaşılan lib suite);
 modül satırları kendi isim-kilitli kapılarını ayrıca raporlar.
@@ -52,21 +57,20 @@ Strategic analysis: [`docs/03_paradigma_analizi.md`](docs/03_paradigma_analizi.m
 
 ## Architecture
 
+```mermaid
+flowchart TB
+  Domains[PoW · PoS · BFT · ZK domains] --> Finality[Domain finality adapters]
+  PoA[Isolated PoA / KYC domain] --> PoAFinality[PoA finality adapter]
+  Finality --> L1[Budlum Settlement L1]
+  PoAFinality --> L1
+  L1 --> State[Global state / snapshots]
+  L1 --> Bridge[Cross-domain bridge]
+  L1 --> ZK[BudZero / BudZKVM]
 ```
-   PoW domain    PoS domain    PoA domain    ZK / Custom
-        \             |             |             /
-         \            |             |            /
-          v           v             v           v
-        DomainFinalityAdapter  (per-consensus proof)
-                          |
-                          v
-              ┌───────────────────────────┐
-              │   BUDLUM SETTLEMENT L1    │
-              │  GlobalBlockHeader        │
-              │  BridgeState + nonces     │
-              │  BudZKVM proofs (BudZero) │
-              └───────────────────────────┘
-```
+
+See the [Architecture Atlas](docs/ARCHITECTURE.md) for detailed system,
+trust-boundary, transaction signing, bridge, EVM verification, snapshot,
+durability, AI, B.U.D., CI and mainnet-launch diagrams.
 
 **Crates / layout**
 
@@ -83,7 +87,8 @@ Strategic analysis: [`docs/03_paradigma_analizi.md`](docs/03_paradigma_analizi.m
 | `budzero/` | BudZKVM ISA, VM, compiler, state and STARK prover workspace |
 
 Since Phase 0.37, **BudZero is integrated into this repository**. The former
-`lubosruler/BudZero` repository is historical input, not a build-time dependency.
+`lubosruler/BudZero` repository (historical) is not a build-time dependency.
+The canonical repository is `budlum-xyz/budlum`.
 
 ---
 
@@ -91,7 +96,7 @@ Since Phase 0.37, **BudZero is integrated into this repository**. The former
 
 ```bash
 # Requires Rust 1.94+, protoc
-git clone https://github.com/lubosruler/budlum.git
+git clone https://github.com/budlum-xyz/budlum.git
 cd budlum
 
 # L1 (uses the in-tree budzero crates)
@@ -158,6 +163,42 @@ Aligned with [budlum-xyz/Budlum](https://github.com/budlum-xyz/Budlum) Research 
 | B.U.D. storage network | Implemented (Faz 1-2 + Faz 5 iskeleti); Faz 3 pending Z-B gate | **Phase 0.38** |
 | External audit / TLA+ / Privacy / AI | External audit checklist ready; TLA+/Privacy/AI remain research — not claimed audited | PHASE **2.5** |
 
+## Mainnet v1 Kapsamı
+
+Bu bölüm, mainnet v1 lansmanında **ne var** ve **ne yok** olduğunu netleştirir.
+
+### Mainnet v1'de VAR
+
+- Multi-consensus L1 (PoW / PoS / BFT / PoA)
+- BLS + Dilithium finality
+- Bridge lifecycle (lock/mint/burn/unlock)
+- BudZKVM host (in-tree)
+- B.U.D. storage (Faz 1-2 + Faz 5 iskeleti; Faz 3 VerifyMerkle gate sonrası)
+- BNS (.bud name service)
+- SocialFi NFT sistemi
+- AI Inference layer (model kayıt, attestation, soft incentive)
+- Universal Relayer (permissionless)
+- $BUD tokenomics (100M sabit arz, vesting, yakım)
+- Governance (parametre değişikliği, kanıtlı slashing)
+- EVM ChainAdapter (F10 RLP + MPT + receipt verify)
+
+### Mainnet v1'de YOK (v2 planı)
+
+| Özellik | Durum | Neden v1'de yok |
+|---------|-------|-----------------|
+| Formal verification (TLA+ / Coq) | Araştırma aşamasında | Kapsamlı formal modelleme zaman gerektirir |
+| Privacy layer (ZK-based) | Araştırma aşamasında | VerifyMerkle 64-depth production gate sonrası |
+| AI execution layer | Araştırma aşamasında | Zincir-üzeri AI çalıştırma henüz tasarlanmadı |
+| Full Z-B Merkle soundness | Production-gated | 64-depth pozitif/negatif test seti bekleniyor |
+| Vendor-native BLS/PQ HSM | Mock backend mevcut | Gerçek donanım entegrasyonu operasyonel |
+
+### Mainnet v1 Kapsam Dışı
+
+- Launchpad / presale mekanizmaları
+- $LUM token (ayrı proje)
+- DeEd (Decentralized Education) — ayrı repo
+- Budlum Go (supply chain) — ayrı repo
+
 ## Research Roadmap Status (Budlum + BudZero — B.U.D. Hariç)
 
 **Son güncelleme:** 2026-07-15 (Phase 2 §1.3-§1.7 kapanış paketi).
@@ -167,7 +208,7 @@ maddelerinin durumunu gösterir. B.U.D. (Broad Universal Database) **bu
 tablodan bilinçli olarak hariç tutulmuştur** — ayrı turlarda
 (Phase 0.38/0.40/0.42+) takip edilir.
 
-| Madde (org) | Durum (lubosruler fork, 2026-07-15) | Adım |
+| Madde (org) | Durum (budlum-xyz, 2026-07-19) | Adım |
 |-------------|--------------------------------------|-----|
 | Devnet economic hardening | ✅ Closed (erken turlar + tokenomics) | — |
 | Settlement atomicity | ✅ Closed | — |
@@ -264,4 +305,3 @@ MIT — see [LICENSE](LICENSE).
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Prefer small, tested PRs that keep CI green.
-# trigger CI

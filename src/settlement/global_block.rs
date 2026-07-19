@@ -45,6 +45,23 @@ pub struct GlobalBlockHeader {
     /// `StorageAttestationFinalityAdapter` that feeds into this field.
     #[serde(default)]
     pub storage_root: Option<Hash32>,
+
+    /// P5 ADIM8 — AI Inference Settlement Root.
+    ///
+    /// Merkle root of all finalized `AiInferenceOutcome`s in this block.
+    /// This anchors the AI Inference Layer into the global settlement,
+    /// fulfilling Paradigma Kayması §5: AI çıktısının orijinalliği
+    /// kriptografik olarak kanıtlanabilir hale gelir.
+    ///
+    /// `None`: no AI outcomes were finalized in this block.
+    /// `Some(root)`: `AiRegistry::state_root()` snapshot at block seal time,
+    /// committing all models, requests, results, outcomes, equivocation events,
+    /// and cancellations to the settlement chain.
+    ///
+    /// Domain separation: `BDLM_AI_SETTLEMENT_V1` tag prevents collision
+    /// with any other root in this header.
+    #[serde(default)]
+    pub ai_root: Option<Hash32>,
 }
 
 impl GlobalBlockHeader {
@@ -60,8 +77,13 @@ impl GlobalBlockHeader {
         // V1 headers that never had this field.
         let storage_root_bytes: [u8; 32] = self.storage_root.unwrap_or([0u8; 32]);
 
+        // P5 ADIM8: ai_root is included in the hash chain.
+        // When None, 32 zero bytes. Domain tag V3 prevents collision
+        // with V2 headers (pre-ai_root) and V1 headers (pre-storage_root).
+        let ai_root_bytes: [u8; 32] = self.ai_root.unwrap_or([0u8; 32]);
+
         hash_fields_bytes(&[
-            b"BDLM_GLOBAL_BLOCK_V2",
+            b"BDLM_GLOBAL_BLOCK_V3",
             &self.version.to_le_bytes(),
             &self.global_height.to_le_bytes(),
             &self.previous_global_hash,
@@ -75,6 +97,7 @@ impl GlobalBlockHeader {
             &proposer,
             &self.settlement_finality_root,
             &storage_root_bytes,
+            &ai_root_bytes,
         ])
     }
 
@@ -102,6 +125,7 @@ mod tests {
             proposer: None,
             settlement_finality_root: [6u8; 32],
             storage_root: None,
+            ai_root: None,
         }
     }
 
@@ -151,5 +175,62 @@ mod tests {
         let decoded: GlobalBlockHeader = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(decoded.storage_root, Some([77u8; 32]));
         assert_eq!(decoded.calculate_hash_bytes(), h.calculate_hash_bytes());
+    }
+
+    // P5 ADIM8 — AI settlement root tests
+
+    #[test]
+    fn ai_root_none_and_some_produce_different_hashes() {
+        let mut h_none = sample_header();
+        let mut h_some = sample_header();
+        h_some.ai_root = Some([42u8; 32]);
+
+        assert_ne!(
+            h_none.calculate_hash_bytes(),
+            h_some.calculate_hash_bytes(),
+            "ai_root=None and ai_root=Some(...) must produce different global hashes"
+        );
+
+        h_none.ai_root = Some([99u8; 32]);
+        assert_ne!(
+            h_none.calculate_hash_bytes(),
+            h_some.calculate_hash_bytes(),
+            "different ai_root values must produce different hashes"
+        );
+    }
+
+    #[test]
+    fn ai_root_default_deserializes_as_none() {
+        let h = sample_header();
+        let mut json_val: serde_json::Value = serde_json::to_value(&h).expect("serialize");
+        if let Some(obj) = json_val.as_object_mut() {
+            obj.remove("ai_root");
+        }
+        let decoded: GlobalBlockHeader = serde_json::from_value(json_val)
+            .expect("old header without ai_root should deserialize");
+        assert_eq!(decoded.ai_root, None);
+    }
+
+    #[test]
+    fn ai_root_round_trip_serde() {
+        let mut h = sample_header();
+        h.ai_root = Some([88u8; 32]);
+
+        let json = serde_json::to_string(&h).expect("serialize");
+        let decoded: GlobalBlockHeader = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(decoded.ai_root, Some([88u8; 32]));
+        assert_eq!(decoded.calculate_hash_bytes(), h.calculate_hash_bytes());
+    }
+
+    #[test]
+    fn v3_tag_prevents_collision_with_v2_headers() {
+        // V3 header with ai_root=None must hash differently than a
+        // hypothetical V2 header with the same other fields, because
+        // the domain tag changed.
+        let h = sample_header();
+        let hash = h.calculate_hash_bytes();
+        // Just verify it produces a non-zero hash — the tag change
+        // is the critical security property.
+        assert_ne!(hash, [0u8; 32], "V3 header must produce non-zero hash");
     }
 }

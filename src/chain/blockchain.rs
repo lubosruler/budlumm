@@ -603,6 +603,7 @@ impl Blockchain {
             ConsensusKind::StorageAttestation(_) => {
                 domain.finality_adapter == "storage-attestation-v1"
             }
+            ConsensusKind::AiInference => domain.finality_adapter == "ai-inference-threshold",
             ConsensusKind::Custom(name) => {
                 if name.trim().is_empty() {
                     return Err(format!(
@@ -963,6 +964,16 @@ impl Blockchain {
                 self.ensure_adapter_name(domain, adapter.adapter_name())?;
                 adapter.verify_finality(domain, commitment, proof)
             }
+            ConsensusKind::AiInference => {
+                // P5 ADIM8: AI Inference domain uses threshold-based finality.
+                // An outcome is finalized when agreement_threshold verifiers
+                // submit matching output_commitments — verified in AiRegistry.
+                // At the settlement layer, we verify the outcome root matches
+                // the commitment's claimed root.
+                let adapter = crate::domain::StorageAttestationFinalityAdapter;
+                self.ensure_adapter_name(domain, adapter.adapter_name())?;
+                adapter.verify_finality(domain, commitment, proof)
+            }
         }
         .map_err(|e| e.to_string())?;
 
@@ -1056,6 +1067,15 @@ impl Blockchain {
             proposer,
             settlement_finality_root,
             storage_root,
+            // P5 ADIM8: Anchor AI Inference Layer into global settlement.
+            // When AiRegistry has any state, its root is committed here;
+            // when empty, None ensures no bloat. This fulfills Paradigma
+            // §5 — AI outcomes are cryptographically provable at settlement.
+            ai_root: if self.state.ai_registry.is_empty() {
+                None
+            } else {
+                Some(self.state.ai_registry.state_root())
+            },
         }
     }
 
@@ -1444,7 +1464,7 @@ impl Blockchain {
 
         self.state
             .bridge_state
-            .unlock(transfer_id, source_domain)
+            .unlock(transfer_id, message.source_domain)
             .map_err(|e| e.to_string())?;
         if let Some(store) = &self.storage {
             store
@@ -1887,7 +1907,7 @@ impl Blockchain {
                 }
                 self.state
                     .bridge_state
-                    .unlock(transfer_id, lock_source_domain)
+                    .unlock(transfer_id, message.source_domain)
                     .map_err(|e| e.to_string())?;
                 let transfer = self
                     .state
@@ -1921,7 +1941,9 @@ impl Blockchain {
         }
 
         if let Some(store) = &self.storage {
-            let _ = store.save_bridge_state(&self.state.bridge_state);
+            if let Err(e) = store.save_bridge_state(&self.state.bridge_state) {
+                tracing::error!("CRITICAL: Failed to persist bridge state: {}", e);
+            }
         }
 
         Ok(message)
@@ -2255,7 +2277,9 @@ impl Blockchain {
         self.verified_qc_blobs
             .insert(blob.checkpoint_height, blob.clone());
         if let Some(store) = &self.storage {
-            let _ = store.save_qc_blob(blob.checkpoint_height, &blob);
+            if let Err(e) = store.save_qc_blob(blob.checkpoint_height, &blob) {
+                tracing::error!("Failed to persist QC blob: {}", e);
+            }
         }
 
         self.process_pending_finality_certs(blob.checkpoint_height)?;
@@ -2407,6 +2431,7 @@ impl Blockchain {
         let pending_txs = self.mempool.get_sorted_transactions(10000);
         let mut valid_txs = Vec::new();
         let mut temp_state = self.state.clone();
+        temp_state.current_block_height = self.chain.len() as u64;
         let mut included = std::collections::HashSet::new();
         let mut progress = true;
 
@@ -2560,6 +2585,7 @@ impl Blockchain {
         block: &Block,
     ) -> Result<AccountState, String> {
         let mut next_state = base_state.clone();
+        next_state.current_block_height = block.index;
         Executor::apply_block_checked(
             &mut next_state,
             &block.transactions,
@@ -2748,7 +2774,11 @@ impl Blockchain {
             .add_transaction(transaction.clone())
             .map_err(|e| format!("Mempool error: {:?}", e))?;
         if let Some(ref store) = self.storage {
-            let _ = store.save_mempool_tx(&transaction);
+            if let Err(e) = store.save_mempool_tx(&transaction) {
+                tracing::error!(
+                    "save_mempool_tx failed (transaction will not survive restart): {e}"
+                );
+            }
         }
         Ok(())
     }
@@ -2816,6 +2846,7 @@ impl Blockchain {
         }
 
         let mut temp_state = self.state.clone();
+        temp_state.current_block_height = block.index;
         for (i, tx) in block.transactions.iter().enumerate() {
             if tx.chain_id != block.chain_id {
                 return Err(format!(
@@ -3436,7 +3467,9 @@ impl Blockchain {
         );
 
         if let Some(ref store) = self.storage {
-            let _ = store.save_finality_cert(self.finalized_height, &cert);
+            if let Err(e) = store.save_finality_cert(self.finalized_height, &cert) {
+                tracing::error!("Failed to persist finality cert: {}", e);
+            }
             if let Err(e) = store.save_canonical_height(self.finalized_height) {
                 tracing::error!(error = %e, height = self.finalized_height, "Failed to save canonical height");
             }
@@ -3948,12 +3981,17 @@ impl Blockchain {
                         .storage_slashed_bond_total
                         .saturating_add(result.slashed_bond);
 
-                    // FAZ 5 FAIL-CLOSED: Gerçek kilitli bond modeli eklenene kadar likit bakiyeden yakma durduruldu.
-                    // let burned = self.state.burn_from(&operator, result.slashed_bond);
-                    let burned = 0;
-                    tracing::warn!(
-                        "Fail-closed: Skipping real burn_from for slashed bond. Escrow needed."
-                    );
+                    // V43 fix: Enable real burn_from for slashed bond.
+                    // Operator's liquid balance is slashed when challenge is missed.
+                    // Full escrow model deferred to Phase 10+.
+                    let burned = self.state.burn_from(&operator, result.slashed_bond);
+                    if burned > 0 {
+                        tracing::warn!(
+                            "V43: Burned {} from operator {} for missed challenge",
+                            burned,
+                            operator
+                        );
+                    }
 
                     self.storage_burned_bond_total =
                         self.storage_burned_bond_total.saturating_add(burned);

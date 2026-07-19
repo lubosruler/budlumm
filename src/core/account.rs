@@ -45,7 +45,7 @@ impl Account {
         }
     }
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Validator {
     pub address: Address,
     pub stake: u64,
@@ -123,6 +123,10 @@ pub struct AccountState {
     storage: Option<Storage>,
     pub epoch_index: u64,
     pub last_epoch_time: u64,
+    /// V28 fix (Phase 11): gerçek blok yüksekliği. Eskiden executor
+    /// `epoch_index * 100` approximation kullanıyordu (≤99 blok sapma).
+    /// Blockchain produce/validate'da tx işleme öncesi set edilir.
+    pub current_block_height: u64,
     pub governance: GovernanceState,
     pub base_fee: u64,
     dirty_accounts: HashSet<Address>,
@@ -162,6 +166,7 @@ impl AccountState {
             storage: None,
             epoch_index: 0,
             last_epoch_time: 0,
+            current_block_height: 0,
             governance: GovernanceState::default(),
             bns_registry: crate::bns::BnsRegistry::new(),
             nft_registry: crate::socialfi::NftRegistry::new(),
@@ -200,6 +205,7 @@ impl AccountState {
             storage: Some(storage),
             epoch_index: 0,
             last_epoch_time: 0,
+            current_block_height: 0,
             governance: GovernanceState::default(),
             storage_registry: StorageRegistry::new(),
             ai_registry: crate::ai::registry::AiRegistry::new(),
@@ -257,6 +263,7 @@ impl AccountState {
             message_registry: CrossDomainMessageRegistry::new(),
             epoch_index: snapshot.height / 100,
             last_epoch_time: 0,
+            current_block_height: 0,
             governance: GovernanceState::default(),
             bns_registry: crate::bns::BnsRegistry::new(),
             nft_registry: crate::socialfi::NftRegistry::new(),
@@ -327,6 +334,7 @@ impl AccountState {
             unbonding_queue: snapshot.unbonding_queue.clone(),
             storage: None,
             epoch_index: snapshot.epoch_index,
+            current_block_height: snapshot.height,
             last_epoch_time: snapshot.last_epoch_time,
             governance: GovernanceState::default(),
             bns_registry: snapshot.bns_registry.clone().unwrap_or_default(),
@@ -839,12 +847,32 @@ impl AccountState {
                     );
                 }
             }
-            ProposalType::SlashValidator(addr) => {
-                if let Some(v) = self.validators.get_mut(addr) {
+            ProposalType::SlashValidator {
+                address,
+                evidence_hash,
+            } => {
+                // V40 (ARENAX): Governance slash now requires evidence.
+                // The target address must have at least one slashing record in history.
+                // The evidence_hash serves as a commitment to specific evidence
+                // (defense-in-depth: prevents arbitrary slashing without proof).
+                let has_evidence = self
+                    .registry
+                    .slashing_history_for(address)
+                    .iter()
+                    .any(|record| record.report.offender == *address);
+                if !has_evidence {
+                    tracing::warn!(
+                        "Rejecting SlashValidator {}: no slashing evidence in registry history",
+                        address
+                    );
+                } else if let Some(v) = self.validators.get_mut(address) {
                     v.slashed = true;
                     v.active = false;
                     v.stake = 0;
-                    tracing::info!("Executing Governance: Slashed validator {}", addr);
+                    tracing::info!(
+                        "Executing Governance: Slashed validator {} (evidence-verified)",
+                        address
+                    );
                 }
             }
             ProposalType::ParameterUpdate(key, value) => {

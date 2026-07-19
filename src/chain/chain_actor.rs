@@ -6,6 +6,13 @@ use crate::core::block::Block;
 use crate::core::transaction::Transaction;
 use tokio::sync::{mpsc, oneshot};
 
+/// P5 ADIM11 Bulgu 31: Direction filter for agent payment queries.
+#[derive(Debug)]
+pub enum AiPaymentDirection {
+    From,
+    To,
+}
+
 #[derive(Debug)]
 pub enum ChainCommand {
     GetHeight(oneshot::Sender<u64>),
@@ -142,6 +149,54 @@ pub enum ChainCommand {
         crate::ai::types::AiRequestId,
         oneshot::Sender<Result<(crate::core::address::Address, u64), String>>,
     ),
+    GetAiEquivocationStatus(
+        crate::ai::types::AiRequestId,
+        crate::core::address::Address,
+        oneshot::Sender<bool>,
+    ),
+    GetAiCancelStatus(crate::ai::types::AiRequestId, oneshot::Sender<bool>),
+    /// P5 ADIM10 Bulgu 27: Get comprehensive dispute status for a (request, verifier) pair.
+    GetAiDisputeStatus(
+        crate::ai::types::AiRequestId,
+        crate::core::address::Address,
+        oneshot::Sender<crate::ai::types::AiDisputeStatusInfo>,
+    ),
+    /// P5 ADIM10 Bulgu 27: Get verifier stake info.
+    GetAiVerifierStake(
+        crate::core::address::Address,
+        oneshot::Sender<crate::ai::types::AiVerifierStakeInfo>,
+    ),
+    /// P5 ADIM10 Bulgu 28: Get callback events for a callback address.
+    GetAiCallbackQueue(
+        crate::core::address::Address,
+        oneshot::Sender<Vec<crate::ai::types::AiCallbackEvent>>,
+    ),
+    /// P5 ADIM11 Bulgu 29: Get execution proof for a (request, verifier) pair.
+    GetAiExecutionProof {
+        request_id: crate::ai::types::AiRequestId,
+        verifier: crate::core::address::Address,
+        response: oneshot::Sender<Option<crate::ai::types::AiExecutionProof>>,
+    },
+    /// P5 ADIM11 Bulgu 30: Get QoS metrics for a verifier.
+    GetAiVerifierQos {
+        verifier: crate::core::address::Address,
+        response: oneshot::Sender<Option<crate::ai::types::AiVerifierQos>>,
+    },
+    /// P5 ADIM11 Bulgu 30: Get all verifiers ordered by reliability score (descending).
+    GetAiVerifiersByReliability(oneshot::Sender<Vec<crate::ai::types::AiVerifierQos>>),
+    /// P5 ADIM11 Bulgu 31: Get agent payment by ID.
+    GetAiAgentPayment {
+        payment_id: [u8; 32],
+        response: oneshot::Sender<Option<crate::ai::types::AiAgentPayment>>,
+    },
+    /// P5 ADIM11 Bulgu 31: Get payments from/to an agent.
+    GetAiAgentPayments {
+        agent: crate::core::address::Address,
+        direction: AiPaymentDirection,
+        response: oneshot::Sender<Vec<crate::ai::types::AiAgentPayment>>,
+    },
+    /// P5 ADIM11 Bulgu 33: Get verifier whitelist.
+    GetAiVerifierWhitelist(oneshot::Sender<Vec<crate::core::address::Address>>),
     GetPruneStatus(oneshot::Sender<serde_json::Value>),
     RequestPrune(Option<u64>, oneshot::Sender<Result<u64, String>>),
     BuildGlobalHeader(oneshot::Sender<Result<crate::settlement::GlobalBlockHeader, String>>),
@@ -1029,6 +1084,230 @@ impl ChainHandle {
             .map_err(|_| "ChainActor response dropped".to_string())?
     }
 
+    pub async fn get_ai_equivocation_status(
+        &self,
+        request_id: crate::ai::types::AiRequestId,
+        verifier: crate::core::address::Address,
+    ) -> bool {
+        let (tx, rx) = oneshot::channel();
+        if self
+            .tx
+            .send(ChainCommand::GetAiEquivocationStatus(
+                request_id, verifier, tx,
+            ))
+            .await
+            .is_err()
+        {
+            return false;
+        }
+        rx.await.unwrap_or(false)
+    }
+
+    pub async fn get_ai_cancel_status(&self, request_id: crate::ai::types::AiRequestId) -> bool {
+        let (tx, rx) = oneshot::channel();
+        if self
+            .tx
+            .send(ChainCommand::GetAiCancelStatus(request_id, tx))
+            .await
+            .is_err()
+        {
+            return false;
+        }
+        rx.await.unwrap_or(false)
+    }
+
+    /// P5 ADIM10 Bulgu 27: Get comprehensive dispute status.
+    pub async fn get_ai_dispute_status(
+        &self,
+        request_id: crate::ai::types::AiRequestId,
+        verifier: crate::core::address::Address,
+    ) -> crate::ai::types::AiDisputeStatusInfo {
+        let (tx, rx) = oneshot::channel();
+        if self
+            .tx
+            .send(ChainCommand::GetAiDisputeStatus(request_id, verifier, tx))
+            .await
+            .is_err()
+        {
+            return crate::ai::types::AiDisputeStatusInfo {
+                has_equivocated: false,
+                is_disputable: false,
+                detected_block: None,
+                dispute_window_remaining: None,
+                is_staked: false,
+                stake_amount: 0,
+            };
+        }
+        rx.await
+            .unwrap_or_else(|_| crate::ai::types::AiDisputeStatusInfo {
+                has_equivocated: false,
+                is_disputable: false,
+                detected_block: None,
+                dispute_window_remaining: None,
+                is_staked: false,
+                stake_amount: 0,
+            })
+    }
+
+    /// P5 ADIM10 Bulgu 27: Get verifier stake info.
+    pub async fn get_ai_verifier_stake(
+        &self,
+        verifier: crate::core::address::Address,
+    ) -> crate::ai::types::AiVerifierStakeInfo {
+        let (tx, rx) = oneshot::channel();
+        if self
+            .tx
+            .send(ChainCommand::GetAiVerifierStake(verifier, tx))
+            .await
+            .is_err()
+        {
+            return crate::ai::types::AiVerifierStakeInfo {
+                verifier,
+                is_staked: false,
+                stake_amount: 0,
+                total_equivocations: 0,
+            };
+        }
+        rx.await
+            .unwrap_or_else(|_| crate::ai::types::AiVerifierStakeInfo {
+                verifier,
+                is_staked: false,
+                stake_amount: 0,
+                total_equivocations: 0,
+            })
+    }
+
+    /// P5 ADIM10 Bulgu 28: Get callback events for a callback address.
+    pub async fn get_ai_callback_queue(
+        &self,
+        callback_address: crate::core::address::Address,
+    ) -> Vec<crate::ai::types::AiCallbackEvent> {
+        let (tx, rx) = oneshot::channel();
+        if self
+            .tx
+            .send(ChainCommand::GetAiCallbackQueue(callback_address, tx))
+            .await
+            .is_err()
+        {
+            return Vec::new();
+        }
+        rx.await.unwrap_or_default()
+    }
+
+    /// P5 ADIM11 Bulgu 29: Get execution proof for a (request, verifier) pair.
+    /// Returns None if no proof exists — results without proofs are
+    /// "trust-based"; results with proofs are "trustless" (ZKVM-verified).
+    pub async fn get_ai_execution_proof(
+        &self,
+        request_id: crate::ai::types::AiRequestId,
+        verifier: crate::core::address::Address,
+    ) -> Option<crate::ai::types::AiExecutionProof> {
+        let (tx, rx) = oneshot::channel();
+        if self
+            .tx
+            .send(ChainCommand::GetAiExecutionProof {
+                request_id,
+                verifier,
+                response: tx,
+            })
+            .await
+            .is_err()
+        {
+            return None;
+        }
+        rx.await.ok().flatten()
+    }
+
+    /// P5 ADIM11 Bulgu 30: Get QoS metrics for a verifier.
+    pub async fn get_ai_verifier_qos(
+        &self,
+        verifier: crate::core::address::Address,
+    ) -> Option<crate::ai::types::AiVerifierQos> {
+        let (tx, rx) = oneshot::channel();
+        if self
+            .tx
+            .send(ChainCommand::GetAiVerifierQos {
+                verifier,
+                response: tx,
+            })
+            .await
+            .is_err()
+        {
+            return None;
+        }
+        rx.await.ok().flatten()
+    }
+
+    /// P5 ADIM11 Bulgu 30: Get all verifiers ordered by reliability score.
+    pub async fn get_ai_verifiers_by_reliability(&self) -> Vec<crate::ai::types::AiVerifierQos> {
+        let (tx, rx) = oneshot::channel();
+        if self
+            .tx
+            .send(ChainCommand::GetAiVerifiersByReliability(tx))
+            .await
+            .is_err()
+        {
+            return Vec::new();
+        }
+        rx.await.unwrap_or_default()
+    }
+
+    /// P5 ADIM11 Bulgu 31: Get agent payment by ID.
+    pub async fn get_ai_agent_payment(
+        &self,
+        payment_id: [u8; 32],
+    ) -> Option<crate::ai::types::AiAgentPayment> {
+        let (tx, rx) = oneshot::channel();
+        if self
+            .tx
+            .send(ChainCommand::GetAiAgentPayment {
+                payment_id,
+                response: tx,
+            })
+            .await
+            .is_err()
+        {
+            return None;
+        }
+        rx.await.ok().flatten()
+    }
+
+    /// P5 ADIM11 Bulgu 31: Get payments for an agent.
+    pub async fn get_ai_agent_payments(
+        &self,
+        agent: crate::core::address::Address,
+        direction: AiPaymentDirection,
+    ) -> Vec<crate::ai::types::AiAgentPayment> {
+        let (tx, rx) = oneshot::channel();
+        if self
+            .tx
+            .send(ChainCommand::GetAiAgentPayments {
+                agent,
+                direction,
+                response: tx,
+            })
+            .await
+            .is_err()
+        {
+            return Vec::new();
+        }
+        rx.await.unwrap_or_default()
+    }
+
+    /// P5 ADIM11 Bulgu 33: Get verifier whitelist.
+    pub async fn get_ai_verifier_whitelist(&self) -> Vec<crate::core::address::Address> {
+        let (tx, rx) = oneshot::channel();
+        if self
+            .tx
+            .send(ChainCommand::GetAiVerifierWhitelist(tx))
+            .await
+            .is_err()
+        {
+            return Vec::new();
+        }
+        rx.await.unwrap_or_default()
+    }
+
     pub async fn get_prune_status(&self) -> Result<serde_json::Value, String> {
         let (tx, rx) = oneshot::channel();
         if let Err(e) = self.tx.send(ChainCommand::GetPruneStatus(tx)).await {
@@ -1875,6 +2154,115 @@ impl ChainActor {
                     let mut registry = self.blockchain.state.ai_registry.clone();
                     let res = registry.reclaim_fee(&id, current_block);
                     let _ = res_tx.send(res);
+                }
+                ChainCommand::GetAiEquivocationStatus(request_id, verifier, res_tx) => {
+                    let has_equivocated = self
+                        .blockchain
+                        .state
+                        .ai_registry
+                        .has_equivocated(&request_id, &verifier);
+                    let _ = res_tx.send(has_equivocated);
+                }
+                ChainCommand::GetAiCancelStatus(request_id, res_tx) => {
+                    let is_cancelled = self.blockchain.state.ai_registry.is_cancelled(&request_id);
+                    let _ = res_tx.send(is_cancelled);
+                }
+                ChainCommand::GetAiDisputeStatus(request_id, verifier, res_tx) => {
+                    let current_block = self.blockchain.state.epoch_index.saturating_mul(100);
+                    let status = self.blockchain.state.ai_registry.get_dispute_status(
+                        &request_id,
+                        &verifier,
+                        current_block,
+                    );
+                    let _ = res_tx.send(status);
+                }
+                ChainCommand::GetAiVerifierStake(verifier, res_tx) => {
+                    let info = self
+                        .blockchain
+                        .state
+                        .ai_registry
+                        .get_verifier_stake_info(&verifier);
+                    let _ = res_tx.send(info);
+                }
+                ChainCommand::GetAiCallbackQueue(callback_address, res_tx) => {
+                    let events = self
+                        .blockchain
+                        .state
+                        .ai_registry
+                        .get_callback_queue(&callback_address);
+                    let _ = res_tx.send(events);
+                }
+                ChainCommand::GetAiExecutionProof {
+                    request_id,
+                    verifier,
+                    response: res_tx,
+                } => {
+                    let proof = self
+                        .blockchain
+                        .state
+                        .ai_registry
+                        .get_execution_proof(&request_id, &verifier)
+                        .cloned();
+                    let _ = res_tx.send(proof);
+                }
+                ChainCommand::GetAiVerifierQos {
+                    verifier,
+                    response: res_tx,
+                } => {
+                    let qos = self
+                        .blockchain
+                        .state
+                        .ai_registry
+                        .get_verifier_qos(&verifier)
+                        .cloned();
+                    let _ = res_tx.send(qos);
+                }
+                ChainCommand::GetAiVerifiersByReliability(res_tx) => {
+                    let ranking = self.blockchain.state.ai_registry.verifiers_by_reliability();
+                    let _ = res_tx.send(ranking);
+                }
+                ChainCommand::GetAiAgentPayment {
+                    payment_id,
+                    response: res_tx,
+                } => {
+                    let payment = self
+                        .blockchain
+                        .state
+                        .ai_registry
+                        .get_agent_payment(&payment_id)
+                        .cloned();
+                    let _ = res_tx.send(payment);
+                }
+                ChainCommand::GetAiAgentPayments {
+                    agent,
+                    direction,
+                    response: res_tx,
+                } => {
+                    let payments = match direction {
+                        AiPaymentDirection::From => self
+                            .blockchain
+                            .state
+                            .ai_registry
+                            .payments_from_agent(&agent),
+                        AiPaymentDirection::To => {
+                            self.blockchain.state.ai_registry.payments_to_agent(&agent)
+                        }
+                    }
+                    .into_iter()
+                    .cloned()
+                    .collect();
+                    let _ = res_tx.send(payments);
+                }
+                ChainCommand::GetAiVerifierWhitelist(res_tx) => {
+                    let whitelist: Vec<_> = self
+                        .blockchain
+                        .state
+                        .ai_registry
+                        .get_whitelisted_verifiers()
+                        .iter()
+                        .cloned()
+                        .collect();
+                    let _ = res_tx.send(whitelist);
                 }
                 ChainCommand::GetPruneStatus(res_tx) => {
                     let height = self.blockchain.chain.len() as u64;

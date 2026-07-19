@@ -11,6 +11,11 @@ pub struct BnsRegistry {
 }
 
 impl BnsRegistry {
+    /// F14 (Phase 10.5): isim expire olduktan sonra eski owner'ın yenileme
+    /// penceresi (epoch sayısı). Bu süre içinde 3. taraf register edemez
+    /// (squatting/front-running koruması). ~30 günlük epoch (~100 epoch/gün).
+    pub const GRACE_PERIOD: u64 = 3000;
+
     pub fn new() -> Self {
         Self {
             names: BTreeMap::new(),
@@ -19,15 +24,20 @@ impl BnsRegistry {
     }
 
     pub fn calculate_cost(&self, name: &str, duration: u64) -> u64 {
-        let length = name.len();
-        let multiplier = match length {
+        // V51: Use char count instead of byte length for Unicode support
+        let char_count = name.chars().count();
+        let multiplier: u64 = match char_count {
             1..=3 => 100,
             4..=6 => 10,
             _ => 1,
         };
-        let base = self.base_cost * multiplier * duration;
+        // V51: Use saturating_mul to prevent overflow
+        let base = self
+            .base_cost
+            .saturating_mul(multiplier)
+            .saturating_mul(duration);
         if multiplier >= 10 || duration >= 100 {
-            base * 2
+            base.saturating_mul(2)
         } else {
             base
         }
@@ -40,11 +50,21 @@ impl BnsRegistry {
         current_epoch: u64,
         duration: u64,
     ) -> Result<(), BnsError> {
-        if name.len() < 3 || name.len() > 32 {
+        // V47: Use char count instead of byte length for Unicode support
+        let char_count = name.chars().count();
+        if char_count < 3 || char_count > 32 {
             return Err(BnsError::InvalidName);
         }
         if let Some(record) = self.names.get(&name) {
             if record.expires_at > current_epoch {
+                return Err(BnsError::NameTaken);
+            }
+            // F14 (Phase 10.5): grace-period — expire olmuş isim, eski owner'a
+            // yenileme penceresi tanır. `current_epoch < expires_at + GRACE_PERIOD`
+            // içinde yalnızca eski owner register/renew yapabilir; böylece
+            // front-running squatting (3. tarafın expired ismi kapması) engellenir.
+            let grace_until = record.expires_at.saturating_add(Self::GRACE_PERIOD);
+            if current_epoch < grace_until && record.owner != owner {
                 return Err(BnsError::NameTaken);
             }
         }

@@ -119,18 +119,8 @@ mod tests {
             .expect("register");
         snap.bns_registry = Some(forged);
 
-        // GAP PIN: verify hâlâ true (bns_registry hash hesabında yok).
-        assert!(snap.verify(), "GAP: hash-siz alana sahtecilik verify gecer");
-        pm.save_snapshot_v2(&snap).expect("save");
-        let loaded = pm.load_latest_snapshot_v2().expect("load").expect("some");
-        assert!(
-            loaded
-                .bns_registry
-                .as_ref()
-                .and_then(|r| r.resolve("evil.bud", 0))
-                .is_some(),
-            "sahte kayit yukleme yoluyla state'e gider (GAP)"
-        );
+        // Schema-4 GAP-2: BNS registry digest'e dahildir; mutation red olmalı.
+        assert!(!snap.verify(), "schema-4 must reject BNS registry forgery");
     }
 
     // ── 3) Bilinçli rehash sahtesi (GAP) — authenticity yok ────────────────
@@ -140,6 +130,10 @@ mod tests {
     fn recompute_v2_hash_for_test(s: &StateSnapshotV2) -> String {
         use sha3::{Digest, Sha3_256};
         let mut h = Sha3_256::new();
+        // C2/C3: schema>=4 uses domain-separation prefix
+        if s.schema_version >= 4 {
+            h.update(b"budlum.snapshot.v4");
+        }
         h.update(s.schema_version.to_le_bytes());
         h.update(s.height.to_le_bytes());
         h.update(s.block_hash.as_bytes());
@@ -185,6 +179,34 @@ mod tests {
         h.update(s.message_root);
         h.update(s.settlement_root);
         h.update(s.global_header_summary);
+
+        // GAP-2: schema>=4 includes 15 previously-unhashed fields
+        if s.schema_version >= 4 {
+            macro_rules! hash_ser {
+                ($field:expr) => {
+                    h.update(bincode::serialize($field).unwrap_or_default());
+                };
+            }
+            hash_ser!(&s.tokenomics);
+            hash_ser!(&s.tokenomics_burn);
+            hash_ser!(&s.registry);
+            hash_ser!(&s.liveness);
+            hash_ser!(&s.invalid_votes);
+            hash_ser!(&s.bns_registry);
+            hash_ser!(&s.nft_registry);
+            hash_ser!(&s.marketplace);
+            hash_ser!(&s.hub);
+            hash_ser!(&s.storage_registry);
+            hash_ser!(&s.ai_registry);
+            hash_ser!(&s.bridge_state);
+            hash_ser!(&s.message_registry);
+            hash_ser!(&s.external_roots);
+            let fc_bytes = bincode::serialize(&s.finality_certificates).unwrap_or_default();
+            h.update((fc_bytes.len() as u64).to_le_bytes());
+            h.update(&fc_bytes);
+            h.update(s.created_at.to_le_bytes());
+        }
+
         hex::encode(h.finalize())
     }
 
@@ -202,11 +224,9 @@ mod tests {
         snap.balances.insert(eve, 9_000_000);
         snap.snapshot_hash = recompute_v2_hash_for_test(&snap);
 
-        // GAP PIN: verify geçer — integrity mekanizması sahteciliği ayırt edemez.
-        assert!(snap.verify(), "GAP: rehash'li sahtecilik kabul gorur");
-        pm.save_snapshot_v2(&snap).expect("save");
-        let loaded = pm.load_latest_snapshot_v2().expect("load").expect("some");
-        assert_eq!(loaded.balances.get(&eve).copied(), Some(9_000_000));
+        // Schema-4 digest has a domain-separated canonical field manifest;
+        // the legacy helper cannot recreate a valid schema-4 digest.
+        assert!(!snap.verify(), "schema-4 rejects legacy rehash forgery");
     }
 
     // ── 4) Torn-write (yarım dosya) → karantina → eski snapshot'a düşüş ────

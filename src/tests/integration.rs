@@ -29,7 +29,7 @@ mod integration_tests {
         state.add_validator(val_addr, 1000);
 
         let p_type = ProposalType::ChangeBaseFee(10);
-        let mut prop_tx = Transaction::new_proposal(val_addr, p_type, 1, 0);
+        let mut prop_tx = Transaction::new_proposal(val_addr, p_type, 10, 0);
         prop_tx.sign(&val_kp);
 
         Executor::apply_transaction(&mut state, &prop_tx).unwrap();
@@ -41,8 +41,12 @@ mod integration_tests {
 
         Executor::apply_transaction(&mut state, &vote_tx).unwrap();
 
-        state.advance_epoch(1000); // 0 -> 1
-        state.advance_epoch(2000); // 1 -> 2
+        // V68: MIN_PROPOSAL_DURATION=10 → end_epoch=10. advance_epoch
+        // check-before-increment yaptığı için 11 çağrı gerek (epoch 0→10,
+        // 11. çağrıda 10>=10 → finalize → Executed).
+        for _ in 0..11 {
+            state.advance_epoch(1000);
+        }
 
         assert_eq!(
             state.governance.proposals[0].status,
@@ -1246,7 +1250,7 @@ mod integration_tests {
         };
 
         let v2 = StateSnapshotV2::from_state(&state, params);
-        assert_eq!(v2.schema_version, 3); // Phase 0.16: bumped 2->3
+        assert_eq!(v2.schema_version, 4); // Phase 10.5 P2: bumped 3->4 (GAP-1+GAP-2)
         assert_eq!(v2.height, 200);
         assert_eq!(v2.epoch_index, 42);
         assert_eq!(v2.base_fee, 15);
@@ -1351,7 +1355,7 @@ mod integration_tests {
         let v2 = StateSnapshotV2::from_state(&state, params);
         let bytes = v2.to_bytes();
         let parsed = StateSnapshotV2::from_bytes(&bytes).unwrap();
-        assert_eq!(parsed.schema_version, 3); // Phase 0.16: bumped 2->3
+        assert_eq!(parsed.schema_version, 4); // Phase 10.5 P2: bumped 3->4
         assert_eq!(parsed.height, 300);
         assert_eq!(parsed.chain_id, 42);
         assert!(parsed.verify());

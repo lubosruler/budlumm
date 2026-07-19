@@ -183,6 +183,45 @@ impl From<&Transaction> for pb::ProtoTransaction {
                     },
                 )),
             ),
+            TransactionType::AiModelReactivate(model_id) => (
+                pb::ProtoTransactionType::AiModelReactivate as i32,
+                Some(pb::proto_transaction::TypePayload::AiModelReactivate(
+                    pb::ProtoAiModelDeactivate {
+                        model_id: model_id.0.to_vec(),
+                    },
+                )),
+            ),
+            TransactionType::AiRequestCancel(request_id) => (
+                pb::ProtoTransactionType::AiRequestCancel as i32,
+                Some(pb::proto_transaction::TypePayload::AiRequestCancel(
+                    pb::ProtoAiFeeReclaim {
+                        request_id: request_id.0.to_vec(),
+                    },
+                )),
+            ),
+            TransactionType::AiDisputeSlash {
+                request_id,
+                verifier,
+            } => (
+                pb::ProtoTransactionType::AiDisputeSlash as i32,
+                Some(pb::proto_transaction::TypePayload::AiDisputeSlash(
+                    pb::ProtoAiDisputeSlash {
+                        request_id: request_id.0.to_vec(),
+                        verifier: verifier.0.to_vec(),
+                    },
+                )),
+            ),
+            // P5 ADIM11 Bulgu 31: Agent-to-Agent payment — encoded as raw bytes
+            // since no dedicated proto message exists yet. Uses AiFeeReclaim
+            // as a placeholder carrier (32-byte payload).
+            TransactionType::AiAgentPayment(payment) => (
+                pb::ProtoTransactionType::AiFeeReclaim as i32,
+                Some(pb::proto_transaction::TypePayload::AiFeeReclaim(
+                    pb::ProtoAiFeeReclaim {
+                        request_id: payment.payment_id.to_vec(),
+                    },
+                )),
+            ),
         };
 
         pb::ProtoTransaction {
@@ -196,6 +235,7 @@ impl From<&Transaction> for pb::ProtoTransaction {
             hash: tx.hash.clone(),
             signature: tx.signature.clone().unwrap_or_default(),
             chain_id: tx.chain_id,
+            signature_version: tx.signature_version,
             tx_type: tx_type_i32,
             wire_version: 2,
             type_payload,
@@ -774,6 +814,53 @@ impl TryFrom<pb::ProtoTransaction> for Transaction {
                 mid.copy_from_slice(&payload.model_id);
                 TransactionType::AiModelDeactivate(crate::ai::types::AiModelId(mid))
             }
+            pb::ProtoTransactionType::AiModelReactivate => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::AiModelReactivate(p)) => p,
+                    _ => return Err("Missing or mismatched AiModelReactivate payload".into()),
+                };
+                if payload.model_id.len() != 32 {
+                    return Err("AiModelReactivate model_id must be 32 bytes".into());
+                }
+                let mut mid = [0u8; 32];
+                mid.copy_from_slice(&payload.model_id);
+                TransactionType::AiModelReactivate(crate::ai::types::AiModelId(mid))
+            }
+            pb::ProtoTransactionType::AiRequestCancel => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::AiRequestCancel(p)) => p,
+                    _ => return Err("Missing or mismatched AiRequestCancel payload".into()),
+                };
+                if payload.request_id.len() != 32 {
+                    return Err("AiRequestCancel request_id must be 32 bytes".into());
+                }
+                let mut rid = [0u8; 32];
+                rid.copy_from_slice(&payload.request_id);
+                TransactionType::AiRequestCancel(crate::ai::types::AiRequestId(rid))
+            }
+            pb::ProtoTransactionType::AiDisputeSlash => {
+                let payload = match proto.type_payload {
+                    Some(pb::proto_transaction::TypePayload::AiDisputeSlash(p)) => p,
+                    _ => return Err("Missing or mismatched AiDisputeSlash payload".into()),
+                };
+                if payload.request_id.len() != 32 {
+                    return Err("AiDisputeSlash request_id must be 32 bytes".into());
+                }
+                if payload.verifier.len() != 32 {
+                    return Err("AiDisputeSlash verifier must be 32 bytes".into());
+                }
+                let mut rid = [0u8; 32];
+                rid.copy_from_slice(&payload.request_id);
+                let mut vid = [0u8; 32];
+                vid.copy_from_slice(&payload.verifier);
+                TransactionType::AiDisputeSlash {
+                    request_id: crate::ai::types::AiRequestId(rid),
+                    verifier: crate::core::address::Address::from(vid),
+                }
+            }
+            // P5 ADIM11 Bulgu 31: AiAgentPayment — not yet in proto, skipped.
+            // Will be added in a future proto schema update.
+            _ => return Err("Unsupported transaction type in proto".into()),
         };
 
         Ok(Transaction {
@@ -788,6 +875,7 @@ impl TryFrom<pb::ProtoTransaction> for Transaction {
             hash: proto.hash,
             signature,
             chain_id: proto.chain_id,
+            signature_version: proto.signature_version,
             tx_type,
         })
     }
@@ -1505,6 +1593,7 @@ mod tests {
             hash: "abc".into(),
             signature: vec![],
             chain_id: 1337,
+            signature_version: crate::core::transaction::SIGNATURE_VERSION_V4,
             tx_type: pb::ProtoTransactionType::NftBoost as i32,
             wire_version: 2,
             type_payload: None, // Missing payload for NftBoost!
@@ -1678,6 +1767,7 @@ mod tests {
             proposer: None,
             settlement_finality_root: [7u8; 32],
             storage_root: None,
+            ai_root: None,
         };
         let msg = NetworkMessage::GlobalHeader(header.clone());
         let proto_msg = pb::ProtoNetworkMessage::from(&msg);

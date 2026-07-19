@@ -60,6 +60,11 @@ impl NftRegistry {
         if new_val < 0 {
             new_val = 0;
         }
+        // V23 fix (Phase 11): clamp to u64::MAX — eskiden `as u64` truncate
+        // ediyordu (büyük delta_mcd değerinde sessiz overflow).
+        if new_val > u64::MAX as i128 {
+            new_val = u64::MAX as i128;
+        }
         nft.luminance = new_val as u64;
         Ok(())
     }
@@ -106,14 +111,46 @@ impl NftRegistry {
     pub fn root(&self) -> [u8; 32] {
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
-        hasher.update(b"BDLM_NFT_REGISTRY_V1");
+        hasher.update(b"BDLM_NFT_REGISTRY_V3"); // V23: bumped version for expanded scope
         hasher.update(self.next_id.to_le_bytes());
         for (id, nft) in &self.nfts {
             hasher.update(id.to_le_bytes());
             hasher.update(nft.owner.0);
             hasher.update(nft.content_id.0);
             hasher.update(nft.luminance.to_le_bytes());
+            hasher.update(nft.minted_at_epoch.to_le_bytes()); // V23: include minted_at_epoch
+            if let Some(ref name) = nft.author_name {
+                hasher.update(b"name:");
+                hasher.update(name.as_bytes());
+            }
+            for tag in &nft.tags {
+                hasher.update(b"tag:");
+                hasher.update(tag.as_bytes());
+            }
         }
         hasher.finalize().into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// V23 regression: luminance overflow to u64::MAX must be clamped.
+    #[test]
+    fn v23_luminance_overflow_clamped() {
+        let mut reg = NftRegistry::new();
+        let owner = Address::from([1u8; 32]);
+        let cid = crate::storage::content_id::ContentId([0xAB; 32]);
+        reg.mint(owner, cid, 0, None);
+        let nft_id = 0;
+        // Max delta: current + i64::MAX → must clamp to u64::MAX, not truncate.
+        reg.update_luminance(nft_id, i64::MAX).unwrap();
+        let nft = reg.get_nft(nft_id).unwrap();
+        assert_eq!(
+            nft.luminance,
+            u64::MAX,
+            "V23: luminance must clamp to u64::MAX, not truncate"
+        );
     }
 }

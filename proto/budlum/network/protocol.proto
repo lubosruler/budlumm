@@ -28,6 +28,9 @@ enum ProtoTransactionType {
     AI_INFERENCE_RESULT = 22;
     AI_FEE_RECLAIM = 23;
     AI_MODEL_DEACTIVATE = 24;
+    AI_MODEL_REACTIVATE = 25;
+    AI_REQUEST_CANCEL = 26;
+    AI_DISPUTE_SLASH = 27;
 }
 
 message ProtoTransaction {
@@ -43,6 +46,7 @@ message ProtoTransaction {
     uint64 chain_id = 10;
     ProtoTransactionType tx_type = 11;
     uint32 wire_version = 12;
+    uint32 signature_version = 13;
     oneof type_payload {
         ProtoNftBoost nft_boost = 20;
         ProtoNftUpdateLight nft_update_light = 21;
@@ -57,6 +61,9 @@ message ProtoTransaction {
         ProtoAiInferenceResult ai_inference_result = 30;
         ProtoAiFeeReclaim ai_fee_reclaim = 31;
         ProtoAiModelDeactivate ai_model_deactivate = 32;
+        ProtoAiModelDeactivate ai_model_reactivate = 33;
+        ProtoAiFeeReclaim ai_request_cancel = 34;
+        ProtoAiDisputeSlash ai_dispute_slash = 35;
     }
 }
 
@@ -400,4 +407,9 @@ message ProtoAiFeeReclaim {
 
 message ProtoAiModelDeactivate {
     bytes model_id = 1;
+}
+
+message ProtoAiDisputeSlash {
+    bytes request_id = 1;
+    bytes verifier = 2;
 }

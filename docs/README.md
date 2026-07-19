@@ -1,5 +1,6 @@
 # Budlum Documentation
 
+- [Architecture Atlas](ARCHITECTURE.md) — system, trust-boundary, signing, bridge, snapshot, durability, BudZero, AI, B.U.D., CI and mainnet-launch diagrams
 - [Reports index + naming standard](REPORTS_INDEX.md) — tüm rapor/denetim/plan belgelerinin kanonik indeksi (EN canonical body + TR özet kuralı, Q6 2026-07-16)
 
 Choose a language:

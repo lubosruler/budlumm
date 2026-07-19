@@ -595,4 +595,103 @@ pub trait BudlumApi {
         &self,
         request_id: String,
     ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// P5 ADIM7: Check if a verifier has equivocated on a specific AI request.
+    #[method(name = "bud_aiEquivocationStatus")]
+    async fn ai_equivocation_status(
+        &self,
+        request_id: String,
+        verifier: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// P5 ADIM7: Check if an AI request has been cancelled.
+    #[method(name = "bud_aiCancelStatus")]
+    async fn ai_cancel_status(
+        &self,
+        request_id: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// P5 ADIM10 Bulgu 27: Prepare a dispute slash transaction for an equivocating verifier.
+    /// This creates an AiDisputeSlash transaction template that must be signed
+    /// and submitted via bud_sendRawTransaction.
+    #[method(name = "bud_aiDisputeSlash")]
+    async fn ai_dispute_slash(
+        &self,
+        submitter: String,
+        request_id: String,
+        verifier: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// P5 ADIM10 Bulgu 27: Query dispute/slash status for a (request, verifier) pair.
+    /// Returns equivocation status, dispute window info, and verifier stake details.
+    #[method(name = "bud_aiSlashingStatus")]
+    async fn ai_slashing_status(
+        &self,
+        request_id: String,
+        verifier: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// P5 ADIM10 Bulgu 27: Query verifier stake information.
+    /// Returns stake amount, staking status, and equivocation history.
+    #[method(name = "bud_aiVerifierStake")]
+    async fn ai_verifier_stake(
+        &self,
+        verifier: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// P5 ADIM10 Bulgu 28: Query pending callback events for an address.
+    /// When an AI inference outcome is finalized with a callback address,
+    /// the event is queued here for off-chain delivery.
+    #[method(name = "bud_aiCallbackQueue")]
+    async fn ai_callback_queue(
+        &self,
+        callback_address: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// P5 ADIM11 Bulgu 29: Query ZKVM execution proof for a (request, verifier) pair.
+    /// Results with execution proofs are "trustless" — verified by ZKVM
+    /// mathematics rather than by verifier reputation alone. This is the
+    /// core primitive for the Agentic Economy paradigm shift.
+    #[method(name = "bud_aiExecutionProof")]
+    async fn ai_execution_proof(
+        &self,
+        request_id: String,
+        verifier: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// P5 ADIM11 Bulgu 30: Query QoS metrics for a verifier.
+    /// Returns reliability score, finalization rate, equivocation count,
+    /// and response time metrics. Enables QoS-aware verifier selection.
+    #[method(name = "bud_aiVerifierQos")]
+    async fn ai_verifier_qos(
+        &self,
+        verifier: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// P5 ADIM11 Bulgu 30: Get all verifiers ranked by reliability score.
+    /// Returns verifiers ordered from highest to lowest reliability,
+    /// enabling agents to select the most trustworthy verifiers.
+    #[method(name = "bud_aiVerifierRanking")]
+    async fn ai_verifier_ranking(&self) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// P5 ADIM11 Bulgu 31: Query an agent-to-agent payment by ID.
+    #[method(name = "bud_aiAgentPayment")]
+    async fn ai_agent_payment(
+        &self,
+        payment_id: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// P5 ADIM11 Bulgu 31: Query payments for an agent (from or to).
+    #[method(name = "bud_aiAgentPayments")]
+    async fn ai_agent_payments(
+        &self,
+        agent: String,
+        direction: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// P5 ADIM11 Bulgu 33: Query the verifier whitelist.
+    /// Returns all whitelisted verifier addresses. If empty, the system
+    /// is in permissionless mode (any staked verifier can submit).
+    #[method(name = "bud_aiVerifierWhitelist")]
+    async fn ai_verifier_whitelist(&self) -> Result<serde_json::Value, ErrorObjectOwned>;
 }
