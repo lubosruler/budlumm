@@ -58,10 +58,7 @@ impl Opcode {
     /// activation gate. VerifyMerkle and VerifyInference are the opcodes
     /// with a staged rollout.
     pub fn requires_mainnet_activation(&self) -> bool {
-        matches!(
-            self,
-            Opcode::VerifyMerkle | Opcode::VerifyInference
-        )
+        matches!(self, Opcode::VerifyMerkle | Opcode::VerifyInference)
     }
 }
 

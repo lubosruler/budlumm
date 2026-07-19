@@ -113,7 +113,9 @@ impl GovernanceState {
 
         // V69: Limit active proposals to prevent state bloat
         const MAX_ACTIVE_PROPOSALS: usize = 100;
-        let active_count = self.proposals.iter()
+        let active_count = self
+            .proposals
+            .iter()
             .filter(|p| p.status == ProposalStatus::Active)
             .count();
         if active_count >= MAX_ACTIVE_PROPOSALS {
