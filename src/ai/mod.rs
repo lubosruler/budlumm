@@ -1705,6 +1705,31 @@ mod tests {
         registry.submit_request(req, current_block).unwrap()
     }
 
+    /// Helper: submit a request with a callback address (P5 ADIM10 Bulgu 28).
+    fn p5_adim6_submit_request_with_callback(
+        registry: &mut AiRegistry,
+        model_id: AiModelId,
+        requester: Address,
+        current_block: u64,
+        deadline_block: u64,
+        max_fee: u64,
+        callback: Option<Address>,
+    ) -> AiRequestId {
+        let mut req = AiInferenceRequest {
+            request_id: AiRequestId::default(),
+            requester,
+            model_id,
+            input_commitment: [2u8; 32],
+            input_ref: BoundedBytes::try_new(b"test".to_vec()).unwrap(),
+            max_fee,
+            callback,
+            submitted_at_block: current_block,
+            deadline_block,
+        };
+        req.request_id = req.calculate_id();
+        registry.submit_request(req, current_block).unwrap()
+    }
+
     /// Helper: submit a result from a verifier.
     fn p5_adim6_submit_result(
         registry: &mut AiRegistry,
@@ -3081,5 +3106,240 @@ mod tests {
                 .unwrap();
         registry.lock_verifier_stake(&v1, 5000).unwrap();
         assert_ne!(root_before, registry.state_root());
+    }
+
+    // ===================== P5 ADIM10 — B27 + B28 =====================
+
+    #[test]
+    fn test_p5_adim10_get_dispute_status() {
+        // P5 Bulgu 27: get_dispute_status returns comprehensive info
+        let (mut registry, model_id, owner) = p5_adim6_setup_registry(3, 2);
+        let req_id = p5_adim6_submit_request(&mut registry, model_id, owner, 10, 110, 100);
+        let v1 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000011")
+                .unwrap();
+        registry.lock_verifier_stake(&v1, 5000).unwrap();
+
+        // Before equivocation: no dispute
+        let status = registry.get_dispute_status(&req_id, &v1, 50);
+        assert!(!status.has_equivocated);
+        assert!(!status.is_disputable);
+        assert!(status.detected_block.is_none());
+        assert!(status.stake_amount == 5000);
+
+        // Cause equivocation
+        p5_adim6_submit_result(&mut registry, req_id, v1, [9u8; 32], 1, 15).unwrap();
+        let _ = p5_adim6_submit_result(&mut registry, req_id, v1, [88u8; 32], 2, 16);
+
+        // After equivocation: disputable
+        let status = registry.get_dispute_status(&req_id, &v1, 50);
+        assert!(status.has_equivocated);
+        assert!(status.is_disputable);
+        assert_eq!(status.detected_block, Some(16));
+        assert_eq!(status.dispute_window_remaining, Some(10_046));
+        assert!(status.is_staked);
+        assert_eq!(status.stake_amount, 5000);
+    }
+
+    #[test]
+    fn test_p5_adim10_dispute_status_expired_window() {
+        // P5 Bulgu 27: Dispute window expiry reflected in status
+        let (mut registry, model_id, owner) = p5_adim6_setup_registry(3, 2);
+        let req_id = p5_adim6_submit_request(&mut registry, model_id, owner, 10, 110, 100);
+        let v1 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000011")
+                .unwrap();
+        p5_adim6_submit_result(&mut registry, req_id, v1, [9u8; 32], 1, 15).unwrap();
+        let _ = p5_adim6_submit_result(&mut registry, req_id, v1, [88u8; 32], 2, 16);
+
+        // After dispute window expires
+        let status = registry.get_dispute_status(&req_id, &v1, 10_097);
+        assert!(status.has_equivocated);
+        assert!(!status.is_disputable);
+        assert_eq!(status.dispute_window_remaining, Some(0));
+    }
+
+    #[test]
+    fn test_p5_adim10_get_verifier_stake_info() {
+        // P5 Bulgu 27: get_verifier_stake_info returns stake + equivocation count
+        let (mut registry, _, _) = p5_adim6_setup_registry(2, 2);
+        let v1 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000011")
+                .unwrap();
+
+        // Not staked yet
+        let info = registry.get_verifier_stake_info(&v1);
+        assert!(!info.is_staked);
+        assert_eq!(info.stake_amount, 0);
+        assert_eq!(info.total_equivocations, 0);
+
+        // After staking
+        registry.lock_verifier_stake(&v1, 5000).unwrap();
+        let info = registry.get_verifier_stake_info(&v1);
+        assert!(info.is_staked);
+        assert_eq!(info.stake_amount, 5000);
+    }
+
+    #[test]
+    fn test_p5_adim10_callback_event_on_finalization() {
+        // P5 Bulgu 28: Callback event is queued when outcome is finalized
+        let (mut registry, model_id, owner) = p5_adim6_setup_registry(2, 2);
+        let cb_addr =
+            Address::from_hex("00000000000000000000000000000000000000000000000000000000000000CB")
+                .unwrap();
+        let req_id = p5_adim6_submit_request_with_callback(
+            &mut registry,
+            model_id,
+            owner,
+            10,
+            110,
+            100,
+            Some(cb_addr),
+        );
+        let v1 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000011")
+                .unwrap();
+        let v2 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000022")
+                .unwrap();
+
+        p5_adim6_submit_result(&mut registry, req_id, v1, [9u8; 32], 1, 15).unwrap();
+        let outcome = p5_adim6_submit_result(&mut registry, req_id, v2, [9u8; 32], 2, 20);
+
+        // Outcome should be finalized
+        assert!(outcome.is_some());
+
+        // Callback event should be queued
+        let events = registry.get_callback_queue(&cb_addr);
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].request_id, req_id);
+        assert_eq!(events[0].output_commitment, [9u8; 32]);
+        assert_eq!(events[0].callback_address, cb_addr);
+    }
+
+    #[test]
+    fn test_p5_adim10_no_callback_event_without_address() {
+        // P5 Bulgu 28: No callback event when callback is None
+        let (mut registry, model_id, owner) = p5_adim6_setup_registry(2, 2);
+        let req_id = p5_adim6_submit_request(&mut registry, model_id, owner, 10, 110, 100);
+        let v1 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000011")
+                .unwrap();
+        let v2 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000022")
+                .unwrap();
+
+        p5_adim6_submit_result(&mut registry, req_id, v1, [9u8; 32], 1, 15).unwrap();
+        p5_adim6_submit_result(&mut registry, req_id, v2, [9u8; 32], 2, 20);
+
+        // Callback queue should be empty (no callback address)
+        assert!(registry.callback_queue.is_empty());
+    }
+
+    #[test]
+    fn test_p5_adim10_consume_callback_events() {
+        // P5 Bulgu 28: Consume (drain) callback events after delivery
+        let (mut registry, model_id, owner) = p5_adim6_setup_registry(2, 2);
+        let cb_addr =
+            Address::from_hex("00000000000000000000000000000000000000000000000000000000000000CB")
+                .unwrap();
+        let req_id = p5_adim6_submit_request_with_callback(
+            &mut registry,
+            model_id,
+            owner,
+            10,
+            110,
+            100,
+            Some(cb_addr),
+        );
+        let v1 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000011")
+                .unwrap();
+        let v2 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000022")
+                .unwrap();
+
+        p5_adim6_submit_result(&mut registry, req_id, v1, [9u8; 32], 1, 15).unwrap();
+        p5_adim6_submit_result(&mut registry, req_id, v2, [9u8; 32], 2, 20);
+
+        // Consume events
+        let count = registry.consume_callback_events(&cb_addr);
+        assert_eq!(count, 1);
+
+        // Queue should now be empty
+        let events = registry.get_callback_queue(&cb_addr);
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn test_p5_adim10_callback_queue_changes_state_root() {
+        // P5 Bulgu 28: Callback queue affects state root
+        let (mut registry, model_id, owner) = p5_adim6_setup_registry(2, 2);
+        let cb_addr =
+            Address::from_hex("00000000000000000000000000000000000000000000000000000000000000CB")
+                .unwrap();
+        let req_id = p5_adim6_submit_request_with_callback(
+            &mut registry,
+            model_id,
+            owner,
+            10,
+            110,
+            100,
+            Some(cb_addr),
+        );
+        let v1 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000011")
+                .unwrap();
+        let v2 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000022")
+                .unwrap();
+
+        p5_adim6_submit_result(&mut registry, req_id, v1, [9u8; 32], 1, 15).unwrap();
+        let root_before = registry.state_root();
+        p5_adim6_submit_result(&mut registry, req_id, v2, [9u8; 32], 2, 20);
+        // Callback event added → state root should change
+        assert_ne!(root_before, registry.state_root());
+    }
+
+    #[test]
+    fn test_p5_adim10_multiple_callbacks_same_address() {
+        // P5 Bulgu 28: Multiple outcomes can queue events for the same callback
+        let (mut registry, model_id, owner) = p5_adim6_setup_registry(2, 2);
+        let cb_addr =
+            Address::from_hex("00000000000000000000000000000000000000000000000000000000000000CB")
+                .unwrap();
+        // Two requests with same callback
+        let req1 = p5_adim6_submit_request_with_callback(
+            &mut registry,
+            model_id,
+            owner,
+            10,
+            110,
+            100,
+            Some(cb_addr),
+        );
+        let req2 = p5_adim6_submit_request_with_callback(
+            &mut registry,
+            model_id,
+            owner,
+            10,
+            110,
+            100,
+            Some(cb_addr),
+        );
+        let v1 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000011")
+                .unwrap();
+        let v2 =
+            Address::from_hex("0000000000000000000000000000000000000000000000000000000000000022")
+                .unwrap();
+
+        p5_adim6_submit_result(&mut registry, req1, v1, [9u8; 32], 1, 15).unwrap();
+        p5_adim6_submit_result(&mut registry, req1, v2, [9u8; 32], 2, 20);
+        p5_adim6_submit_result(&mut registry, req2, v1, [8u8; 32], 3, 25).unwrap();
+        p5_adim6_submit_result(&mut registry, req2, v2, [8u8; 32], 4, 30);
+
+        let events = registry.get_callback_queue(&cb_addr);
+        assert_eq!(events.len(), 2);
     }
 }

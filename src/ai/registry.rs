@@ -4,7 +4,8 @@
 //! and finalized consensus outcomes. Provides deterministic `state_root()` calculation.
 
 use crate::ai::types::{
-    AiInferenceOutcome, AiInferenceRequest, AiInferenceResult, AiModelId, AiModelSpec, AiRequestId,
+    AiCallbackEvent, AiDisputeStatusInfo, AiInferenceOutcome, AiInferenceRequest,
+    AiInferenceResult, AiModelId, AiModelSpec, AiRequestId, AiVerifierStakeInfo,
 };
 use crate::core::address::Address;
 use serde::{Deserialize, Serialize};
@@ -45,6 +46,12 @@ pub struct AiRegistry {
     /// This is separate from validator stake — AI verifiers have their own
     /// economic commitment to the inference layer.
     pub verifier_stakes: BTreeMap<Address, u64>,
+    /// P5 ADIM10 Bulgu 28: Callback event queue.
+    /// When an outcome is finalized with a non-empty callback address,
+    /// an event is queued here. Indexed by callback address for efficient
+    /// querying. Off-chain systems poll `bud_aiCallbackQueue` to deliver
+    /// results to registered callback addresses.
+    pub callback_queue: BTreeMap<Address, Vec<AiCallbackEvent>>,
 }
 
 impl AiRegistry {
@@ -58,6 +65,7 @@ impl AiRegistry {
             equivocation_events: BTreeMap::new(),
             cancelled_requests: BTreeSet::new(),
             verifier_stakes: BTreeMap::new(),
+            callback_queue: BTreeMap::new(),
         }
     }
 
@@ -70,6 +78,7 @@ impl AiRegistry {
             && self.equivocation_events.is_empty()
             && self.cancelled_requests.is_empty()
             && self.verifier_stakes.is_empty()
+            && self.callback_queue.is_empty()
     }
 
     pub fn register_model(&mut self, spec: AiModelSpec) -> Result<AiModelId, String> {
@@ -239,6 +248,20 @@ impl AiRegistry {
                 callback,
             };
             self.outcomes.insert(result.request_id, outcome.clone());
+
+            // P5 ADIM10 Bulgu 28: Record callback event if callback address is set.
+            // The callback queue allows off-chain systems to discover finalized
+            // outcomes that need to be delivered to registered callback addresses.
+            if let Some(ref cb_addr) = outcome.callback {
+                let event = AiCallbackEvent {
+                    request_id: outcome.request_id,
+                    output_commitment: outcome.output_commitment,
+                    finalized_at_block: outcome.finalized_at_block,
+                    callback_address: *cb_addr,
+                };
+                self.callback_queue.entry(*cb_addr).or_default().push(event);
+            }
+
             return Ok(Some(outcome));
         }
 
@@ -753,6 +776,73 @@ impl AiRegistry {
         count
     }
 
+    // ===================== P5 ADIM10 — Dispute Resolution RPC (Bulgu 27) =====================
+
+    /// P5 ADIM10 Bulgu 27: Get comprehensive dispute status for a (request, verifier) pair.
+    /// Returns whether the verifier equivocated, whether the dispute window is
+    /// still open, and verifier stake information. Used by `bud_aiSlashingStatus` RPC.
+    pub fn get_dispute_status(
+        &self,
+        request_id: &AiRequestId,
+        verifier: &Address,
+        current_block: u64,
+    ) -> AiDisputeStatusInfo {
+        let key = (*request_id, verifier.0);
+        let (has_equivocated, detected_block, is_disputable, dispute_window_remaining) =
+            match self.equivocation_events.get(&key) {
+                Some(&db) => {
+                    let window_end = db.saturating_add(DISPUTE_WINDOW_BLOCKS);
+                    let disputerable = current_block <= window_end;
+                    let remaining = window_end.saturating_sub(current_block);
+                    (true, Some(db), disputerable, Some(remaining))
+                }
+                None => (false, None, false, None),
+            };
+
+        AiDisputeStatusInfo {
+            has_equivocated,
+            is_disputable,
+            detected_block,
+            dispute_window_remaining,
+            is_staked: self.is_staked_verifier(verifier),
+            stake_amount: self.verifier_stake(verifier),
+        }
+    }
+
+    /// P5 ADIM10 Bulgu 27: Get verifier stake information.
+    /// Returns stake amount, staking status, and total equivocation count.
+    /// Used by `bud_aiVerifierStake` RPC.
+    pub fn get_verifier_stake_info(&self, verifier: &Address) -> AiVerifierStakeInfo {
+        AiVerifierStakeInfo {
+            verifier: *verifier,
+            is_staked: self.is_staked_verifier(verifier),
+            stake_amount: self.verifier_stake(verifier),
+            total_equivocations: self.equivocation_count_for_verifier(verifier),
+        }
+    }
+
+    // ===================== P5 ADIM10 — Outcome Callback Execution (Bulgu 28) =====================
+
+    /// P5 ADIM10 Bulgu 28: Get pending callback events for a callback address.
+    /// Returns all events queued for the address since the last consumption.
+    /// Off-chain systems poll this to deliver inference results.
+    pub fn get_callback_queue(&self, callback_address: &Address) -> Vec<AiCallbackEvent> {
+        self.callback_queue
+            .get(callback_address)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    /// P5 ADIM10 Bulgu 28: Consume (drain) callback events for an address.
+    /// Called after off-chain system has delivered the callbacks.
+    /// Returns the number of events consumed.
+    pub fn consume_callback_events(&mut self, callback_address: &Address) -> usize {
+        match self.callback_queue.remove(callback_address) {
+            Some(events) => events.len(),
+            None => 0,
+        }
+    }
+
     /// Calculate deterministic Merkle/SHA256 root of all AI registry maps.
     /// P5 Bulgu 19 (ADIM7): Domain-separated map roots prevent cross-map
     /// collision attacks (ARENAX V38). Each map gets a unique domain prefix
@@ -823,6 +913,18 @@ impl AiRegistry {
         for (verifier, stake) in &self.verifier_stakes {
             hasher.update(verifier.as_bytes());
             hasher.update(stake.to_le_bytes());
+        }
+
+        // Domain: callback_queue (P5 ADIM10 Bulgu 28)
+        hasher.update(b"BDLM_AI_CALLBACK_QUEUE");
+        for (addr, events) in &self.callback_queue {
+            hasher.update(addr.as_bytes());
+            for event in events {
+                hasher.update(event.request_id.0);
+                hasher.update(event.output_commitment);
+                hasher.update(event.finalized_at_block.to_le_bytes());
+                hasher.update(event.callback_address.as_bytes());
+            }
         }
 
         hasher.finalize().into()
