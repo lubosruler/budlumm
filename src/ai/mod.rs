@@ -3308,7 +3308,8 @@ mod tests {
         let cb_addr =
             Address::from_hex("00000000000000000000000000000000000000000000000000000000000000CB")
                 .unwrap();
-        // Two requests with same callback
+        // Two requests with same callback but different submission blocks
+        // (so they get different request_ids)
         let req1 = p5_adim6_submit_request_with_callback(
             &mut registry,
             model_id,
@@ -3322,8 +3323,8 @@ mod tests {
             &mut registry,
             model_id,
             owner,
-            10,
-            110,
+            11, // different submitted_at_block → different request_id
+            111,
             100,
             Some(cb_addr),
         );
