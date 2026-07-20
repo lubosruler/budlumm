@@ -5095,3 +5095,114 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Ne bekliyor:** Push + full main CI SLEEP tekrar.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-20 23:14 UTC+03:00] ARENA1 — main kırmızısı: duplicate spin lockfile block fix
+
+**Durum:** origin/main `6bf83f5` CI çoklu kırmızı oldu; Budlum Core/Cargo Deny/SBOM ortak kök-neden lockfile parse failure.
+**Kök neden:** root `Cargo.lock` içinde `spin 0.12.2` package bloğu iki kez yazılmıştı; Cargo lock parser `package spin is specified twice in the lockfile` ile fail etti.
+**Fix:** duplicate ikinci `spin 0.12.2` bloğu kaldırıldı; exact `(name,version)` duplicate taraması temiz.
+**Lokal doğrulama:** Python lock duplicate scan ✅, `git diff --check` ✅. Cargo/Docker bu sandbox'ta yok; CI tek hakem.
+**Budlumdevnet:** dokunulmadı.
+**Ne bekliyor:** Push + full main CI SLEEP.
+**Kim karar verecek:** CI otomatik.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-20 23:23 UTC+03:00] ARENA3 — dependabot TAMAMLANDI: p3 + sha3 migrasyonu (CI yeşil)
+
+**p3 (Plonky3) 0.5.2 -> 0.6.2 koordineli göç** (commit 27d43aa, CI yeşil): 14 p3
+crate'ı birlikte 0.6'ya (cargo update). API: PeriodicAirBuilder trait'i kalktı ->
+AirBuilder'a PeriodicVar + is_transition + periodic_values katıldı; bud_stark
+SubAirBuilder + 2 Folder güncellendi. Lokal: budzero check+fmt+test(164/0)+clippy.
+#74/#76/#81/#83 supersede (kapalı).
+
+**sha3 0.10.9 -> 0.12.0 (+ sha2 0.10 -> 0.11 digest-align)** (commit 709c356, CI
+21/21 yeşil): sha3 0.12 digest 0.11, sha2 0.10 digest 0.10 -> Digest trait split.
+sha2'yi 0.11'e hizaladım. Standart hash => genesis/digest sabitleri değişmedi
+(CI genesis hash test yeşil). #80 supersede (kapalı). (Ara commit 6bf83f5 rebase
+lock-corruption yaptı — spin 0.12.2 duplicate; 709c356 ile fix.)
+
+**Net (10 dependabot PR):** 4 merge (#78/#75/#77/#79) + 5 migrasyon/supersede
+(p3 x4 + sha3) = **9 tamamlandı**. 1 erteli: #82 bincode 1.3->3.0 (digest kırıcı,
+mainnet sonrası). Açık dependabot PR: 0 (#82 dışında).
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+---
+
+### [2026-07-20 22:59 UTC+03:00] ARENA4 — ADIM P12-17 BAŞLADI: Encryption DAO policy compile + validation hardening
+
+**Zemin:** main `2e6f68dd` — CI **19/19 success**. Kullanıcı komutu: yalnız main kullanılacak; P12-4/5/6/7/8/9 ARENAX'e devredildi, ARENA4 + ARENAX commitleri inceleyerek sertleştirecek.
+**Koordinasyon:** ARENAX/ARENAS `src/pollen/encryption_policy.rs` P12-4 Encryption DAO modülü incelendi. Dosya main'de vardı fakat `src/pollen/mod.rs` içinde module export edilmediği için compile/test kapsamına girmiyordu.
+
+**Kapsam:**
+1. `src/pollen/mod.rs`: `encryption_policy` module export ile ARENAX P12-4 kodu compile/test kapsamına alındı.
+2. `AssetEncryptionPolicy::validate`: zero asset id ve `EncryptionAlgorithm::None` reject.
+3. `EncryptionPolicy::validate_static`: default/allowed algorithm, key length, rotation, max data size ve asset policy validation.
+4. `set_asset_policy` fail-closed `Result` döndürür; invalid asset policy veya disallowed algorithm kaydedilmez.
+5. Negatif regresyon testleri eklendi.
+
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Kod + lokal statik kontroller + push + full main CI SLEEP.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-20 23:43 UTC+03:00] ARENA4 — P12-17 CI kırmızısı: encryption policy rustfmt fix
+
+**Durum:** main `926a3e19` CI'da `Budlum Core` / Format adımı kırmızı oldu.
+**Kök neden:** `src/pollen/encryption_policy.rs` yeni compile/validation hardening satırları rustfmt beklenen biçimde değildi.
+**Fix:** CI rustfmt diff'i manuel uygulandı; davranış değişmedi.
+**Lokal doğrulama:** `git diff --check` ✅, `scripts/check-spec-coverage.sh --self-test` ✅, `scripts/check-spec-coverage.sh` ✅. Rust toolchain bu sandbox'ta yok; compile/test hakemi CI.
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Push + full main CI SLEEP tekrar.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-20 23:58 UTC+03:00] ARENA4 — ADIM P12-18 BAŞLADI: Atlas RPC evidence model hardening
+
+**Zemin:** main `8f2910ca` — CI **23/23 success**. ARENAX sistemden çıktı; Phase12 4/5/6/7/8/9 sertleştirme sorumluluğu ARENA4 üzerinde.
+**Kapsam:** P12-8 Budlum Atlas / bud.scan evidence model sertleştirmesi.
+1. `src/rpc/atlas.rs` compile kapsamına alınır (`src/rpc/mod.rs` export).
+2. Evidence/domain/trace/wallet graph validation eklendi: zero domain/address/hash reject, label/path traversal reject, graph size/depth guard.
+3. `AtlasQueryEngine` bounded insert/upsert API: evidence/domain summary bloat guard.
+4. Height range query zero-domain ve inverted-range durumunda boş döner.
+5. Negatif testler eklendi.
+
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Kod + lokal statik kontroller + push + full main CI SLEEP.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-21 00:26 UTC+03:00] ARENA4 — P12-18 CI kırmızısı: Atlas rustfmt fix
+
+**Durum:** main `39ab67fa` CI'da `Budlum Core` / Format adımı kırmızı oldu.
+**Kök neden:** `src/rpc/atlas.rs` yeni query/test satırları ve `src/rpc/mod.rs` mod sırası rustfmt beklenen biçimde değildi.
+**Fix:** CI rustfmt diff'i manuel uygulandı; davranış değişmedi.
+**Lokal doğrulama:** `git diff --check` ✅, `scripts/check-spec-coverage.sh --self-test` ✅, `scripts/check-spec-coverage.sh` ✅. Rust toolchain bu sandbox'ta yok; compile/test hakemi CI.
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Push + full main CI SLEEP tekrar.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-21 00:31 UTC+03:00] ARENA4 — P12-18 CI kırmızısı: Atlas domain fixture fix
+
+**Durum:** main `ecf3ebe4` CI'da `Coverage` kapısı `rpc::atlas::tests::atlas_query_by_domain` testinde kırmızı oldu.
+**Kök neden:** Test fixture'ında iki evidence record aynı `domain_id=1` ile kalmıştı; domain query sonucu 2 dönüyordu. Ayrıca height-range fixture'da duplicate `domain_height` satırı vardı.
+**Fix:** İkinci evidence record `domain_id=2` yapıldı; duplicate fixture satırı kaldırıldı. Davranış değişmedi.
+**Lokal doğrulama:** `git diff --check` ✅, `scripts/check-spec-coverage.sh --self-test` ✅, `scripts/check-spec-coverage.sh` ✅. Rust toolchain bu sandbox'ta yok; test hakemi CI.
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Push + full main CI SLEEP tekrar.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>

@@ -15,10 +15,31 @@
 //! RPC endpoint entegrasyonu ayrı bir adımda yapılacaktır.
 
 use crate::core::address::Address;
-use crate::cross_domain::DomainEventKind;
 use crate::domain::{ConsensusKind, DomainId, Hash32};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+
+pub const MAX_ATLAS_EVIDENCE_RECORDS: usize = 10_000;
+pub const MAX_ATLAS_DOMAIN_SUMMARIES: usize = 1_024;
+pub const MAX_WALLET_GRAPH_NODES: usize = 2_048;
+pub const MAX_WALLET_GRAPH_EDGES: usize = 8_192;
+
+fn nonzero_hash(value: &Hash32) -> bool {
+    *value != [0u8; 32]
+}
+
+fn validate_label(field: &str, value: &str) -> Result<(), String> {
+    let valid = !value.is_empty()
+        && value.len() <= 128
+        && !value.contains("..")
+        && !value.contains('/')
+        && value.bytes().all(|b| !b.is_ascii_control());
+    if valid {
+        Ok(())
+    } else {
+        Err(format!("{field} invalid"))
+    }
+}
 
 /// Kanıt sorgu sonucu.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,6 +60,25 @@ pub struct EvidenceRecord {
     pub verified_epoch: u64,
     /// Consensus türü.
     pub consensus_kind: ConsensusKind,
+}
+
+impl EvidenceRecord {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.domain_id == 0 {
+            return Err("EvidenceRecord domain_id cannot be zero".into());
+        }
+        if self.domain_height == 0 {
+            return Err("EvidenceRecord domain_height cannot be zero".into());
+        }
+        validate_label("EvidenceRecord event_kind", &self.event_kind)?;
+        if !nonzero_hash(&self.event_root) {
+            return Err("EvidenceRecord event_root cannot be zero".into());
+        }
+        if !nonzero_hash(&self.block_hash) {
+            return Err("EvidenceRecord block_hash cannot be zero".into());
+        }
+        Ok(())
+    }
 }
 
 /// Cüzdan bağlam grafi düğümü.
@@ -124,6 +164,37 @@ pub struct WalletContextGraph {
     pub depth: u32,
 }
 
+impl WalletContextGraph {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.center == Address::zero() {
+            return Err("WalletContextGraph center cannot be zero".into());
+        }
+        if self.nodes.len() > MAX_WALLET_GRAPH_NODES {
+            return Err("WalletContextGraph node limit exceeded".into());
+        }
+        if self.edges.len() > MAX_WALLET_GRAPH_EDGES {
+            return Err("WalletContextGraph edge limit exceeded".into());
+        }
+        if self.depth > 8 {
+            return Err("WalletContextGraph depth too large".into());
+        }
+        for node in &self.nodes {
+            if node.address == Address::zero() {
+                return Err("WalletContextGraph node address cannot be zero".into());
+            }
+        }
+        for edge in &self.edges {
+            if edge.from == Address::zero() || edge.to == Address::zero() {
+                return Err("WalletContextGraph edge address cannot be zero".into());
+            }
+            if edge.weight == 0 {
+                return Err("WalletContextGraph edge weight cannot be zero".into());
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Domain özet istatistikleri.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DomainSummary {
@@ -145,6 +216,19 @@ pub struct DomainSummary {
     pub last_commit_epoch: u64,
 }
 
+impl DomainSummary {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.domain_id == 0 {
+            return Err("DomainSummary domain_id cannot be zero".into());
+        }
+        validate_label("DomainSummary name", &self.name)?;
+        if self.last_commit_epoch > self.current_height.saturating_add(1_000_000) {
+            return Err("DomainSummary last_commit_epoch implausible".into());
+        }
+        Ok(())
+    }
+}
+
 /// Cross-domain mesaj iz sonucu.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CrossDomainTrace {
@@ -164,6 +248,27 @@ pub struct CrossDomainTrace {
     pub recipient: Address,
     /// Payload hash.
     pub payload_hash: Hash32,
+}
+
+impl CrossDomainTrace {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.source_domain == 0 || self.target_domain == 0 {
+            return Err("CrossDomainTrace domains cannot be zero".into());
+        }
+        if self.source_domain == self.target_domain {
+            return Err("CrossDomainTrace source/target domains must differ".into());
+        }
+        if self.source_height == 0 {
+            return Err("CrossDomainTrace source_height cannot be zero".into());
+        }
+        if self.sender == Address::zero() || self.recipient == Address::zero() {
+            return Err("CrossDomainTrace addresses cannot be zero".into());
+        }
+        if !nonzero_hash(&self.payload_hash) {
+            return Err("CrossDomainTrace payload_hash cannot be zero".into());
+        }
+        Ok(())
+    }
 }
 
 /// Mesaj iz durumu.
@@ -195,11 +300,34 @@ impl AtlasQueryEngine {
         Self::default()
     }
 
+    pub fn insert_evidence_record(&mut self, record: EvidenceRecord) -> Result<(), String> {
+        record.validate()?;
+        if self.evidence_records.len() >= MAX_ATLAS_EVIDENCE_RECORDS {
+            self.evidence_records.remove(0);
+        }
+        self.evidence_records.push(record);
+        Ok(())
+    }
+
+    pub fn upsert_domain_summary(&mut self, summary: DomainSummary) -> Result<(), String> {
+        summary.validate()?;
+        if !self.domain_summaries.contains_key(&summary.domain_id)
+            && self.domain_summaries.len() >= MAX_ATLAS_DOMAIN_SUMMARIES
+        {
+            let oldest = self
+                .domain_summaries
+                .keys()
+                .next()
+                .copied()
+                .ok_or_else(|| "Atlas domain summary index empty".to_string())?;
+            self.domain_summaries.remove(&oldest);
+        }
+        self.domain_summaries.insert(summary.domain_id, summary);
+        Ok(())
+    }
+
     /// Domain ID'ye göre kanıt kayıtlarını sorgular.
-    pub fn query_evidence_by_domain(
-        &self,
-        domain_id: DomainId,
-    ) -> Vec<&EvidenceRecord> {
+    pub fn query_evidence_by_domain(&self, domain_id: DomainId) -> Vec<&EvidenceRecord> {
         self.evidence_records
             .iter()
             .filter(|r| r.domain_id == domain_id)
@@ -213,6 +341,9 @@ impl AtlasQueryEngine {
         from_height: u64,
         to_height: u64,
     ) -> Vec<&EvidenceRecord> {
+        if domain_id == 0 || from_height > to_height {
+            return Vec::new();
+        }
         self.evidence_records
             .iter()
             .filter(|r| {
@@ -237,10 +368,7 @@ impl AtlasQueryEngine {
     ///
     /// Not: Şu an basit bir filtre; gerçek impl. için event'lerde adres
     /// indeksi gerekli.
-    pub fn query_evidence_for_address(
-        &self,
-        _address: &Address,
-    ) -> Vec<&EvidenceRecord> {
+    pub fn query_evidence_for_address(&self, _address: &Address) -> Vec<&EvidenceRecord> {
         // Stub: gerçek impl. için event emitter index gerekli
         Vec::new()
     }
@@ -258,7 +386,7 @@ mod tests {
     fn atlas_query_by_domain() {
         let mut engine = AtlasQueryEngine::new();
         engine.evidence_records.push(EvidenceRecord {
-            domain_id: 0,
+            domain_id: 1,
             domain_height: 100,
             event_index: 0,
             event_kind: "BridgeLocked".to_string(),
@@ -268,7 +396,7 @@ mod tests {
             consensus_kind: ConsensusKind::PoW,
         });
         engine.evidence_records.push(EvidenceRecord {
-            domain_id: 1,
+            domain_id: 2,
             domain_height: 200,
             event_index: 0,
             event_kind: "BridgeMinted".to_string(),
@@ -278,7 +406,7 @@ mod tests {
             consensus_kind: ConsensusKind::PoS,
         });
 
-        let results = engine.query_evidence_by_domain(0);
+        let results = engine.query_evidence_by_domain(1);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].domain_height, 100);
     }
@@ -288,7 +416,7 @@ mod tests {
         let mut engine = AtlasQueryEngine::new();
         for h in [50, 100, 150, 200, 250] {
             engine.evidence_records.push(EvidenceRecord {
-                domain_id: 0,
+                domain_id: 1,
                 domain_height: h,
                 event_index: 0,
                 event_kind: "Test".to_string(),
@@ -299,17 +427,16 @@ mod tests {
             });
         }
 
-        let results = engine.query_evidence_by_height_range(0, 100, 200);
+        let results = engine.query_evidence_by_height_range(1, 100, 200);
         assert_eq!(results.len(), 3);
     }
 
     #[test]
     fn atlas_domain_summary() {
         let mut engine = AtlasQueryEngine::new();
-        engine.domain_summaries.insert(
-            0,
-            DomainSummary {
-                domain_id: 0,
+        engine
+            .upsert_domain_summary(DomainSummary {
+                domain_id: 1,
                 name: "pow-main".to_string(),
                 consensus_kind: ConsensusKind::PoW,
                 current_height: 1000,
@@ -317,10 +444,10 @@ mod tests {
                 total_events: 200,
                 active_validators: 10,
                 last_commit_epoch: 500,
-            },
-        );
+            })
+            .unwrap();
 
-        let summary = engine.get_domain_summary(0).unwrap();
+        let summary = engine.get_domain_summary(1).unwrap();
         assert_eq!(summary.current_height, 1000);
         assert_eq!(engine.get_domain_summary(99), None);
     }
@@ -355,8 +482,8 @@ mod tests {
     #[test]
     fn cross_domain_trace_serialization() {
         let trace = CrossDomainTrace {
-            source_domain: 0,
-            target_domain: 1,
+            source_domain: 1,
+            target_domain: 2,
             source_height: 100,
             message_index: 5,
             status: MessageTraceStatus::Verified,
@@ -368,5 +495,71 @@ mod tests {
         let json = serde_json::to_string(&trace).unwrap();
         let parsed: CrossDomainTrace = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.status, MessageTraceStatus::Verified);
+    }
+
+    #[test]
+    fn atlas_rejects_zero_domain_evidence() {
+        let mut engine = AtlasQueryEngine::new();
+        let err = engine
+            .insert_evidence_record(EvidenceRecord {
+                domain_id: 0,
+                domain_height: 1,
+                event_index: 0,
+                event_kind: "Test".to_string(),
+                event_root: test_hash(1),
+                block_hash: test_hash(2),
+                verified_epoch: 1,
+                consensus_kind: ConsensusKind::PoW,
+            })
+            .unwrap_err();
+        assert!(err.contains("domain_id"));
+    }
+
+    #[test]
+    fn atlas_rejects_invalid_wallet_graph() {
+        let graph = WalletContextGraph {
+            center: Address::zero(),
+            nodes: vec![],
+            edges: vec![],
+            total_transfer_volume: 0,
+            depth: 0,
+        };
+        assert!(graph.validate().unwrap_err().contains("center"));
+    }
+
+    #[test]
+    fn cross_domain_trace_rejects_zero_payload() {
+        let trace = CrossDomainTrace {
+            source_domain: 1,
+            target_domain: 2,
+            source_height: 100,
+            message_index: 5,
+            status: MessageTraceStatus::Verified,
+            sender: Address::from([1u8; 32]),
+            recipient: Address::from([2u8; 32]),
+            payload_hash: [0u8; 32],
+        };
+        assert!(trace.validate().unwrap_err().contains("payload_hash"));
+    }
+
+    #[test]
+    fn atlas_summary_insert_prunes_when_limit_exceeded() {
+        let mut engine = AtlasQueryEngine::new();
+        for i in 1..=(MAX_ATLAS_DOMAIN_SUMMARIES as u32 + 1) {
+            engine
+                .upsert_domain_summary(DomainSummary {
+                    domain_id: i,
+                    name: format!("domain-{i}"),
+                    consensus_kind: ConsensusKind::PoS,
+                    current_height: 1,
+                    total_transactions: 0,
+                    total_events: 0,
+                    active_validators: 0,
+                    last_commit_epoch: 1,
+                })
+                .unwrap();
+        }
+        assert_eq!(engine.domain_summaries.len(), MAX_ATLAS_DOMAIN_SUMMARIES);
+        assert!(engine.get_domain_summary(1).is_none());
     }
 }
