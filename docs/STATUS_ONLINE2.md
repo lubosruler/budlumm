@@ -232,8 +232,8 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 **Yerel doğrulama:** bud-compiler 20/20 ✅ · clippy `-D warnings` temiz ✅ · fmt temiz ✅ · downstream `bud-cli` derleniyor ✅
 
 **Ne bitti:** Partial-literal reddi (sema) + 2 test; struct-doğruluğu üçlemesi tamam (#99 FieldAccess → #100 sıralama → bu: eksik alan)
-**CI kanıtı:** PR açılıyor — CI sonucuyla güncellenecek
-**Ne bekliyor:** CI yeşil → merge; olası follow-up: duplike-alan literal denetimi (`A{x:1,x:2}`)
+**CI kanıtı:** PR #102 head `9870928` — **20+ check YEŞİL ✅, 0 kırmızı** (ana CI run `29783801320`; BudZero/BudZKVM, Budlum Core, docker-smoke, Coverage, Devnet, Miri, Determinism, Semver tümü success; Fuzz+Genesis koşuyor, kırmızı yok)
+**Ne bekliyor:** PR #102 CI YEŞİL — merge onayı (Ayaz); olası follow-up: duplike-alan literal denetimi (`A{x:1,x:2}`)
 **Kim karar verecek:** Ayaz (merge onayı) / CI (tek yargıç)
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
