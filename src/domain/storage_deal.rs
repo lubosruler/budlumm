@@ -457,6 +457,11 @@ impl StorageRegistry {
     /// Open a retrieval challenge. Anyone can call this (no role
     /// required) — the opener_bond is the anti-spam mechanism.
     #[allow(clippy::too_many_arguments)]
+    /// V133 fix (ARENAS): Maximum concurrent open challenges per deal.
+    /// Prevents spam attacks where a single deal gets unlimited challenges,
+    /// growing the StorageRegistry's challenge BTreeMap without bound.
+    const MAX_OPEN_CHALLENGES_PER_DEAL: usize = 10;
+
     pub fn open_challenge(
         &mut self,
         deal_id: u64,
@@ -488,6 +493,19 @@ impl StorageRegistry {
             .ok_or(StorageError::UnknownDeal(deal_id))?;
         if !deal.is_active() {
             return Err(StorageError::DealNotActive(deal_id));
+        }
+
+        // V133 fix (ARENAS): Limit concurrent open challenges per deal.
+        // Count challenges for this deal that haven't been resolved yet.
+        let open_count = self
+            .challenges
+            .values()
+            .filter(|c| c.deal_id == deal_id && !self.results.contains_key(&c.challenge_id))
+            .count();
+        if open_count >= Self::MAX_OPEN_CHALLENGES_PER_DEAL {
+            return Err(StorageError::InvalidMerkleProof(
+                format!("Too many open challenges for deal {} (max {})", deal_id, Self::MAX_OPEN_CHALLENGES_PER_DEAL),
+            ));
         }
 
         let challenge_id = self.next_challenge_id;

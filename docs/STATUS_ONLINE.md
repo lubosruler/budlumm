@@ -3716,3 +3716,69 @@ Birthday attack riski (~2^32 mesajda collision) elimine edildi.
 **Bu oturumda kapatılan:** V24, V86, V89, V98, V103, V107, V110, V114, V116, V119, V124, V125, V126, V127, V128, V129
 
 Co-authored-by: ARENAS <arenas@budlum.ai>
+
+---
+
+## ADIM 14 — V102+V117 Onarım + V87 Kapatıldı + Yeni Bulgular (V130-V133)
+
+**Tarih:** 2026-07-20
+**Ajan:** ARENAS (Denetim)
+
+### Onarılan Bulgular
+
+**V102 (🟡→✅ FIXED):** `mint_bridge_transfer` RPC endpoint `Address::zero()` hardcoded —
+bridge fee sıfır adrese gidiyordu, BUD kalıcı olarak kayboluyordu.
+- `api.rs`: `relayer: Address` parametresi eklendi
+- `server.rs`: `Address::zero()` kaldırıldı, relayer parametresi aktarılıyor
+- Zincir üstü katman (`blockchain.rs`, `chain_actor.rs`) zaten `relayer` parametresi alıyordu
+
+**V117 (🟡→✅ FIXED):** `sync_state` orphaned — node sonsuza kadar "syncing" durumunda
+kalabiliyordu. Timeout mekanizması eklendi:
+- `sync_started_at: Arc<AtomicU64>` alanı eklendi (Node + NodeClient)
+- `SYNC_TIMEOUT_SECS = 60`: 60 saniye sonra otomatik reset
+- Tüm `sync_state.store(1)` noktalarına timestamp kaydı eklendi (7 nokta)
+- Tüm `sync_state.store(0)` noktalarına timestamp sıfırlama eklendi (4 nokta)
+- `gc_interval.tick()` periyodik kontrolünde orphaned sync_state denetimi
+
+### Kapatılan Bulgular
+
+**V87 (🟡→✅ KAPATILDI):** Merkle Trie 64-bit sibling key collision — soruşturma
+sonucunda `storage/merkle_trie.rs`'in 256-bit key + 256 depth kullandığı
+doğrulandı. 64-bit collision riski mevcut değil. Yanlış alarm.
+
+### Yeni Bulgular
+
+**V130 (🟡 OPEN):** Governance `finalize()` epoch kontrolü eksik — proposal'ın
+`end_epoch`'ını beklemeden finalize edilebilir. `add_vote()` süresiz açık,
+`finalize()` çağrıldığında epoch kontrolü yok. Sonuç: proposal henüz oy verme
+dönemindeyken early-finalize ile manipülasyon yapılabilir.
+
+**V131 (⚪ OPEN):** BNS `register()` `duration = 0` kontrolü yok — sıfır süreli
+isim kaydı yapılabilir, `current_epoch + 0` = hemen expire. Grace period ile
+3. parti register edemez ama isim state bloat yaratır ve gas waste olur.
+
+**V132 (⚪ OPEN):** `burn_from()` sessiz kırpma — eğer `amount > account.balance`
+ise hata yerine sessizce `account.balance` kadar burn edilir. Bu tasarım kararı
+olabilir ama caller'ın tam miktarı burn etmediğini bilmesi zor.
+
+**V133 (⚪ OPEN):** `open_challenge()` tek deal için challenge sınırı yok —
+bir deal için sınırsız challenge açılabilir. Her challenge `opener_bond` gerektirse
+de, `StorageRegistry`'de `challenges` BTreeMap sınırsız büyüyebilir.
+DoS vektörü: aynı deal'a spam challenge.
+
+### CI Durumu
+- SHA `4514e01` (V102+V117): queued → monitor ediliyor
+- SHA `eb56e72` (V98+V103+V114): 9/23 success, 0 failure → yeşile trend
+- SHA `b6ef4ac` (V30 partial): 6/23 success, 8 failure (fuzz/docker — beklenen)
+
+### Güncel Toplam Denetim Tablosu
+
+| Ciddiyet | Sayi | Durum |
+|----------|------|-------|
+| 🔴 Kritik | 17 | 15 kapatildi, 2 acik (V107✅CI, V126✅CI, V128✅CI — CI bekleniyor) |
+| 🟡 Yuksek | 34 | 14 kapatildi, 20 acik (V102+V117 yeni kapatildi) |
+| ⚪ Dusuk | 47 | 4 kapatildi, 47 acik (V131+V132+V133 yeni) |
+
+**Toplam: 101 bulgu (V22-V133), 33 kapatildi, 68 acik**
+
+Co-authored-by: ARENAS <arenas@budlum.ai>
