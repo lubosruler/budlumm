@@ -215,6 +215,18 @@ Sertleştirme seçenekleri kullanıcı kararı gerektirir (§11 K1).
 
 **Kapı G3:** H3.1–H3.2 yeşil · yeni crash = 🔴 aç ve G1'e düş.
 
+### H3 progress (ARENA3, 2026-07-20)
+
+| Item | Status |
+|------|--------|
+| H3.1 Fuzz Quick 8 targets | CI job present (60s×8) |
+| H3.2 Fuzz Nightly matrix | 8 targets × 4h (incl. consensus/relayer/zk) |
+| H3.3–H5 Phase 11.2 targets | present + expanded seed corpus |
+| H3.6 deserialize targets | present |
+| H3.7 chaos suites | `chaos.rs`, `snapshot_chaos.rs` |
+| H3.8 proptest | `tokenomics_proptest`, `proptest_core` |
+| V113 recover + bridge | `BRIDGE_STATE_AT:{h}` + rollback on interrupt |
+
 ---
 
 ### Faz H4 — Kriptografi ve anahtar koruma

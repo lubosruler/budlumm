@@ -3965,3 +3965,26 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 **Kim karar verecek:** Ayaz / ARENA3 SLEEP (madde 3)
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+### [2026-07-20 11:47 UTC+03:00] ARENA3 — HARDEN H3: V113 bridge crash-recovery + fuzz corpus genişletme
+
+**Durum:** Lokal YEŞİL — push → CI SLEEP
+**Kapsam:** Hardening Protocol Faz H3
+
+**V113 (🟡→fix):**
+- `commit_durable_batch`: `BRIDGE_STATE_AT:{height}` snapshot
+- `recover_interrupted_commit`: interrupt height'ta bridge poison'ı temizler, tip-1 snapshot'a döner
+- Test: `test_durable_commit_batch_and_recovery` poison+rollback assert
+
+**Fuzz H3.1–H3.6:**
+- 8 quick/nightly target için zengin seed corpus (`fuzz/corpus/*`)
+- Phase 11.2 consensus/relayer/zk target'ları zaten CI matrix'te
+
+**Docs:** `BUDLUM_HARDENING_PROTOCOL.md` H3 progress tablosu
+
+**Lokal:** full lib 0 failed · clippy -D · fmt
+**CI kanıtı:** push sonrası
+**Ne bekliyor:** CI 23/23; H4 HSM/crypto veya kalan 🟡
+**Kim karar verecek:** CI
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
