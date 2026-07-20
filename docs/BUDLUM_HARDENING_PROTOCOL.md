@@ -242,6 +242,17 @@ Sertleştirme seçenekleri kullanıcı kararı gerektirir (§11 K1).
 
 **Kapı G4:** H4.1+H4.4+H4.6 yeşil · H4.3 ya tamam ya "mainnet v1 out-of-scope" beyanı.
 
+### H4 progress (ARENA3, 2026-07-20)
+
+| Item | Status |
+|------|--------|
+| H4.1 disk / mock fail-closed | `mainnet_policy` + CLI wire + `validate_mainnet_disk_policy` locks |
+| H4.2 PKCS#11 path | existing `pkcs11.rs` + mainnet requires module/pin |
+| H4.3 vendor-native BLS/PQ | **mainnet v1 out-of-scope** (docs honesty lock) |
+| H4.4 timing-safe | CI job + `constant_time_eq_str` correctness lock |
+| H4.5 domain tags | `docs/CRYPTO_DOMAIN_TAGS.md` inventory + lock |
+| H4.6 Miri | existing `miri.yml` crypto+bud-vm |
+
 ---
 
 ### Faz H5 — Ağ, RPC, eclipse, DoS

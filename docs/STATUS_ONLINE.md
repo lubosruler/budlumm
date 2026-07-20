@@ -4195,3 +4195,30 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+### [2026-07-20 13:04 UTC+03:00] ARENA3 — HARDEN H4: mainnet key policy + domain tags + crypto locks
+
+**Durum:** Lokal YEŞİL — push → CI SLEEP
+**Kapsam:** Hardening Protocol Faz H4
+
+**H4.1 fail-closed:**
+- `src/crypto/mainnet_policy.rs` — pure admission (pkcs11 only; rejects local/hsm_mock/disk/empty pin)
+- CLI `validate_strict_rules` bu checker'a bağlandı
+- Mevcut `ValidatorKeys::validate_mainnet_disk_policy` kilitlendi
+
+**H4.3 honesty:** vendor-native BLS/PQ **mainnet v1 out-of-scope** (HSM policy + test)
+
+**H4.4:** `constant_time_eq_str` correctness lock (timing CI job mevcut)
+
+**H4.5:** `docs/CRYPTO_DOMAIN_TAGS.md` envanter + inventory lock
+
+**H4.6:** Miri workflow mevcut (crypto + bud-vm)
+
+**Kilitler:** `hardening_h4_locks` (5) + `mainnet_policy` (8)
+
+**Lokal:** full lib 0 failed · clippy -D · fmt
+**CI kanıtı:** push sonrası
+**Ne bekliyor:** CI 23/23; H5 kalan / H6–H8
+**Kim karar verecek:** CI
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
