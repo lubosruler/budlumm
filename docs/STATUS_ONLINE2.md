@@ -188,8 +188,8 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 **Yerel doğrulama:** bud-compiler 16/16 ✅ · clippy `-D warnings` temiz ✅ · fmt temiz ✅ · downstream `bud-cli` derleniyor ✅
 
 **Ne bitti:** FieldAccess tip-farkındalıklı offset çözümü + 2 regresyon testi; PR #99 açıldı (base: main)
-**CI kanıtı:** SHA `cba7884`, PR #99 — CI push sonrası izleniyor (bu girdi CI sonucuyla güncellenecek)
-**Ne bekliyor:** PR #99 CI yeşil → merge (main stabil olduğunda); follow-up bulgu: StructLiteral alan-sırası/tanım-sırası uyumu
+**CI kanıtı:** PR #99 head `61eea8d` — **22/22 check YEŞİL ✅** (ana CI run `29769236837` + Determinism `29769237051` / Miri `29769236927` / Semver `29769236969` / Benchmark `29769236895` / DockerSmoke `29769236807` tümü success). Kritik: BudZero/BudZKVM ✅, Budlum Core ✅, Miri UB (budzero) ✅, Semver ✅ (public API aynı), Coverage ratchet ✅, Cross-Platform Determinism (mac+ubuntu) ✅, Fuzz ✅
+**Ne bekliyor:** PR #99 CI YEŞİL — merge onayı (Ayaz) / main stabil olduğunda merge; follow-up bulgu: StructLiteral alan-sırası/tanım-sırası uyumu
 **Kim karar verecek:** Ayaz (merge onayı) / CI (tek yargıç)
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
