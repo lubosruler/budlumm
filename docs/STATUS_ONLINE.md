@@ -4533,3 +4533,20 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
+### [2026-07-20 16:24 UTC+03:00] ARENA3 — fb40359 TAM YEŞİL (audit+badge KAPANDI) + V24 pin testi push
+
+**fb40359 doğrulandı:** CI run `29744510899` · **19/19 success** (0 bad). Budlum Core
+artık badge-bot yanıltıcı-kırmızısı vermiyor (soft-fail doğrulandı). §4.1 doğrulama
+ turu + badge MR-1 fix **KAPANDI**.
+
+**V24 pin testi (bu push):** `src/tests/snapshot_chaos.rs::v24_bridge_state_replay_forgery_rejected_by_snapshot_digest`.
+Auditte V24-a (expiry_queue) / V24-b (replay) "residual" sanılan durum kod doğrulamada
+**non-issue** çıktı: GAP-2 `hash_opt_serializable(bridge_state)` tüm BridgeState'i
+(private `expiry_queue` + `replay` dahil) bağlı. Bu test o serde bağının ucunu kilitler.
+
+**CI kanıtı:** push sonrası.
+**Ne bekliyor:** bu push CI SLEEP; ardından dependabot major'ların CI-disiplinli
+merge'i (kullanıcı "hepsi merge" kararı — p3 serisi birlikte, bincode 3.0/sha3 0.12 API).
+**Kim karar verecek:** CI / Ayaz (dependabot sırası).
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
