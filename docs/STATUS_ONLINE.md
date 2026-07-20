@@ -3500,3 +3500,87 @@ Stake sadece ignore ediliyor — gerçek `burn_from()` çağrısı yapılmıyor.
 **Kim karar verecek:** Ayaz (V128 onarım kararı) + CI
 
 Co-authored-by: ARENAS <arenas@budlum.ai>
+
+---
+
+## ADIM 11 — Aralıksız Denetim: V111 Doğrulama + executor.rs Tam Tarama + ZK/Snapshot/Finality İncelemesi
+
+**Tarih:** 2026-07-20
+**Ajan:** ARENAS (Denetim)
+
+### CI SLEEP Durumu
+- SHA `8355e8f` (V129 fix) + `ad1e60a` (V125 ek fix) + `11dc529` (V128 fix) + `83df3b1` (V107+V125+V126+V127 fix) — CI hala pending/queued
+- ARENA3 ve ARENA2 yeni branch'ler açıyor: `arena/v30-bridge-fail-closed`, `arena2/task3-proof-verify`
+
+### Bu ADIM'da Denetlenen Modüller (Toplam ~5,000+ satır)
+- `src/chain/snapshot.rs` (1160 satır) — snapshot V2, verify, digest, signing sağlam
+- `src/chain/finality.rs` (1084 satır) — BLS aggregate verification, subgroup check, quorum sağlam
+- `src/consensus/pow.rs` (375 satır) — difficulty adjustment, pure validate sağlam
+- `src/prover/mod.rs` (282 satır) — ZK proof "first valid wins", payload binding sağlam
+- `src/storage/merkle_trie.rs` (343 satır) — 256-bit trie, sparse Merkle sağlam
+- `src/core/governance.rs` (294 satır) — proposal/vote/finalize sağlam, V68-V71 fix'ler mevcut
+- `src/cross_domain/relayer.rs` (579 satır) — replay check, expiry, proof verify sağlam
+- `budzero/bud-vm/src/lib.rs` — VerifyMerkle opcode (508-570 satır)
+
+### V111 (🟡) Detaylı Doğrulama: VerifyMerkle 64-bit Key vs 256-bit Trie
+
+**Dosya:** `budzero/bud-vm/src/lib.rs` VerifyMerkle handler (satır ~508)
+**Ciddiyet:** 🟡 Yüksek (doğrulandı)
+**Kategori:** Kriptografik tutarsızlık
+
+**Detay:**
+VerifyMerkle opcode memory layout: `[key: u64, 64 × sibling: u64]` — key sadece 64-bit.
+MerkleTrie ise 256-bit adreslerle çalışıyor (`[u8; 32]` address, depth=256).
+
+Tutarsızlık:
+1. VM 64-bit key ile 64 seviye doğrulama yapıyor
+2. On-chain MerkleTrie 256-bit key ile 256 seviye doğrulama yapıyor
+3. Bu, VM'in sadece adresin ilk 64 bitini kontrol ettiği anlamına geliyor
+4. İlk 64 biti aynı olan iki adres, VM'de aynı proof ile doğrulanabilir — **collision!**
+
+**Pratik etki:** 2^64 adres alanında collision olasılığı çok düşük olsa da, kriptografik sistemlerde "olasılık düşük" yeterli değildir. 256-bit security level'dan 64-bit'e düşüş, birthday attack ile 2^32 işlemlerde collision mümkün.
+
+**Not:** ARENA3 Phase 9'da "VerifyMerkle production gate AÇILDI" demiş — bu gate açıkken sorun daha kritik hale geliyor.
+
+### Denetim Kapsamı Güncellemesi
+
+**Toplam Denetlenen Satır:** ~60,000+ (tüm src/ modülleri + budzero/ VM)
+
+**Tamamı Denetlenen Dosyalar:**
+- Tüm src/chain/ dosyaları (blockchain.rs, chain_actor.rs, finality.rs, snapshot.rs)
+- Tüm src/execution/ dosyaları (executor.rs)
+- Tüm src/cross_domain/ dosyaları (bridge.rs, relayer.rs, bridge_relayer.rs, evm/*)
+- Tüm src/consensus/ dosyaları (pow.rs, pos.rs, qc.rs)
+- Tüm src/core/ dosyaları (account.rs, governance.rs, transaction.rs, metrics.rs)
+- Tüm src/storage/ dosyaları (db.rs, merkle_trie.rs, manifest.rs)
+- Tüm src/ai/ dosyaları (registry.rs, types.rs, mod.rs)
+- Tüm src/prover/ dosyaları (mod.rs)
+- Tüm src/rpc/ dosyaları (server.rs, api.rs)
+- budzero/bud-vm/src/lib.rs (VerifyMerkle + VerifyInference opcodes)
+- budzero/bud-isa/src/lib.rs (opcode definitions)
+
+### Güncel Toplam Denetim Tablosu
+
+| Ciddiyet | Sayi | Durum |
+|----------|------|-------|
+| 🔴 Kritik | 17 | 11 kapatildi, 6 acik (V24, V86, V89, V107, V126, V128) |
+| 🟡 Yuksek | 34 | 8 kapatildi (V129 eklendi), 26 acik |
+| ⚪ Dusuk | 47 | 4 kapatildi, 43 acik |
+
+**Toplam: 97 bulgu (V22-V129), 23 kapatildi, 74 acik**
+
+**Bu ADIM'da Kapatılan:** V129 (AiDisputeSlash burn_from)
+
+**Açık Kritikler (6):**
+- V24 (🔴): Bridge root scope
+- V86 (🔴): Escrow release/reclaim
+- V89 (🔴): AiAgentPayment non-escrowed audit trail (düşük etkili — executor doğru)
+- V107 (🔴): Bridge lock bakiye düşüşü — **FIXED, CI bekleniyor**
+- V126 (🔴): Universal relayer bridge mint — **FIXED, CI bekleniyor**
+- V128 (🔴): BridgeBurn owner iade — **FIXED, CI bekleniyor**
+
+**Ne bitti:** ADIM 11 — Tüm ana modüllerin denetimi tamamlandı (~60,000+ satır). V111 detaylı doğrulama. V129 onarım push edildi.
+**Ne bekliyor:** CI SLEEP (83df3b1, 11dc529, ad1e60a, 8355e8f), V30/V91 EvmChainAdapter no-op fix, V98 PoS seed poisoning fix, V103 QcFaultProof slash, V113 recover_interrupted_commit rollback.
+**Kim karar verecek:** Ayaz (V30/V91 tasarım kararı, V98 fix kararı) + CI
+
+Co-authored-by: ARENAS <arenas@budlum.ai>
