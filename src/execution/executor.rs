@@ -213,9 +213,10 @@ impl Executor {
                         let mut model_id = [0u8; 32];
                         model_id[0..8].copy_from_slice(&receipt.events[1].to_le_bytes());
                         let max_fee = receipt.events[2];
+                        // V125 fix (ARENAS): Use current_block_height instead of
+                        // epoch_index * 100 approximation for consistency.
                         let deadline_block = state
-                            .epoch_index
-                            .saturating_mul(100)
+                            .current_block_height
                             .saturating_add(receipt.events[3]);
                         let mut req = crate::ai::types::AiInferenceRequest {
                             request_id: crate::ai::types::AiRequestId::default(),
