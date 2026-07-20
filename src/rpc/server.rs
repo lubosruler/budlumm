@@ -2610,13 +2610,14 @@ impl BudlumApiServer for RpcServer {
             &sale_authorizations,
         );
         let height = self.chain.get_height().await;
-        let bundle = crate::gateway::try_build_passport_proof_bundle(&profile, height).map_err(|e| {
-            ErrorObjectOwned::owned(
-                -32603,
-                format!("failed to build passport proof bundle: {e}"),
-                None::<()>,
-            )
-        })?;
+        let bundle =
+            crate::gateway::try_build_passport_proof_bundle(&profile, height).map_err(|e| {
+                ErrorObjectOwned::owned(
+                    -32603,
+                    format!("failed to build passport proof bundle: {e}"),
+                    None::<()>,
+                )
+            })?;
         serde_json::to_value(bundle).map_err(|e| {
             ErrorObjectOwned::owned(
                 -32603,

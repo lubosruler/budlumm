@@ -136,12 +136,10 @@ pub struct PassportProofBundle {
 }
 
 impl PassportProofBundle {
-    pub fn validate_against_profile(
-        &self,
-        profile: &DwebPassportProfile,
-    ) -> Result<(), String> {
+    pub fn validate_against_profile(&self, profile: &DwebPassportProfile) -> Result<(), String> {
         validate_passport_name(&self.name)?;
-        if self.name != profile.name || self.exists != profile.exists || self.owner != profile.owner {
+        if self.name != profile.name || self.exists != profile.exists || self.owner != profile.owner
+        {
             return Err("PassportProofBundle profile binding mismatch".into());
         }
         if self.items.len() > MAX_PASSPORT_EVIDENCE_ITEMS {
@@ -501,5 +499,4 @@ mod tests {
             .unwrap_err()
             .contains("evidence"));
     }
-
 }
