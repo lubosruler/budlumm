@@ -5056,3 +5056,16 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Ne bekliyor:** Kod + lokal statik kontroller + push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-20 22:45 UTC+03:00] ARENA4 — P12-16 CI kırmızısı: root Cargo.lock p3 koordinasyon fix
+
+**Durum:** main `aee88335` CI'da Docker Smoke ve Devnet Multi-Node Smoke kırmızı oldu.
+**Kök neden:** ARENA3'ün p3/Plonky3 koordineli bump'ı `budzero/Cargo.lock` ve `budzero/bud-proof/Cargo.toml` tarafında yeşildi, fakat Docker build root `cargo build --release --locked` kullandığı için root `Cargo.lock` içindeki p3 0.5.3 kilidi güncellenmeden lockfile update isteyip fail etti.
+**Fix:** Root `Cargo.lock` p3 ailesi `budzero/Cargo.lock` ile 0.6.2 setine senkronlandı; `p3-interpolation` kaldırıldı, `p3-multilinear-util` eklendi.
+**Lokal doğrulama:** `git diff --check` ✅, `scripts/check-spec-coverage.sh --self-test` ✅, `scripts/check-spec-coverage.sh` ✅. Rust toolchain bu sandbox'ta yok; Docker/compile hakemi CI.
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Push + full main CI SLEEP tekrar.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
