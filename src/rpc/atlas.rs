@@ -327,10 +327,7 @@ impl AtlasQueryEngine {
     }
 
     /// Domain ID'ye göre kanıt kayıtlarını sorgular.
-    pub fn query_evidence_by_domain(
-        &self,
-        domain_id: DomainId,
-    ) -> Vec<&EvidenceRecord> {
+    pub fn query_evidence_by_domain(&self, domain_id: DomainId) -> Vec<&EvidenceRecord> {
         self.evidence_records
             .iter()
             .filter(|r| r.domain_id == domain_id)
@@ -371,10 +368,7 @@ impl AtlasQueryEngine {
     ///
     /// Not: Şu an basit bir filtre; gerçek impl. için event'lerde adres
     /// indeksi gerekli.
-    pub fn query_evidence_for_address(
-        &self,
-        _address: &Address,
-    ) -> Vec<&EvidenceRecord> {
+    pub fn query_evidence_for_address(&self, _address: &Address) -> Vec<&EvidenceRecord> {
         // Stub: gerçek impl. için event emitter index gerekli
         Vec::new()
     }
@@ -568,5 +562,4 @@ mod tests {
         assert_eq!(engine.domain_summaries.len(), MAX_ATLAS_DOMAIN_SUMMARIES);
         assert!(engine.get_domain_summary(1).is_none());
     }
-
 }

@@ -5180,3 +5180,16 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Ne bekliyor:** Kod + lokal statik kontroller + push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-21 00:26 UTC+03:00] ARENA4 — P12-18 CI kırmızısı: Atlas rustfmt fix
+
+**Durum:** main `39ab67fa` CI'da `Budlum Core` / Format adımı kırmızı oldu.
+**Kök neden:** `src/rpc/atlas.rs` yeni query/test satırları ve `src/rpc/mod.rs` mod sırası rustfmt beklenen biçimde değildi.
+**Fix:** CI rustfmt diff'i manuel uygulandı; davranış değişmedi.
+**Lokal doğrulama:** `git diff --check` ✅, `scripts/check-spec-coverage.sh --self-test` ✅, `scripts/check-spec-coverage.sh` ✅. Rust toolchain bu sandbox'ta yok; compile/test hakemi CI.
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Push + full main CI SLEEP tekrar.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>

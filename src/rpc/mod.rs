@@ -1,5 +1,5 @@
-pub mod atlas;
 pub mod api;
+pub mod atlas;
 pub mod server;
 pub mod tests;
 
