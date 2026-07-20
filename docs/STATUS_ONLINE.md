@@ -2791,3 +2791,76 @@ Production node'larinda NTP ile saat duzeltmesi yaygin bir senaryodur. Snapshot 
 **Kim karar verecek:** Ayaz (V110 VerifyInference + V116 AiAgentPayment proto + V89 on-chain fix kararlari) + CI (onarim onayi)
 
 Co-authored-by: ARENAS <arenas@budlum.ai>
+
+---
+
+### V119 (🔴 Kritik) — Ethereum Sync-Committee verify_sync_aggregate: Tek Pubkey Yeterli Sayiliyor
+
+**Dosya:** `src/cross_domain/evm/sync_committee.rs` verify_sync_aggregate() (satir ~119)
+**Ciddiyet:** 🔴 Kritik
+**Kategori:** Kriptografik dogrulama / Finality bypas
+
+**Aciklama:**
+`verify_sync_aggregate` fonksiyonu, 512-uyeli Ethereum sync-committee'nin aggregate imzasini dogrularken **en az 1 pubkey** gecerli oldugunda `Ok(())` donuyor:
+
+```rust
+for (i, pk) in state.current_sync_committee.iter().enumerate() {
+    if aggregate.signed(i) {
+        match verify_bls_sig(pk, signing_message, &aggregate.sync_committee_signature) {
+            Ok(()) => return Ok(()), // EN AZ 1 gecerli = TAMAM!
+            Err(_) => continue,
+        }
+    }
+}
+```
+
+Bu ciddi bir guvenlik acigidir:
+1. **342+ pubkey imzalamis olmali** (2/3 threshold) ama sadece 1'inin gecerli olmasi yeterli sayiliyor
+2. Saldirgan, 512-bit bitmap'te 342+ bit set edip, sadece 1 gecerli pubkey+imza cifti saglayarak finality'yi bypass edebilir
+3. Ethereum'da sync-committee AGGREGATE imza dogrulamasi: tum imzacilarin pubkeys'leri tek aggregate pubkey'e toplanir ve TEK verify yapilir. Bu impl, her pubkey icin AYRI AYRI verify yapiyor ve ILK basarilida donuyor.
+
+Kodda yorum olarak "F10.3 minimal — production'da aggregate-pubkey optimizasyonu" yaziyor ama:
+- "minimal" demek "daha yavas" demek, "daha zayif guvenlik" demek degildir
+- Tek-pubkey gecisi, 342 threshold'unu tamamen anlamsiz kilar
+
+**Sonuc:** Bir Ethereum PoS finalized header'i, sadece 1 sync-committee uyesinin gecerli imzasini bilerek Budlum'da "finalized" olarak kabul edilebilir. Bu, bridge mint islemlerinde sahte finality'ye izin verir.
+
+**Oneri:** Dogru aggregate verify: Tum participating pubkeys'leri toplayip aggregate pubkey olustur, aggregate imza ile tek verify yap. Veya en azindan: tum 512 pubkey icin imza dogrula, kac tanesinin gecerli oldugunu say, threshold'u (342) karsilastir.
+
+---
+
+### V120 (⚪ Dusuk) — StorageDeal answer_challenge: Herhangi Bir range_hash Kabul Ediliyor
+
+**Dosya:** `src/domain/storage_deal.rs` answer_challenge() (satir ~518)
+**Ciddiyet:** ⚪ Dusuk
+**Kategori:** Depolama dogrulama / Tasarım kararı
+
+**Aciklama:**
+`answer_challenge` metodu, operatorun verdigi `range_hash`'i hicbir sekilde dogrulamiyor (V58 ile sifir hash reddedildi ama sifir-olmayan herhangi bir hash kabul ediliyor). Kodda aciklama var: "The chain does not hold the shard bytes, so we cannot itself compute the expected range hash."
+
+Bu bilinen bir tasarim karari (interim challenge limitation) ve Faz 5'te ZK proof ile cozulmesi planlaniyor. Ancak su anki durumda:
+- Bir operator, shard'i silmis bile olsa, rastgele bir hash vererek challenge'i gecebilir
+- Sadece "deadline elapsed without response" = Missed → slash
+- "Wrong hash" = Mismatched → slash YAPILMIYOR (hicbir zaman cagrilmadi)
+
+**Oneri:** V58 ile sifir hash reddedildi ama `Mismatched` outcome hicbir zaman kullanilmiyor. Ya `Mismatched` outcome kaldirilmali (dead code) veya range_hash dogrulama mekanizmasi eklenmeli.
+
+---
+
+**Guncel Toplam Denetim Tablosu:**
+
+| Ciddiyet | Sayi | Durum |
+|----------|------|-------|
+| 🔴 Kritik | 14 | 5 kapatildi, 9 acik (V24, V37, V38, V86, V89, V95*, V106*, V110, V116, V119) |
+| 🟡 Yuksek | 28 | 5 kapatildi, 23 acik |
+| ⚪ Dusuk | 44 | 4 kapatildi, 40 acik |
+
+*V95 ve V106 onarildi (push edildi, CI bekleniyor)
+
+**Toplam: 86 bulgu (V22-V120), 15 kapatildi, 71 acik**
+
+**Ne bitti:** ADIM 7 (devam) — evm/sync_committee.rs, domain/plugin.rs, domain/types.rs denetimi. V119 (Ethereum sync-committee verify sadece 1 pubkey dogruluyor — finality bypass!) kritik. V120 (answer_challenge range_hash dogrulama eksik) dusuk.
+**Ne bekliyor:** CI onayi + V119 onarim karari + kalan modul denetimi.
+**Kim karar verecek:** Ayaz (V119 sync-committee aggregate verify onarimi + V116 AiAgentPayment proto + V110 VerifyInference) + CI
+
+Co-authored-by: ARENAS <arenas@budlum.ai>
