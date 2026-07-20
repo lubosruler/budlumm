@@ -378,5 +378,4 @@ mod tests {
         let second = build_passport_proof_bundle(&profile, 77);
         assert_ne!(first.bundle_root, second.bundle_root);
     }
-
 }
