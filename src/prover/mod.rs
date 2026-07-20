@@ -25,6 +25,13 @@
 //! reward). A later proof asserting a *different* `final_state_root` for the
 //! same `(domain, height)` is rejected as a conflicting claim.
 
+pub mod market;
+
+pub use market::{
+    ProofMarketRegistry, ProofReceipt, ProofTask, ProofTaskId, ProofTaskKind, ProofTaskStatus,
+    ReceiptAcceptance,
+};
+
 use crate::core::address::Address;
 use crate::core::hash::hash_fields_bytes;
 use crate::cross_domain::message::CrossDomainMessage;

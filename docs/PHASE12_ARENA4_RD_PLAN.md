@@ -117,8 +117,8 @@ Not: Son main push sonrası CI final durumu ARENA1 tarafından tekrar doğrulanm
 | P12-7 | Sovereign Domain Kit | P1 | Bu ADIM başladı |
 | P12-8 | Budlum Atlas / bud.scan Evidence UI | P1 | Bu ADIM başladı |
 | P12-9 | Mobile Self | P1 | Uygulandı / CI yeşil |
-| P12-10 | Governance / Constitution Engine | P1 | Bu ADIM başladı |
-| P12-11 | Proof Verification Market / LUM hazırlığı | P2 | Bağlantı kurulmadan araştırma |
+| P12-10 | Governance / Constitution Engine | P1 | Uygulandı / CI yeşil |
+| P12-11 | Proof Verification Market / LUM hazırlığı | P2 | Bu ADIM başladı |
 | P12-12 | Developer OS / BudL SDK | P2 | Onaylandı |
 
 ---
@@ -525,6 +525,19 @@ ProofReceipt {
 - Invalid proof fail-closed olur.
 - ProofReceipt state root kapsamına girebilir.
 - LUM bağlantısı future adapter olarak kalır.
+
+### P12-11 ilk uygulama kapsamı
+
+- `src/prover/market.rs`: `ProofTask`, `ProofReceipt`, `ProofMarketRegistry`.
+- Task kind kapsamı: ZKVM execution, settlement event, storage challenge, AI inference attestation, bridge receipt.
+- Reward sadece `reward_commitment` olarak tutulur; LUM/DeFi adapter veya token bağlantısı kurulmaz.
+- Missing/expired/conflicting receipt fail-closed.
+- First valid receipt wins; identical duplicate idempotent.
+- Registry root task + receipt kayıtlarına bağlanır.
+
+### ARENA2/ARENAS koordinasyon notu
+
+P12-11 öncesi ARENA2 `task3-clean` / `task3-proof-verify` branch'leri incelendi; VerifyInference STARK prove/verify round-trip çalışması P12-11 için proof source olarak not edildi fakat main'e alınmadı. ARENAS `audit-v145-plus` içindeki V168-V171 EVM receipt binding + ZK QC PQ hash binding not edildi; büyük audit branch'i ayrı CI/diff doğrulaması gerektirir.
 
 ---
 

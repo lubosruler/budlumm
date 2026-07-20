@@ -3640,7 +3640,7 @@ ARENA3 `83f2430` commit'inde V89'u onardı. Doğrulama sonucu:
 
 ### V24 (🔴→✅ DOĞRULANIYOR): Bridge Root Scope
 
-ARENA3 `83f2430`'da V24 ile ilgili "forged transfer amount changes bridge root regression test" 
+ARENA3 `83f2430`'da V24 ile ilgili "forged transfer amount changes bridge root regression test"
 ifadesi var. Detaylı doğrulama bir sonraki ADIM'da yapılacak.
 
 ### Test Regression Fix Detayları
@@ -4044,8 +4044,8 @@ Co-authored-by: ARENAS <arenas@budlum.xyz>
 
 ### [2026-07-20 10:38 UTC+03:00] ARENA4 — ADIM A4-1 BAŞLADI: Pollen Data Rights + AI read gate
 
-**Zemin:** origin/main `411fef1` (ARENA3 kapanış: main CI 23/23 yeşil).  
-**Branch:** `arena/arena4-pollen-ai-data-rights`.  
+**Zemin:** origin/main `411fef1` (ARENA3 kapanış: main CI 23/23 yeşil).
+**Branch:** `arena/arena4-pollen-ai-data-rights`.
 **Kullanıcı kararları:**
 - Dosyalardaki kullanıcıya sorulacak yerlerde “önerilen” şıklar uygulanabilir.
 - İlk ADIM: **Pollen + AI veri yasağı**.
@@ -4060,7 +4060,7 @@ Co-authored-by: ARENAS <arenas@budlum.xyz>
 4. Regresyon testleri: grant yoksa reject, geçerli grant tek okuma tüketir, legacy opaque input_ref bozulmaz.
 5. Rapor: `docs/ARENA4_APPROVED_SYSTEMS_ROADMAP_2026-07-20.md`.
 
-**Budlumdevnet dokunulmadı.**  
+**Budlumdevnet dokunulmadı.**
 **Ne bekliyor:** Lokal statik kontroller + push + CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4069,10 +4069,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 11:03 UTC+03:00] ARENA4 — CI kırmızısı: GrantId alias constructor fix
 
-**Durum:** `7bcc911` CI'da B.U.D. E2E ve BNS gate compile aşamasında kırmızı oldu.  
-**Kök neden:** `GrantId` bir `type GrantId = AssetId` alias'ı; alias tuple-struct constructor gibi `GrantId(...)` kullanılamaz.  
-**Fix:** `GrantId(...)` kullanımları `AssetId(...)` ile değiştirildi; `GrantId::from(...)` formatı korunuyor.  
-**Kapsam:** Compile unblock; davranış değişmedi.  
+**Durum:** `7bcc911` CI'da B.U.D. E2E ve BNS gate compile aşamasında kırmızı oldu.
+**Kök neden:** `GrantId` bir `type GrantId = AssetId` alias'ı; alias tuple-struct constructor gibi `GrantId(...)` kullanılamaz.
+**Fix:** `GrantId(...)` kullanımları `AssetId(...)` ile değiştirildi; `GrantId::from(...)` formatı korunuyor.
+**Kapsam:** Compile unblock; davranış değişmedi.
 **Ne bekliyor:** Push + CI SLEEP tekrar.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4081,10 +4081,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 11:07 UTC+03:00] ARENA4 — CI kırmızısı: rustfmt diff fix
 
-**Durum:** `5eb19e3` CI'da `Budlum Core` Format adımında kırmızı oldu.  
-**Kök neden:** `offers.rs`, `tests/mod.rs`, `pollen_ai_data_rights.rs` rustfmt beklenen biçimde değildi.  
-**Fix:** CI rustfmt diff'leri birebir uygulandı.  
-**Kapsam:** Format-only CI unblock.  
+**Durum:** `5eb19e3` CI'da `Budlum Core` Format adımında kırmızı oldu.
+**Kök neden:** `offers.rs`, `tests/mod.rs`, `pollen_ai_data_rights.rs` rustfmt beklenen biçimde değildi.
+**Fix:** CI rustfmt diff'leri birebir uygulandı.
+**Kapsam:** Format-only CI unblock.
 **Ne bekliyor:** Push + CI SLEEP tekrar.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4093,8 +4093,8 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 11:22 UTC+03:00] ARENA4 — ADIM A4-1 TAMAMLANDI: Pollen Data Rights + AI read gate CI YEŞİL
 
-**Branch:** `arena/arena4-pollen-ai-data-rights`  
-**SHA:** `6189f12`  
+**Branch:** `arena/arena4-pollen-ai-data-rights`
+**SHA:** `6189f12`
 **CI kanıtı:** run `29726596216` — **14/14 success** (`Budlum Core`, `BudZero`, `Coverage`, `Fuzz Quick`, `B.U.D.`, `BNS`, `PoA`, `Secret Scan`, `Deny`, `Docker Security`, `Repo Lint`, `Timing`, `SBOM`).
 
 **Ne bitti:**
@@ -4105,8 +4105,8 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 5. Regresyon kilitleri: `pollen_ai_data_ref_without_access_grant_is_rejected`, `pollen_ai_data_ref_with_access_grant_is_consumed_once`, `non_pollen_ai_input_ref_still_uses_legacy_opaque_path`.
 6. Rapor: `docs/ARENA4_APPROVED_SYSTEMS_ROADMAP_2026-07-20.md`.
 
-**Kullanıcı kararları uygulandı:** strict no override, DAO decrypt/key yetkisi yok, D-Web Passport core API/spec önce.  
-**Budlumdevnet dokunulmadı.**  
+**Kullanıcı kararları uygulandı:** strict no override, DAO decrypt/key yetkisi yok, D-Web Passport core API/spec önce.
+**Budlumdevnet dokunulmadı.**
 **Ne bekliyor:** STATUS kapanış commit'i push edilecek ve CI tekrar izlenecek; yeşil olursa yeni komut/ADIM beklenir.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4115,7 +4115,7 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 11:45 UTC+03:00] ARENA4 — ADIM A4-2 BAŞLADI: SaleAuthorization + Pollen RPC/query surface
 
-**Zemin:** Branch `arena/arena4-pollen-ai-data-rights` main `eacc649` ile merge edildi; merge SHA `7fd8c68` CI run `29728954627` üzerinde **14/14 success**.  
+**Zemin:** Branch `arena/arena4-pollen-ai-data-rights` main `eacc649` ile merge edildi; merge SHA `7fd8c68` CI run `29728954627` üzerinde **14/14 success**.
 **Kapsam:**
 1. `SaleAuthorization` + `SaleAuthorizationId` primitive'i: seller/owner imzalı, bounded pollen satış yetkisi.
 2. `MarketplaceRegistry.sale_authorizations` root kapsamı.
@@ -4123,7 +4123,7 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 4. RPC: `bud_pollenGetDataAssets`, `bud_pollenGetAccessGrants`, `bud_pollenGetSaleAuthorizations`, `bud_pollenBuildAiInputRef`, `bud_pollenPrepareSaleAuthorization`.
 5. Yeni transaction/proto tipi açılmıyor; bu ADIM güvenli prepare/query yüzeyiyle sınırlı.
 
-**Budlumdevnet dokunulmadı.**  
+**Budlumdevnet dokunulmadı.**
 **Ne bekliyor:** Push + CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4132,10 +4132,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 12:07 UTC+03:00] ARENA4 — CI kırmızısı: A4-2 rustfmt diff fix
 
-**Durum:** `42b963f` CI'da `Budlum Core` Format adımında kırmızı oldu.  
-**Kök neden:** `chain_actor.rs`, `pollen/data_rights.rs`, `pollen/mod.rs`, `pollen/offers.rs`, `rpc/server.rs` rustfmt beklenen biçimde değildi.  
-**Fix:** CI rustfmt diff'leri uygulandı.  
-**Kapsam:** Format-only CI unblock.  
+**Durum:** `42b963f` CI'da `Budlum Core` Format adımında kırmızı oldu.
+**Kök neden:** `chain_actor.rs`, `pollen/data_rights.rs`, `pollen/mod.rs`, `pollen/offers.rs`, `rpc/server.rs` rustfmt beklenen biçimde değildi.
+**Fix:** CI rustfmt diff'leri uygulandı.
+**Kapsam:** Format-only CI unblock.
 **Ne bekliyor:** Push + CI SLEEP tekrar.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4144,8 +4144,8 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 12:23 UTC+03:00] ARENA4 — ADIM A4-2 TAMAMLANDI: SaleAuthorization + Pollen RPC/query surface CI YEŞİL
 
-**Branch:** `arena/arena4-pollen-ai-data-rights`  
-**SHA:** `fab2815`  
+**Branch:** `arena/arena4-pollen-ai-data-rights`
+**SHA:** `fab2815`
 **CI kanıtı:** run `29730136181` — **14/14 success**.
 
 **Ne bitti:**
@@ -4155,7 +4155,7 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 4. RPC yüzeyi eklendi: `bud_pollenGetDataAssets`, `bud_pollenGetAccessGrants`, `bud_pollenGetSaleAuthorizations`, `bud_pollenBuildAiInputRef`, `bud_pollenPrepareSaleAuthorization`.
 5. Yeni transaction/proto tipi açılmadı; ADIM güvenli prepare/query yüzeyiyle sınırlı kaldı.
 
-**Budlumdevnet dokunulmadı.**  
+**Budlumdevnet dokunulmadı.**
 **Ne bekliyor:** STATUS kapanış commit'i push edilecek ve CI tekrar izlenecek; yeşil olursa A4-3 veya yeni komut beklenir.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4164,10 +4164,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 12:32 UTC+03:00] ARENA4 — MAIN CI kırmızısı: rustfmt unblock
 
-**Durum:** A4 merge main push `6dbe9d5` sonrası `Budlum Core` Format adımı kırmızı oldu.  
-**Kök neden:** `src/core/account.rs`, `src/execution/executor.rs`, `src/hub/mod.rs` rustfmt diff'leri. Bu farklar origin/main H3/H4 değişikliklerinden merge sonrası görünür oldu.  
-**Fix:** CI rustfmt diff'leri uygulandı.  
-**Not:** main push sırasında GitHub “merge commit içermemeli” kuralı için bypass uyarısı verdi; kullanıcı “mainden devam” dediği için merge main'e taşındı, sonraki push normal fix commit olarak ilerliyor.  
+**Durum:** A4 merge main push `6dbe9d5` sonrası `Budlum Core` Format adımı kırmızı oldu.
+**Kök neden:** `src/core/account.rs`, `src/execution/executor.rs`, `src/hub/mod.rs` rustfmt diff'leri. Bu farklar origin/main H3/H4 değişikliklerinden merge sonrası görünür oldu.
+**Fix:** CI rustfmt diff'leri uygulandı.
+**Not:** main push sırasında GitHub “merge commit içermemeli” kuralı için bypass uyarısı verdi; kullanıcı “mainden devam” dediği için merge main'e taşındı, sonraki push normal fix commit olarak ilerliyor.
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4176,10 +4176,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 12:42 UTC+03:00] ARENA4 — MAIN CI kırmızısı: V144 block_reward test denominator fix
 
-**Durum:** main `09263fe` CI'da `tests::block_reward::test_block_reward_hard_supply_cap` kırmızı oldu.  
-**Kök neden:** V144 sonrası hard supply cap denominator'ı `circulating + staked + unbonding`; test hâlâ yalnız `circulating_supply == cap` bekliyordu. Test setup'ında kalan non-circulating stake/unbonding 50 BUD cap alanını tükettiği için partial mint beklenenden 0 oldu.  
-**Fix:** Test `total_bud_committed = circulating + stake + unbonding` helper'ına hizalandı ve cap alanı bu denominator üzerinden 50 bırakılacak şekilde ayarlandı.  
-**Kapsam:** Test hizası; V144 production davranışı değiştirilmedi.  
+**Durum:** main `09263fe` CI'da `tests::block_reward::test_block_reward_hard_supply_cap` kırmızı oldu.
+**Kök neden:** V144 sonrası hard supply cap denominator'ı `circulating + staked + unbonding`; test hâlâ yalnız `circulating_supply == cap` bekliyordu. Test setup'ında kalan non-circulating stake/unbonding 50 BUD cap alanını tükettiği için partial mint beklenenden 0 oldu.
+**Fix:** Test `total_bud_committed = circulating + stake + unbonding` helper'ına hizalandı ve cap alanı bu denominator üzerinden 50 bırakılacak şekilde ayarlandı.
+**Kapsam:** Test hizası; V144 production davranışı değiştirilmedi.
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4188,10 +4188,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 12:49 UTC+03:00] ARENA4 — MAIN CI kırmızısı: badge bot auth fail manuel rozet fix
 
-**Durum:** main `34911e9` Core job test/format/clippy aşamalarını geçti; son `Test rozeti tazeleme` adımı kırmızı oldu.  
-**Kök neden:** CI badge bot `README.md` test rozetini `1080 → 1093 lib` güncelleyen commit'i oluşturdu fakat GitHub auth ile pushlayamadı (`Invalid username or token`).  
-**Fix:** `README.md` test rozeti manuel `tests-1093%20lib` olarak güncellendi.  
-**Kapsam:** Badge-only unblock; üretim davranışı yok.  
+**Durum:** main `34911e9` Core job test/format/clippy aşamalarını geçti; son `Test rozeti tazeleme` adımı kırmızı oldu.
+**Kök neden:** CI badge bot `README.md` test rozetini `1080 → 1093 lib` güncelleyen commit'i oluşturdu fakat GitHub auth ile pushlayamadı (`Invalid username or token`).
+**Fix:** `README.md` test rozeti manuel `tests-1093%20lib` olarak güncellendi.
+**Kapsam:** Badge-only unblock; üretim davranışı yok.
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4227,7 +4227,7 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 
 ### [2026-07-20 12:58 UTC+03:00] ARENA4 — ADIM P12-3 BAŞLADI: Transaction-backed Pollen registration
 
-**Zemin:** origin/main `883532d` — CI `19/19 success`.  
+**Zemin:** origin/main `883532d` — CI `19/19 success`.
 **Kapsam:**
 1. Pollen transaction type'ları: register DataAsset, authorize sale, grant access, revoke grant, revoke data asset.
 2. V4 signing payload alan kapsamı.
@@ -4235,8 +4235,8 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 4. Executor owner-only kayıt modeli: gerçek signature verification henüz eklenmediği için grant/asset/authorization owner-submitted olacak.
 5. Negatif testler: owner mismatch, grant yoksa AI deny, tx-backed grant sonrası AI accept.
 
-**Güvenlik sınırı:** Buyer-submitted automatic sale + cryptographic owner signature verification bu ADIM'de açılmıyor; sonraki ADIM'de signature verify + payment atomikliğiyle yapılacak.  
-**Budlumdevnet dokunulmadı.**  
+**Güvenlik sınırı:** Buyer-submitted automatic sale + cryptographic owner signature verification bu ADIM'de açılmıyor; sonraki ADIM'de signature verify + payment atomikliğiyle yapılacak.
+**Budlumdevnet dokunulmadı.**
 **Ne bekliyor:** Kod + push + CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4252,8 +4252,8 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 - Proto enum + oneof payload + encode/decode roundtrip.
 - Regression locks: tx-backed asset/grant AI read unlock, non-owner grant reject, revoke asset blocks reads, sale authorization proto roundtrip.
 
-**Güvenlik notu:** Buyer-submitted automatic sale hâlâ açılmadı; grant owner-submitted kalır. Signature verify + payment atomikliği sonraki ADIM.  
-**Budlumdevnet dokunulmadı.**  
+**Güvenlik notu:** Buyer-submitted automatic sale hâlâ açılmadı; grant owner-submitted kalır. Signature verify + payment atomikliği sonraki ADIM.
+**Budlumdevnet dokunulmadı.**
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4262,10 +4262,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 13:10 UTC+03:00] ARENA4 — P12-3 CI kırmızısı: rustfmt test diff fix
 
-**Durum:** main `278a7ad` CI'da `Budlum Core` Format adımında kırmızı oldu.  
-**Kök neden:** `src/tests/pollen_ai_data_rights.rs` rustfmt beklenen biçimde değildi.  
-**Fix:** CI rustfmt diff'leri uygulandı.  
-**Kapsam:** Format-only CI unblock.  
+**Durum:** main `278a7ad` CI'da `Budlum Core` Format adımında kırmızı oldu.
+**Kök neden:** `src/tests/pollen_ai_data_rights.rs` rustfmt beklenen biçimde değildi.
+**Fix:** CI rustfmt diff'leri uygulandı.
+**Kapsam:** Format-only CI unblock.
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4274,10 +4274,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 13:18 UTC+03:00] ARENA4 — P12-3 CI kırmızısı: badge bot auth fail manuel 1110 fix
 
-**Durum:** main `b1279be` Core job test/format/clippy aşamalarını geçti; son `Test rozeti tazeleme` adımı kırmızı oldu.  
-**Kök neden:** CI badge bot `README.md` test rozetini `1106 → 1110 lib` güncelleyen commit'i oluşturdu fakat GitHub auth ile pushlayamadı (`Invalid username or token`).  
-**Fix:** `README.md` test rozeti manuel `tests-1110%20lib` olarak güncellendi.  
-**Kapsam:** Badge-only unblock; üretim davranışı yok.  
+**Durum:** main `b1279be` Core job test/format/clippy aşamalarını geçti; son `Test rozeti tazeleme` adımı kırmızı oldu.
+**Kök neden:** CI badge bot `README.md` test rozetini `1106 → 1110 lib` güncelleyen commit'i oluşturdu fakat GitHub auth ile pushlayamadı (`Invalid username or token`).
+**Fix:** `README.md` test rozeti manuel `tests-1110%20lib` olarak güncellendi.
+**Kapsam:** Badge-only unblock; üretim davranışı yok.
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4371,8 +4371,8 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 
 ### [2026-07-20 13:30 UTC+03:00] ARENA4 — ADIM P12-4 BAŞLADI: Encryption Layer DAO parameters
 
-**Zemin:** origin/main `0396daa` — CI **19/19 success**.  
-**Kullanıcı kararı:** DAO yalnız encryption parametreleri yönetir; kullanıcı anahtarına, decrypt yetkisine veya veri okuma iznine dokunamaz.  
+**Zemin:** origin/main `0396daa` — CI **19/19 success**.
+**Kullanıcı kararı:** DAO yalnız encryption parametreleri yönetir; kullanıcı anahtarına, decrypt yetkisine veya veri okuma iznine dokunamaz.
 **Kapsam:**
 1. `EncryptionPolicy` primitive'i: version, HPKE suite, min key size, max grant duration, deprecation, active flag.
 2. `MarketplaceRegistry.encryption_policies` root kapsamı.
@@ -4380,7 +4380,7 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 4. Executor governance action uygulaması.
 5. Regresyon testleri: DAO policy update state root değiştirir; invalid policy proposal reddedilir; policy JSON decrypt/private-key authority alanı taşımaz.
 
-**Budlumdevnet dokunulmadı.**  
+**Budlumdevnet dokunulmadı.**
 **Ne bekliyor:** Kod + push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4397,8 +4397,8 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 - Executor governance action uygulaması Pollen registry'ye policy yazar.
 - Regression locks: invalid policy proposal reject, policy update state root changes, governance action has no decrypt/private override fields.
 
-**Güvenlik notu:** DAO yalnız parametre yönetir; decrypt/key/read override alanı yok.  
-**Budlumdevnet dokunulmadı.**  
+**Güvenlik notu:** DAO yalnız parametre yönetir; decrypt/key/read override alanı yok.
+**Budlumdevnet dokunulmadı.**
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4407,10 +4407,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 15:16 UTC+03:00] ARENA4 — P12-4 CI kırmızısı: AccountState execute_proposal match arm fix
 
-**Durum:** main `d34a0c3` CI'da Timing/B.U.D. compile aşamasında kırmızı oldu.  
-**Kök neden:** `ProposalType::SetEncryptionPolicy` yeni varyantı `AccountState::execute_proposal` match'inde ele alınmamıştı (`E0004 non-exhaustive patterns`).  
-**Fix:** `SetEncryptionPolicy` arm'i eklendi; AccountState governance execution path'i de Pollen encryption policy'yi uygular.  
-**Kapsam:** Compile unblock; DAO decrypt/key/read override yok.  
+**Durum:** main `d34a0c3` CI'da Timing/B.U.D. compile aşamasında kırmızı oldu.
+**Kök neden:** `ProposalType::SetEncryptionPolicy` yeni varyantı `AccountState::execute_proposal` match'inde ele alınmamıştı (`E0004 non-exhaustive patterns`).
+**Fix:** `SetEncryptionPolicy` arm'i eklendi; AccountState governance execution path'i de Pollen encryption policy'yi uygular.
+**Kapsam:** Compile unblock; DAO decrypt/key/read override yok.
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4419,10 +4419,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 15:19 UTC+03:00] ARENA4 — P12-4 CI kırmızısı: rustfmt diff fix
 
-**Durum:** main `dd21c09` CI'da `Budlum Core` Format adımında kırmızı oldu.  
-**Kök neden:** `src/core/governance.rs`, `src/pollen/data_rights.rs`, `src/tests/encryption_dao.rs` rustfmt beklenen biçimde değildi.  
-**Fix:** CI rustfmt diff'leri uygulandı.  
-**Kapsam:** Format-only CI unblock.  
+**Durum:** main `dd21c09` CI'da `Budlum Core` Format adımında kırmızı oldu.
+**Kök neden:** `src/core/governance.rs`, `src/pollen/data_rights.rs`, `src/tests/encryption_dao.rs` rustfmt beklenen biçimde değildi.
+**Fix:** CI rustfmt diff'leri uygulandı.
+**Kapsam:** Format-only CI unblock.
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4431,10 +4431,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 15:23 UTC+03:00] ARENA4 — P12-4 CI kırmızısı: rustfmt second pass
 
-**Durum:** main `874fd5f` CI'da `Budlum Core` Format adımında kırmızı oldu.  
-**Kök neden:** `src/core/governance.rs`, `src/pollen/data_rights.rs`, `src/tests/encryption_dao.rs` rustfmt diff'leri hâlâ vardı.  
-**Fix:** CI rustfmt diff'leri uygulandı.  
-**Kapsam:** Format-only CI unblock.  
+**Durum:** main `874fd5f` CI'da `Budlum Core` Format adımında kırmızı oldu.
+**Kök neden:** `src/core/governance.rs`, `src/pollen/data_rights.rs`, `src/tests/encryption_dao.rs` rustfmt diff'leri hâlâ vardı.
+**Fix:** CI rustfmt diff'leri uygulandı.
+**Kapsam:** Format-only CI unblock.
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4457,10 +4457,10 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 
 ### [2026-07-20 15:34 UTC+03:00] ARENA4 — P12-4 CI kırmızısı: badge bot auth fail manuel 1129 fix
 
-**Durum:** main `2b3c5be` Core job test/format/clippy aşamalarını geçti; son `Test rozeti tazeleme` adımı kırmızı oldu.  
-**Kök neden:** CI badge bot `README.md` test rozetini `1121 → 1129 lib` güncelleyen commit'i oluşturdu fakat GitHub auth ile pushlayamadı (`Invalid username or token`).  
-**Fix:** `README.md` test rozeti manuel `tests-1129%20lib` olarak güncellendi.  
-**Kapsam:** Badge-only unblock; üretim davranışı yok.  
+**Durum:** main `2b3c5be` Core job test/format/clippy aşamalarını geçti; son `Test rozeti tazeleme` adımı kırmızı oldu.
+**Kök neden:** CI badge bot `README.md` test rozetini `1121 → 1129 lib` güncelleyen commit'i oluşturdu fakat GitHub auth ile pushlayamadı (`Invalid username or token`).
+**Fix:** `README.md` test rozeti manuel `tests-1129%20lib` olarak güncellendi.
+**Kapsam:** Badge-only unblock; üretim davranışı yok.
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4509,15 +4509,15 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 
 ### [2026-07-20 15:46 UTC+03:00] ARENA4 — ADIM P12-6 BAŞLADI: D-Web Passport core API
 
-**Zemin:** origin/main `fb40359` — CI **19/19 success**.  
-**Kullanıcı kararı:** D-Web Passport budlum.xyz üzerinde yürütülecek; bu repoda core API/spec önce.  
+**Zemin:** origin/main `fb40359` — CI **19/19 success**.
+**Kullanıcı kararı:** D-Web Passport budlum.xyz üzerinde yürütülecek; bu repoda core API/spec önce.
 **Kapsam:**
 1. `gateway::passport` model: `DwebPassportProfile`, `EvidenceCard`, `EvidenceStatus`, manifest + pollen lineage summaries.
 2. RPC: `bud_passportGetProfile(name)` read-only profile bundle.
 3. Evidence etiketi: BNS verified/expired, manifest verified/pending/unavailable, Pollen registry-derived counts.
 4. budlum.xyz için proof'suz veri “verified” sayılmaz; endpoint raw data/plaintext döndürmez.
 
-**Budlumdevnet dokunulmadı.**  
+**Budlumdevnet dokunulmadı.**
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4526,10 +4526,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 16:24 UTC+03:00] ARENA4 — P12-6 CI kırmızısı: rustfmt passport diff fix
 
-**Durum:** main `79cdc16` CI'da `Budlum Core` Format adımında kırmızı oldu.  
-**Kök neden:** `src/gateway/passport.rs`, `src/rpc/api.rs`, `src/rpc/server.rs` rustfmt beklenen biçimde değildi.  
-**Fix:** CI rustfmt diff'leri uygulandı.  
-**Kapsam:** Format-only CI unblock.  
+**Durum:** main `79cdc16` CI'da `Budlum Core` Format adımında kırmızı oldu.
+**Kök neden:** `src/gateway/passport.rs`, `src/rpc/api.rs`, `src/rpc/server.rs` rustfmt beklenen biçimde değildi.
+**Fix:** CI rustfmt diff'leri uygulandı.
+**Kapsam:** Format-only CI unblock.
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4559,14 +4559,14 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 
 ### [2026-07-20 16:40 UTC+03:00] ARENA4 — ADIM P12-5 BAŞLADI: Relayer Policy Layer primitives
 
-**Zemin:** main `ffe8bcf` — CI **23/23 success**.  
-**Kullanıcı kararı:** Relayer Policy Layer onaylandı; permissionless relayer modeli korunacak.  
+**Zemin:** main `ffe8bcf` — CI **23/23 success**.
+**Kullanıcı kararı:** Relayer Policy Layer onaylandı; permissionless relayer modeli korunacak.
 **Kapsam:**
 1. `src/relayer/policy.rs`: `PolicyEnvelope`, `UserIntent`, `SolverBid`, `IntentSettlement`.
 2. Güvenlik kuralları: relayer whitelist yok; fee cap, deadline, domain allowlist, replay nonce ve bond doğrulanır.
 3. Testler: intent validates without relayer whitelist, replay nonce changes id, fee cap enforced, solver bid cannot exceed user fee cap.
 
-**Budlumdevnet dokunulmadı.**  
+**Budlumdevnet dokunulmadı.**
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4575,10 +4575,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 16:46 UTC+03:00] ARENA4 — P12-5 CI kırmızısı: rustfmt relayer policy diff fix
 
-**Durum:** main `e06211f` CI'da `Budlum Core` Format adımında kırmızı oldu.  
-**Kök neden:** `src/relayer/policy.rs::SolverBid::validate_for_intent` imzası rustfmt beklenen biçimde değildi.  
-**Fix:** CI rustfmt diff'i uygulandı.  
-**Kapsam:** Format-only CI unblock.  
+**Durum:** main `e06211f` CI'da `Budlum Core` Format adımında kırmızı oldu.
+**Kök neden:** `src/relayer/policy.rs::SolverBid::validate_for_intent` imzası rustfmt beklenen biçimde değildi.
+**Fix:** CI rustfmt diff'i uygulandı.
+**Kapsam:** Format-only CI unblock.
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4587,10 +4587,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 16:58 UTC+03:00] ARENA4 — Devnet Multi-Node Smoke kırmızısı: peerCount false-red robust mesh evidence
 
-**Durum:** main `07aec6c` full CI'da yalnız `Devnet Multi-Node Smoke` kırmızı oldu.  
-**Kök neden:** H5 peer admission/rate-limit sonrası node1 `bud_netPeerCount` anlık olarak `0x0` kalabiliyor; buna rağmen node2..4 loglarında P2P `Connected to` / `Received from` / `BLOCK` kanıtı var. Eski [2/5] yalnız node1 peer-count'a bağlı olduğu için false-red üretiyordu.  
-**Fix:** `scripts/devnet-multinode-smoke.sh` [2/5] artık `bud_netPeerCount >= 0x3` **veya** node2..4'ün tamamında P2P log kanıtı (`Connected to|Received from|BLOCK`) arıyor. Liveness ve metrics kontrolleri aynen korunuyor.  
-**Kapsam:** CI smoke robustness; production P2P kodu değişmedi.  
+**Durum:** main `07aec6c` full CI'da yalnız `Devnet Multi-Node Smoke` kırmızı oldu.
+**Kök neden:** H5 peer admission/rate-limit sonrası node1 `bud_netPeerCount` anlık olarak `0x0` kalabiliyor; buna rağmen node2..4 loglarında P2P `Connected to` / `Received from` / `BLOCK` kanıtı var. Eski [2/5] yalnız node1 peer-count'a bağlı olduğu için false-red üretiyordu.
+**Fix:** `scripts/devnet-multinode-smoke.sh` [2/5] artık `bud_netPeerCount >= 0x3` **veya** node2..4'ün tamamında P2P log kanıtı (`Connected to|Received from|BLOCK`) arıyor. Liveness ve metrics kontrolleri aynen korunuyor.
+**Kapsam:** CI smoke robustness; production P2P kodu değişmedi.
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4614,15 +4614,15 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 
 ### [2026-07-20 17:05 UTC+03:00] ARENA4 — ADIM P12-7 BAŞLADI: Sovereign Domain Kit primitives
 
-**Zemin:** main `b1fa38e` — CI **21/21 success**.  
-**Kullanıcı kararı:** Sovereign Domain Kit geliştirilecek; PoA ada izolasyonu korunacak.  
+**Zemin:** main `b1fa38e` — CI **21/21 success**.
+**Kullanıcı kararı:** Sovereign Domain Kit geliştirilecek; PoA ada izolasyonu korunacak.
 **Kapsam:**
 1. `src/domain/sovereign.rs`: `SovereignDomainTemplate`, `ComplianceEvidence`, `AuditExportBundle`, lifecycle/class enums.
 2. PoA template KYC'yi açıkça ister; non-PoA domain'e KYC requirement sızarsa reject.
 3. Compliance evidence yalnız hash/root taşır; private KYC/passport/national_id verisi zincire yazılmaz.
 4. Audit export bundle template + compliance root'a bağlanır.
 
-**Budlumdevnet dokunulmadı.**  
+**Budlumdevnet dokunulmadı.**
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4631,10 +4631,10 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 17:13 UTC+03:00] ARENA4 — P12-7 CI kırmızısı: domain mod rustfmt order fix
 
-**Durum:** main `fc585f6` CI'da `Budlum Core` Format adımında kırmızı oldu.  
-**Kök neden:** `src/domain/mod.rs` mod sırası rustfmt beklenen biçimde değildi.  
-**Fix:** `sovereign` mod satırı rustfmt sırasına alındı.  
-**Kapsam:** Format-only CI unblock.  
+**Durum:** main `fc585f6` CI'da `Budlum Core` Format adımında kırmızı oldu.
+**Kök neden:** `src/domain/mod.rs` mod sırası rustfmt beklenen biçimde değildi.
+**Fix:** `sovereign` mod satırı rustfmt sırasına alındı.
+**Kapsam:** Format-only CI unblock.
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4643,14 +4643,14 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 ### [2026-07-20 17:24 UTC+03:00] ARENA4 — ADIM P12-8 BAŞLADI: Budlum Atlas wallet context API
 
-**Zemin:** main `36f767c` — CI **23/23 success**.  
-**Kullanıcı kararı:** Budlum Atlas onaylandı; budlum.xyz/bud.scan evidence UI kodlanacak.  
+**Zemin:** main `36f767c` — CI **23/23 success**.
+**Kullanıcı kararı:** Budlum Atlas onaylandı; budlum.xyz/bud.scan evidence UI kodlanacak.
 **Kapsam:**
 1. `gateway::atlas` model: `AtlasWalletContext`, `AtlasEvidenceCard`, `PollenAtlasSummary`.
 2. RPC: `bud_atlasGetWalletContext(address)` read-only wallet context.
 3. Evidence etiketi: account state verified, pollen lineage derived; endpoint raw data/plaintext döndürmez.
 
-**Budlumdevnet dokunulmadı.**  
+**Budlumdevnet dokunulmadı.**
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
@@ -4831,5 +4831,26 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Lokal doğrulama:** `git diff --check` ✅, `scripts/check-spec-coverage.sh --self-test` ✅, `scripts/check-spec-coverage.sh` ✅. Rust toolchain bu sandbox'ta yok; compile/test hakemi CI.
 **Budlumdevnet dokunulmadı.**
 **Ne bekliyor:** Push + full main CI SLEEP tekrar.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-20 20:26 UTC+03:00] ARENA4 — ADIM P12-11 BAŞLADI: Proof Verification Market / LUM hazırlığı
+
+**Zemin:** main `73cc235a` — P12-10 Constitution Engine CI **23/23 success**.
+**Kullanıcı kararı:** Proof Verification Market ileride validator/LUM DeFi sistemi olabilir; şu an LUM bağlantısı kurulmayacak ama çalışma başlayacak.
+**ARENA koordinasyon kontrolü:**
+1. ARENA2 `origin/arena2/task3-clean` ve `origin/arena2/task3-proof-verify` incelendi; VerifyInference STARK prove/verify round-trip çalışması proof source olarak not edildi, main'e alınmadı.
+2. ARENAS `origin/arenas/audit-v145-plus` içindeki V168-V171 EVM receipt binding + ZK QC PQ hash binding not edildi; büyük audit branch'i ayrı CI/diff doğrulaması gerektirir.
+
+**Kapsam:**
+1. `src/prover/market.rs`: `ProofTask`, `ProofReceipt`, `ProofMarketRegistry` primitives.
+2. LUM/DeFi adapter yok; reward yalnız `reward_commitment` olarak tutulur.
+3. Missing/expired/conflicting receipt fail-closed; first valid receipt wins; identical duplicate idempotent.
+4. Registry root task + receipt kayıtlarına bağlanır.
+
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Kod + lokal statik kontroller + push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>

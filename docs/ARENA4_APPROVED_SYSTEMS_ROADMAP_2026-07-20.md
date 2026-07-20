@@ -39,8 +39,9 @@ Bu ayrım üç güvenlik ilkesini doğurur:
 | A4-6 | Sovereign Domain Kit | PoA/CBDC templates, compliance evidence, lifecycle docs/code | Bu ADIM başladı |
 | A4-7 | Budlum Atlas | read-only evidence cards, context maps, domain health proof model | Bu ADIM başladı |
 | A4-8 | Mobile Self | mobile self-hosting profile, QoS metadata, B.U.D. node policy | Uygulandı / CI yeşil |
-| A4-9 | Governance/Constitution Engine | constitution parameter registry, DAO halt guardrails | Bu ADIM başladı |
-| A4-10 | Developer OS / BudL SDK | devnet template, package layout, proof fixtures, SDK docs | Sonraki ADIM |
+| A4-9 | Governance/Constitution Engine | constitution parameter registry, DAO halt guardrails | Uygulandı / CI yeşil |
+| A4-10 | Proof Verification Market | proof task/receipt abstraction, no LUM adapter yet | Bu ADIM başladı |
+| A4-11 | Developer OS / BudL SDK | devnet template, package layout, proof fixtures, SDK docs | Sonraki ADIM |
 
 ---
 
