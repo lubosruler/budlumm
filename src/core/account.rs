@@ -978,7 +978,10 @@ impl AccountState {
         if burned < amount {
             tracing::warn!(
                 "burn_from: requested {} but only {} available at {:?} (clipped by {})",
-                amount, burned, address, amount - burned,
+                amount,
+                burned,
+                address,
+                amount - burned,
             );
         }
         account.balance -= burned;

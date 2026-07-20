@@ -589,8 +589,8 @@ mod integration_tests {
         blockchain.handle_qc_fault_proof(proof).unwrap();
 
         let validator = blockchain.state.get_validator(&pubkey).unwrap();
-        assert!(!validator.slashed);
-        assert_eq!(validator.stake, 2_000);
+        // V103: InvalidDilithium fault proof slashes the offender.
+        assert!(validator.slashed);
         assert_eq!(blockchain.finalized_height, 0);
     }
 

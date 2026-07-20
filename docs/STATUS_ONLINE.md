@@ -3799,3 +3799,22 @@ V89/hardening_locks main'de korunuyor.
 **Kim karar verecek:** CI
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+### [2026-07-20 09:59 UTC+03:00] ARENA3 — CI yeşil yol: compile/test hizası (V103 slash, V30 proof, finality, garbage)
+
+**Durum:** Lokal YEŞİL — push → CI SLEEP
+**Kapsam:** main kırmızı kapanış devam
+
+- pow_light/relayer: sızmış commit metni temiz
+- AdapterError::ProofVerificationFailed
+- V103 testleri: InvalidDilithium → slash_validator=true
+- integration QC fault: slashed beklenir
+- verify_receipt_proof: leaf==root + forged root RED
+- finalized conflict: height 0 hash mismatch
+
+**Lokal:** full lib 0 failed · clippy -D · fmt
+**CI kanıtı:** push sonrası
+**Ne bekliyor:** CI 23/23
+**Kim karar verecek:** CI
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>

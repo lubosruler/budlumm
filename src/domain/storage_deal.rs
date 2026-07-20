@@ -508,10 +508,18 @@ impl StorageRegistry {
             .filter(|c| c.deal_id == deal_id && !self.results.contains_key(&c.challenge_id))
             .count();
         if open_count >= Self::MAX_OPEN_CHALLENGES_PER_DEAL {
+<<<<<<< HEAD
             return Err(StorageError::TooManyOpenChallenges {
                 deal_id,
                 max: Self::MAX_OPEN_CHALLENGES_PER_DEAL,
             });
+=======
+            return Err(StorageError::InvalidMerkleProof(format!(
+                "Too many open challenges for deal {} (max {})",
+                deal_id,
+                Self::MAX_OPEN_CHALLENGES_PER_DEAL
+            )));
+>>>>>>> 24dd075 (fix(ci): align tests with V103 slash, V30 merkle gate, finality order)
         }
 
         let challenge_id = self.next_challenge_id;

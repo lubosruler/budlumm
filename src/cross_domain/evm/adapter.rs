@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn verify_receipt_proof_minimal_ok() {
-        // Minimal adapter entry-point (verify_evm_receipt orchestrator ana yol).
+        // V30/V91: proof must verify against declared root (empty siblings ⇒ leaf is root).
         let adapter = EvmChainAdapter::test_default();
         let leaf = crate::core::hash::hash_fields_bytes(&[b"test"]);
         let proof = MerkleProof {
@@ -238,9 +238,10 @@ mod tests {
             index: 0,
             siblings: vec![],
         };
-        // Stub minimal — gerçek verify verify_evm_receipt ile.
+        assert!(adapter.verify_receipt_proof(&proof, &leaf, "0xabc").is_ok());
+        // Forged root must fail.
         assert!(adapter
             .verify_receipt_proof(&proof, &[0u8; 32], "0xabc")
-            .is_ok());
+            .is_err());
     }
 }
