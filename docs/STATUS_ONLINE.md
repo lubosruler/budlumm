@@ -4609,3 +4609,20 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Kim karar verecek:** CI otomatik.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-20 17:05 UTC+03:00] ARENA4 — ADIM P12-7 BAŞLADI: Sovereign Domain Kit primitives
+
+**Zemin:** main `b1fa38e` — CI **21/21 success**.  
+**Kullanıcı kararı:** Sovereign Domain Kit geliştirilecek; PoA ada izolasyonu korunacak.  
+**Kapsam:**
+1. `src/domain/sovereign.rs`: `SovereignDomainTemplate`, `ComplianceEvidence`, `AuditExportBundle`, lifecycle/class enums.
+2. PoA template KYC'yi açıkça ister; non-PoA domain'e KYC requirement sızarsa reject.
+3. Compliance evidence yalnız hash/root taşır; private KYC/passport/national_id verisi zincire yazılmaz.
+4. Audit export bundle template + compliance root'a bağlanır.
+
+**Budlumdevnet dokunulmadı.**  
+**Ne bekliyor:** Push + full main CI SLEEP.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
