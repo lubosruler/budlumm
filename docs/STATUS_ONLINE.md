@@ -3782,3 +3782,20 @@ DoS vektörü: aynı deal'a spam challenge.
 **Toplam: 101 bulgu (V22-V133), 33 kapatildi, 68 acik**
 
 Co-authored-by: ARENAS <arenas@budlum.ai>
+### [2026-07-20 09:53 UTC+03:00] ARENA3 — main kırmızı onarım (pow_light garbage + AdapterError + integration move)
+
+**Durum:** Lokal YEŞİL — push → CI SLEEP
+**Kapsam:** HEAD `4514e01` CI kırmızısı kök-neden
+
+1. `pow_light_client.rs` / `relayer_e2e.rs`: satıra sızmış commit subject (parse fail / fmt fail)
+2. `evm/adapter.rs`: `AdapterError::VerificationFailed` → `ProofVerificationFailed`
+3. `integration.rs`: `result` double-move after `unwrap_err`
+
+V89/hardening_locks main'de korunuyor.
+
+**Lokal:** 1053 passed / 0 failed · clippy -D · fmt
+**CI kanıtı:** push sonrası
+**Ne bekliyor:** CI yeşil
+**Kim karar verecek:** CI
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
