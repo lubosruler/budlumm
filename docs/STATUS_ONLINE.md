@@ -2624,3 +2624,170 @@ Bu durum bridge fon kaybina veya supply enflasyonuna yol acabilir.
 **Toplam: 79 bulgu (V22-V113), 15 kapatildi, 64 acik**
 
 Co-authored-by: ARENAS <arenas@budlum.ai>
+
+## ADIM 7 — network/, domain/, snapshot/, genesis/ Derin Denetim
+
+**Tarih:** 2026-07-20
+**Ajan:** ARENAS (Denetim)
+
+**Denetlenen Modüller:**
+- `src/network/node.rs` (1932 satır) — tam denetim
+- `src/network/proto_conversions.rs` (1825 satır) — tam denetim
+- `src/domain/storage_deal.rs` (1266 satır) — tam denetim
+- `src/domain/finality_adapter.rs` (1482 satır) — tam denetim
+- `src/domain/types.rs` (357 satır) — tarandı
+- `src/domain/registry.rs` (240 satır) — tarandı
+- `src/domain/storage_params.rs` (185 satır) — tarandı
+- `src/chain/snapshot.rs` (1160 satır) — tam denetim
+- `src/chain/genesis.rs` (687 satır) — tam denetim
+- `src/cross_domain/evm/mpt.rs` (538 satır) — tam denetim
+- `src/cross_domain/evm/rlp.rs` (457 satır) — tarandı
+
+### V114 (🟡 Yuksek) — Gossipsub MessageId: DefaultHasher ile 64-bit Collision Riski
+
+**Dosya:** `src/network/node.rs` Node::with_key() (satir ~268)
+**Ciddiyet:** 🟡 Yuksek
+**Kategori:** Ag guvenligi / Mesaj deduplikasyon
+
+**Aciklama:**
+Gossipsub mesaj ID'si uretimi icin `DefaultHasher` (SipHash 64-bit) kullaniliyor:
+
+```rust
+let message_id_fn = |message: &gossipsub::Message| {
+    let mut s = DefaultHasher::new();
+    message.data.hash(&mut s);
+    gossipsub::MessageId::from(s.finish().to_string())
+};
+```
+
+Bu iki kritik sorun tasir:
+1. **64-bit output:** Sadece 2^64 olasi ID — buyuk aglarda (50+ peer, yuksek mesaj hacmi) birthday-paradox collision olasiligi onemli. Iki farkli mesaj ayni ID'ye sahip olursa gossipsub ikinciyi "duplicate" olarak drop eder — mesaj kaybi.
+2. **Deterministik degil:** `DefaultHasher` implementasyonu Rust surumuyle degisebilir. Farkli surumlerle derlenen node'lar farkli ID'ler uretir, mesaj dedup bozulur.
+
+**Oneri:** SHA-256 veya BLAKE3 ile 256-bit mesaj ID uretimi kullanilmali. Gossipsub `MessageId` String tabanli oldugundan, hex-encoded hash kullanilabilir.
+
+---
+
+### V115 (⚪ Dusuk) — SlashingEvidence Re-Broadcast Amplification
+
+**Dosya:** `src/network/node.rs` SlashingEvidence handler (satir ~1037)
+**Ciddiyet:** ⚪ Dusuk
+**Kategori:** Ag performansi / Amplification
+
+**Aciklama:**
+Node gossipsub uzerinden alinan SlashingEvidence'i chain'e submit ettikten sonra **ayni evidence'i tekrar gossipsub'a publish ediyor**:
+
+```rust
+NetworkMessage::SlashingEvidence(evidence) => {
+    match self.chain.submit_slashing_evidence(evidence.clone()).await {
+        Ok(_) => {
+            // ... good behavior ...
+            let topic = gossipsub::IdentTopic::new("blocks");
+            let _ = self.swarm.behaviour_mut().gossipsub.publish(
+                topic,
+                NetworkMessage::SlashingEvidence(evidence).to_bytes(),
+            );
+        }
+```
+
+Gossipsub zaten mesh delivery ile flood yapar — bu re-publish gereksiz amplification. N node'lu agda her evidence N-1 kere zaten dagitilir; re-publish ile N kere daha dagitilir.
+
+**Oneri:** Re-publish kaldirilmali. Gossipsub mesh delivery zaten kaniti tum peer'lara ulastirir. Eger "relay" gerekiyorsa, gossipsub'in `floodpublish` veya explicit relay ayari kullanilmali.
+
+---
+
+### V116 (🔴 Kritik) — AiAgentPayment/AiAgentPaymentRelease/AiAgentPaymentReclaim Proto Type Collision
+
+**Dosya:** `src/network/proto_conversions.rs` (satir ~217-240)
+**Ciddiyet:** 🔴 Kritik
+**Kategori:** Veri butunlugu / Protokol uyumsuzlugu
+
+**Aciklama:**
+AiAgentPayment, AiAgentPaymentRelease ve AiAgentPaymentReclaim islemlerinin uc de farkli tx tipi, proto'ya encode edilirken **ayni** `ProtoTransactionType::AiFeeReclaim` enum degerine map ediliyor. AiFeeReclaim'in kendisi de ayni enum'a map ediliyor — toplamda **4 farkli** TransactionType ayni proto tipine collide ediyor:
+
+```rust
+TransactionType::AiAgentPayment(payment) => (
+    pb::ProtoTransactionType::AiFeeReclaim as i32,  // COLLISION
+    ...
+),
+TransactionType::AiAgentPaymentRelease(payment_id) => (
+    pb::ProtoTransactionType::AiFeeReclaim as i32,  // COLLISION
+    ...
+),
+TransactionType::AiAgentPaymentReclaim(payment_id) => (
+    pb::ProtoTransactionType::AiFeeReclaim as i32,  // COLLISION
+    ...
+),
+```
+
+Decode tarafinda (satir ~877), bu tipler `_ => return Err("Unsupported transaction type in proto")` ile reddedilir — yani uzak node'a gonderilen bir AiAgentPayment islemi asla decode edilemez.
+
+Bu V89 (AiAgentPayment non-escrowed immediate removal) ile birlesir:
+- V89: on-chain islenirken veri kaybi + replay riski
+- V116: ag uzerinden iletilemez — uzak node'a ulasmaz
+
+**Sonuc:** Agent-to-Agent odeme sistemi tamamen kirik. Hem on-chain (V89) hem de P2P (V116) katmaninda calismaz.
+
+**Oneri:** Proto schema'ya `AiAgentPayment`, `AiAgentPaymentRelease`, `AiAgentPaymentReclaim` icin ayri enum degerleri eklenmeli. Encode/decode tam roundtrip saglanmali.
+
+---
+
+### V117 (🟡 Yuksek) — sync_state Orphaned: Bazi Kod Yollarinda sync_state=1 Kalici Olur
+
+**Dosya:** `src/network/node.rs` (birden fazla konum)
+**Ciddiyet:** 🟡 Yuksek
+**Kategori:** Node durumu / Sync stuck riski
+
+**Aciklama:**
+`sync_state` atomik degiskeni (0=idle, 1=syncing) bazi kod yollarinda 1 olarak set edilip hata durumunda 0'a reset edilmiyor. Ornek:
+
+```rust
+// Satir 991: GetHeaders request -> sync_state=1
+self.sync_state.store(1, Ordering::SeqCst);
+// Satir 992-996: Eger publish basarisiz olursa ... hata loglaniyor ama sync_state=1 kaliyor!
+if let Err(e) = self.swarm.behaviour_mut().gossipsub.publish(topic, req.to_bytes()) {
+    warn!("Failed to request headers: {}", e);
+    // sync_state RESET YOK! → node "syncing" durumunda takilir
+}
+```
+
+Benzer sorun satir 1000, 1165, 1399, 1832'de de var. Node "syncing" modunda takilinca:
+- `NodeClient::is_syncing()` false doner → uygulama katmani sync'in bittigini zanneder
+- Ama bazi RPC'ler syncing durumunu kontrol ederek islem reddedebilir
+
+**Oneri:** Tum sync_state.store(1) kod yollarinda hata durumunda mutlaka sync_state.store(0) yapilmali. En temiz cozum: sync_state'i timeout ile otomatik resetleyen bir mekanizma.
+
+---
+
+### V118 (⚪ Dusuk) — Snapshot created_at SystemTime::now().unwrap() — Clock Setback Panic Riski
+
+**Dosya:** `src/chain/snapshot.rs` StateSnapshot::from_state() (satir ~30) ve StateSnapshotV2::from_state() (satir ~548)
+**Ciddiyet:** ⚪ Dusuk
+**Kategori:** Robustluk
+
+**Aciklama:**
+Hem V1 hem V2 snapshot olusturulurken `SystemTime::now().duration_since(UNIX_EPOCH).unwrap()` kullaniliyor. Eger sistem saati geri alinirsa (NTP correction, admin intervention), `duration_since` Err doner ve `unwrap()` node'u crash ettirir.
+
+Production node'larinda NTP ile saat duzeltmesi yaygin bir senaryodur. Snapshot olusturma sirasinda node crash olursa, snapshot yarıda kalir ve veri kaybi riski dogar.
+
+**Oneri:** `unwrap()` yerine `unwrap_or(0)` veya `saturating_duration_since` kullanilmali. created_at=0, snapshot integrity'sini bozmaz (hash'e dahil ama 0=gecersiz timestamp olarak loglanir).
+
+---
+
+**Guncel Toplam Denetim Tablosu:**
+
+| Ciddiyet | Sayi | Durum |
+|----------|------|-------|
+| 🔴 Kritik | 13 | 5 kapatildi, 8 acik (V24, V37, V38, V86, V89, V95*, V106*, V110, V116) |
+| 🟡 Yuksek | 28 | 5 kapatildi, 23 acik |
+| ⚪ Dusuk | 43 | 4 kapatildi, 39 acik |
+
+*V95 ve V106 onarildi (push edildi, CI bekleniyor)
+
+**Toplam: 84 bulgu (V22-V118), 15 kapatildi, 69 acik**
+
+**Ne bitti:** ADIM 7 — network/node.rs (1932 satir), proto_conversions.rs (1825 satir), domain/storage_deal.rs (1266 satir), domain/finality_adapter.rs (1482 satir), chain/snapshot.rs (1160 satir), chain/genesis.rs (687 satir), evm/mpt.rs (538 satir) tam denetim. 5 yeni bulgu (V114-V118). V116 (AiAgentPayment proto type collision) kritik — 4 farkli tx tipi ayni proto enum'ina map ediliyor, decode mumkun degil.
+**Ne bekliyor:** CI onayi (V95+V106 onarimlari) + V89/V116 onarim karari + kalan modul denetimi (evm/rlp.rs detayli, evm/sync_committee.rs, domain/plugin.rs, domain/types.rs detayli).
+**Kim karar verecek:** Ayaz (V110 VerifyInference + V116 AiAgentPayment proto + V89 on-chain fix kararlari) + CI (onarim onayi)
+
+Co-authored-by: ARENAS <arenas@budlum.ai>
