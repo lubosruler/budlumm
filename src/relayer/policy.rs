@@ -306,7 +306,7 @@ mod tests {
         Address::from([byte; 32])
     }
 
-    fn policy(owner: Address) -> PolicyEnvelope {
+    fn make_policy(owner: Address) -> PolicyEnvelope {
         PolicyEnvelope {
             owner,
             session_key: None,
@@ -336,7 +336,7 @@ mod tests {
     #[test]
     fn intent_validates_without_relayer_whitelist() {
         let owner = addr(1);
-        let policy = policy(owner);
+        let policy = make_policy(owner);
         let intent = intent(owner, &policy);
         assert!(intent.validate(&policy, 10).is_ok());
     }
@@ -344,7 +344,7 @@ mod tests {
     #[test]
     fn intent_replay_nonce_changes_id() {
         let owner = addr(1);
-        let policy = policy(owner);
+        let policy = make_policy(owner);
         let a = intent(owner, &policy);
         let mut b = intent(owner, &policy);
         b.replay_nonce = 8;
@@ -355,7 +355,7 @@ mod tests {
     #[test]
     fn fee_cap_is_enforced() {
         let owner = addr(1);
-        let policy = policy(owner);
+        let policy = make_policy(owner);
         let mut intent = intent(owner, &policy);
         intent.max_fee = 101;
         intent.intent_id = intent.calculate_id();
@@ -368,7 +368,7 @@ mod tests {
     #[test]
     fn solver_bid_cannot_exceed_user_fee_cap() {
         let owner = addr(1);
-        let policy = policy(owner);
+        let policy = make_policy(owner);
         let intent = intent(owner, &policy);
         let bid = SolverBid {
             intent_id: intent.intent_id,
@@ -383,21 +383,21 @@ mod tests {
 
     #[test]
     fn policy_rejects_zero_owner_session_or_domain() {
-        let mut policy = policy(addr(1));
+        let mut policy = make_policy(addr(1));
         policy.owner = Address::zero();
         assert!(policy
             .validate_for_owner(&Address::zero(), 10)
             .unwrap_err()
             .contains("owner cannot be zero"));
 
-        let mut policy = policy(addr(1));
+        let mut policy = make_policy(addr(1));
         policy.session_key = Some(Address::zero());
         assert!(policy
             .validate_for_owner(&addr(1), 10)
             .unwrap_err()
             .contains("session_key"));
 
-        let mut policy = policy(addr(1));
+        let mut policy = make_policy(addr(1));
         policy.allowed_domains.push(0);
         assert!(policy
             .validate_for_owner(&addr(1), 10)
@@ -426,7 +426,7 @@ mod tests {
     #[test]
     fn intent_rejects_zero_domain() {
         let owner = addr(1);
-        let policy = policy(owner);
+        let policy = make_policy(owner);
         let mut intent = intent(owner, &policy);
         intent.target_domain = 0;
         intent.intent_id = intent.calculate_id();
@@ -439,7 +439,7 @@ mod tests {
     #[test]
     fn solver_bid_requires_proof_commitment() {
         let owner = addr(1);
-        let policy = policy(owner);
+        let policy = make_policy(owner);
         let intent = intent(owner, &policy);
         let bid = SolverBid {
             intent_id: intent.intent_id,

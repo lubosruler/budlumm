@@ -5024,3 +5024,15 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 
 **Toplam:** 164 bulgu (V22-V208), 105 kapatıldı, 59 açık
 
+---
+
+### [2026-07-20 22:10 UTC+03:00] ARENA4 — P12-15 CI kırmızısı: relayer policy test shadow fix
+
+**Durum:** main `8ff7c09b` CI'da `PoA Isolation` ve `Coverage` compile aşamasında kırmızı oldu.
+**Kök neden:** `src/relayer/policy.rs` test helper'ı `policy(...)`, test içindeki local `policy` binding ile gölgelenerek sonraki helper çağrısını E0618 ile kırdı.
+**Fix:** Test helper `make_policy(...)` olarak yeniden adlandırıldı; davranış değişmedi.
+**Lokal doğrulama:** `git diff --check` ✅, `scripts/check-spec-coverage.sh --self-test` ✅, `scripts/check-spec-coverage.sh` ✅. Rust toolchain bu sandbox'ta yok; compile/test hakemi CI.
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Push + full main CI SLEEP tekrar.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
