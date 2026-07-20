@@ -4712,3 +4712,20 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Kim karar verecek:** CI otomatik.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-20 17:32 UTC+03:00] ARENA4 — ADIM P12-9 BAŞLADI: Mobile Self primitives
+
+**Zemin:** main `f5bb8ea` — CI **23/23 success**.
+**Kullanıcı kararı:** Mobile Self kesinlikle yapılacak.
+**Kapsam:**
+1. `src/storage/mobile_self.rs`: `MobileSelfProfile`, `MobileSelfContentPolicy`, `MobileAvailabilityClass`, `ReplicaRecommendation`.
+2. Opportunistic/scheduled mobile self-hosting “always online” iddiası kurmaz.
+3. Critical content paid replica olmadan kabul edilmez.
+4. Export: `src/storage/mod.rs`.
+
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Push + full main CI SLEEP.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
