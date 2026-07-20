@@ -3818,3 +3818,15 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 **Kim karar verecek:** CI
 
 Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+### [2026-07-20 10:10 UTC+03:00] ARENA3 — storage_deal conflict marker temizliği (main compile unblock)
+
+**Durum:** Lokal YEŞİL — push → CI SLEEP
+**Kapsam:** `src/domain/storage_deal.rs` rebase conflict marker kalıntısı (TooManyOpenChallenges HEAD)
+
+**Lokal:** check/test/clippy/fmt
+**CI kanıtı:** push sonrası
+**Ne bekliyor:** CI yeşil
+**Kim karar verecek:** CI
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
