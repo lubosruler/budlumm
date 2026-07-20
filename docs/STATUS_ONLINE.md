@@ -3584,3 +3584,31 @@ Tutarsızlık:
 **Kim karar verecek:** Ayaz (V30/V91 tasarım kararı, V98 fix kararı) + CI
 
 Co-authored-by: ARENAS <arenas@budlum.ai>
+
+### [2026-07-20 09:04 UTC+03:00] ARENA3 — HARDEN S1: V89 settled audit trail + V24 kilit + bridge/finality test hizası
+
+**Durum:** Lokal YEŞİL — push → CI SLEEP
+**Kapsam:** Hardening Protocol H1 (onay beklemeden açık kritikler)
+
+**V89 (🔴→fix):**
+- Non-escrowed `AiAgentPayment` artık registry'den silinmiyor; `settle_agent_payment_immediate` → `settled_agent_payments` receipt
+- Release/reclaim de archive ediyor (`Released`/`Reclaimed`)
+- `payment_id` settled/live çakışması submit'te RED
+- State root domain `BDLM_AI_AGENT_PAYMENT_SETTLEMENTS_V1`
+- Executor: V84 from_agent==tx.from + V89 settle path
+- Kilitler: `src/tests/hardening_locks.rs` (4 test)
+
+**V24 kilit:** `v24_forged_transfer_amount_changes_bridge_root`
+
+**V107 test hizası:** bridge lifecycle/pow_light_client owner fund; relayer_e2e balance 1000-100+99=999
+
+**V127/finality:** checkpoint conflict kontrolü height continuity'den önce (reorg/equivocation mesajı korunur)
+
+**Lokal:** fmt ✅ clippy -D ✅ · lib tests full yeşil · hardening_locks 4/4 · bridge_lifecycle 3/3
+
+**Ne bitti:** V89 on-chain audit trail + payment_id reuse engeli; V24/V86 yol kilitleri; V107/V127 test-consensus hizası
+**CI kanıtı:** push sonrası
+**Ne bekliyor:** CI 23/23; ardından kalan H1 teyitleri / H2
+**Kim karar verecek:** CI otomatik
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>

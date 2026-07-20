@@ -2877,19 +2877,10 @@ impl Blockchain {
             .as_ref()
             .map(|metrics| metrics.consensus_round_seconds.start_timer());
 
-        // V127 fix (ARENAS): Height continuity defense-in-depth. The block
-        // index must be exactly one greater than the current chain tip.
-        // Consensus engines also enforce this, but the blockchain layer must
-        // reject discontinuous blocks independently (fork attacks, height
-        // jumps, etc.).
-        let expected_height = self.chain.len() as u64;
-        if block.index != expected_height {
-            return Err(format!(
-                "Block height discontinuity: expected {}, got {}",
-                expected_height, block.index
-            ));
-        }
-
+        // Finality checkpoint conflict check MUST run before tip-height
+        // continuity: a block at or below finalized_height that disagrees with
+        // the canonical path is a consensus-safety violation even if it is not
+        // the next tip index (reorg / equivocation attempts).
         if block.index <= self.finalized_height && block.hash != self.finalized_hash {
             if let Some(finalized_path_block) = self.chain.get(block.index as usize) {
                 if finalized_path_block.hash != block.hash {
@@ -2904,6 +2895,19 @@ impl Blockchain {
                     block.index, self.finalized_height
                 ));
             }
+        }
+
+        // V127 fix (ARENAS): Height continuity defense-in-depth. The block
+        // index must be exactly one greater than the current chain tip.
+        // Consensus engines also enforce this, but the blockchain layer must
+        // reject discontinuous blocks independently (fork attacks, height
+        // jumps, etc.).
+        let expected_height = self.chain.len() as u64;
+        if block.index != expected_height {
+            return Err(format!(
+                "Block height discontinuity: expected {}, got {}",
+                expected_height, block.index
+            ));
         }
 
         if block.chain_id != self.chain_id {

@@ -897,6 +897,13 @@ impl Executor {
             TransactionType::AiAgentPayment(payment) => {
                 // P5 ADIM11 Bulgu 31: Agent-to-Agent payment in Agentic Economy.
                 let current_block = state.current_block_height;
+                // V84: from_agent must match tx signer (no spoofed payer).
+                if payment.from_agent != tx.from {
+                    return Err(BudlumError::validation(
+                        "ai_payment_from_spoof",
+                        "Agent payment: from_agent must equal tx.from",
+                    ));
+                }
                 let total_cost = payment.amount.saturating_add(tx.fee);
                 // Check sender has sufficient balance
                 if state.get_balance(&tx.from) < total_cost {
@@ -914,12 +921,15 @@ impl Executor {
                 let sender = state.get_or_create(&tx.from);
                 sender.balance = sender.balance.saturating_sub(total_cost);
                 sender.nonce = sender.nonce.saturating_add(1);
-                // If not escrowed, credit recipient immediately
+                // If not escrowed, credit recipient immediately and ARCHIVE
+                // settlement receipt (V89) — never drop payment_id without trail.
                 if !payment.is_escrowed() {
                     let recipient = state.get_or_create(&payment.to_agent);
                     recipient.balance = recipient.balance.saturating_add(payment.amount);
-                    // Remove from registry (already settled)
-                    state.ai_registry.agent_payments.remove(&payment.payment_id);
+                    state
+                        .ai_registry
+                        .settle_agent_payment_immediate(&payment.payment_id, current_block)
+                        .map_err(|e| BudlumError::validation("ai_payment_settle_failed", e))?;
                 }
                 // If escrowed, balance stays deducted but recipient is not
                 // credited until release_agent_payment is called (by executor

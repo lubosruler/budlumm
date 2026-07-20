@@ -43,6 +43,9 @@ fn bridge_lock_mint_burn_unlock_lifecycle() {
 
     let owner = addr(11);
     let recipient = addr(12);
+    // V107: lock debits owner balance — fund accounts.
+    bc.init_genesis_account(&owner);
+    bc.init_genesis_account(&recipient);
 
     // Step 3: lock via the internal path (the only path that exists
     // after Phase 0.10 — RPC is closed).
@@ -112,6 +115,8 @@ fn bridge_lock_mint_burn_unlock_lifecycle() {
 #[test]
 fn bridge_sweep_is_height_aware_and_idempotent() {
     let mut bc = Blockchain::new(Arc::new(PoWEngine::new(0)), None, 1337, None);
+    bc.init_genesis_account(&addr(11));
+    bc.init_genesis_account(&addr(12));
     for (id, operator) in [(1u32, addr(11)), (2u32, addr(12))] {
         let mut d = default_domain(id, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
         d.operator = Some(operator);
@@ -196,6 +201,8 @@ fn bridge_mint_forgery_gate_rejects_none_expected_block_hash() {
         1337,
         None,
     );
+    bc.init_genesis_account(&addr(11));
+    bc.init_genesis_account(&addr(12));
     for (id, operator) in [(1u32, addr(11)), (2u32, addr(12))] {
         let mut d = default_domain(id, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
         d.operator = Some(operator);
