@@ -113,3 +113,4 @@ pub mod snapshot_chaos;
 #[cfg(test)]
 pub mod regression_lock;
 pub mod slashing_matrix;
+pub mod domain_edge_cases;
