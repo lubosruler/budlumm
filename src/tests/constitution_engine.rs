@@ -1,6 +1,8 @@
 use crate::core::account::AccountState;
 use crate::core::address::Address;
-use crate::core::constitution::{ConstitutionParameter, ConstitutionParameterKey, ConstitutionValue};
+use crate::core::constitution::{
+    ConstitutionParameter, ConstitutionParameterKey, ConstitutionValue,
+};
 
 #[test]
 fn constitution_parameter_update_changes_state_root() {

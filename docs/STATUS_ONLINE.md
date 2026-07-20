@@ -4807,3 +4807,16 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 **Ne bekliyor:** Kod + lokal statik kontroller + push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-20 20:04 UTC+03:00] ARENA4 — P12-10 CI kırmızısı: rustfmt diff fix
+
+**Durum:** main `f6dc8d38` CI'da `Budlum Core` / Format adımı kırmızı oldu.
+**Kök neden:** Yeni constitution/governance dosyalarında rustfmt beklenen satır kırılımları uygulanmamıştı.
+**Fix:** CI rustfmt diff'i manuel uygulandı; davranış değişmedi.
+**Lokal doğrulama:** `git diff --check` ✅, `scripts/check-spec-coverage.sh --self-test` ✅, `scripts/check-spec-coverage.sh` ✅. Rust toolchain bu sandbox'ta yok; compile/test hakemi CI.
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Push + full main CI SLEEP tekrar.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>

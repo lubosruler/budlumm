@@ -110,16 +110,16 @@ impl ConstitutionParameter {
             },
             ConstitutionParameterKey::MaxEmergencyHaltEpochs => match &self.value {
                 ConstitutionValue::U64(value) if (1..=10_080).contains(value) => Ok(()),
-                ConstitutionValue::U64(_) => Err(
-                    "MaxEmergencyHaltEpochs must be between 1 and 10080 epochs".into(),
-                ),
+                ConstitutionValue::U64(_) => {
+                    Err("MaxEmergencyHaltEpochs must be between 1 and 10080 epochs".into())
+                }
                 _ => Err("MaxEmergencyHaltEpochs must be U64".into()),
             },
             ConstitutionParameterKey::MinConstitutionProposalEpochs => match &self.value {
                 ConstitutionValue::U64(value) if (10..=100_000).contains(value) => Ok(()),
-                ConstitutionValue::U64(_) => Err(
-                    "MinConstitutionProposalEpochs must be between 10 and 100000 epochs".into(),
-                ),
+                ConstitutionValue::U64(_) => {
+                    Err("MinConstitutionProposalEpochs must be between 10 and 100000 epochs".into())
+                }
                 _ => Err("MinConstitutionProposalEpochs must be U64".into()),
             },
         }

@@ -232,9 +232,9 @@ impl GovernanceState {
                 ProposalType::SetEncryptionPolicy(policy) => {
                     Some(GovernanceAction::SetEncryptionPolicy(policy.clone()))
                 }
-                ProposalType::SetConstitutionParameter(parameter) => {
-                    Some(GovernanceAction::SetConstitutionParameter(parameter.clone()))
-                }
+                ProposalType::SetConstitutionParameter(parameter) => Some(
+                    GovernanceAction::SetConstitutionParameter(parameter.clone()),
+                )
                 _ => None, // Other proposal types: no auto-execution yet
             };
             if let Some(a) = action {

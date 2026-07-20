@@ -922,7 +922,11 @@ impl AccountState {
                 }
             }
             ProposalType::SetConstitutionParameter(parameter) => {
-                match self.governance.constitution.set_parameter(parameter.clone()) {
+                match self
+                    .governance
+                    .constitution
+                    .set_parameter(parameter.clone())
+                {
                     Ok(()) => tracing::info!(
                         "Executing Governance: Constitution parameter {:?} updated",
                         parameter.key
