@@ -1033,9 +1033,16 @@ impl Executor {
             // Mint block reward
             let reward = state.tokenomics.block_reward;
             if reward > 0 {
-                let supply = state.circulating_supply();
+                // V144 fix (ARENAS): Use total BUD (circulating + staked +
+                // unbonding) for supply cap, not just circulating_supply.
+                // circulating_supply only sums account balances and excludes
+                // staked tokens — using it alone allows inflation past the
+                // 100M cap when most BUD is staked.
+                let total_bud = state.circulating_supply()
+                    + state.get_total_stake() as u128
+                    + state.unbonding_queue.iter().map(|e| e.amount as u128).sum::<u128>();
                 let cap = crate::tokenomics::BUD_TOTAL_SUPPLY as u128;
-                let actual = reward.min(cap.saturating_sub(supply) as u64);
+                let actual = reward.min(cap.saturating_sub(total_bud) as u64);
                 if actual > 0 {
                     state.add_balance(producer, actual);
                 }

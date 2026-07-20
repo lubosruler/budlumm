@@ -770,11 +770,21 @@ impl AccountState {
 
         // DP2: Check supply cap
         // The total supply cap is 100M. We must ensure we don't mint past it.
-        let current_supply = self.circulating_supply();
+        // V144 fix (ARENAS): circulating_supply() only sums account balances —
+        // it does NOT include validator stake. But stake is also BUD in existence
+        // (locked from balance into validator.stake during Staking tx). If we
+        // only check circulating_supply, an attacker could stake most BUD, making
+        // circulating_supply very low, and the cap would allow massive yield minting.
+        // The correct denominator is circulating_supply + total_stake (= all BUD
+        // that currently exists on-chain). Unbonding queue is also included since
+        // those tokens are committed but not yet released.
+        let total_bud = self.circulating_supply()
+            + self.get_total_stake() as u128
+            + self.unbonding_queue.iter().map(|e| e.amount as u128).sum::<u128>();
         let max_supply = crate::tokenomics::BUD_TOTAL_SUPPLY as u128;
 
-        if current_supply < max_supply {
-            let space_left = max_supply - current_supply;
+        if total_bud < max_supply {
+            let space_left = max_supply - total_bud;
             if total_yield as u128 > space_left {
                 for (addr, amount) in payouts {
                     let scaled_amount =
