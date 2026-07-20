@@ -3938,3 +3938,25 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Ne bekliyor:** Push + CI SLEEP tekrar.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-20 11:22 UTC+03:00] ARENA4 — ADIM A4-1 TAMAMLANDI: Pollen Data Rights + AI read gate CI YEŞİL
+
+**Branch:** `arena/arena4-pollen-ai-data-rights`  
+**SHA:** `6189f12`  
+**CI kanıtı:** run `29726596216` — **14/14 success** (`Budlum Core`, `BudZero`, `Coverage`, `Fuzz Quick`, `B.U.D.`, `BNS`, `PoA`, `Secret Scan`, `Deny`, `Docker Security`, `Repo Lint`, `Timing`, `SBOM`).
+
+**Ne bitti:**
+1. `src/pollen/data_rights.rs`: `DataAsset`, `AccessGrant`, `AiDataInputRef` eklendi.
+2. `MarketplaceRegistry`: `data_assets` + `access_grants` map'leri ve state root kapsamı eklendi.
+3. Executor AI request admission gate: Pollen/B.U.D. data-ref varsa geçerli grant zorunlu; grant yok/expired/revoked/exhausted/wrong grantee → `ai_data_access_denied`.
+4. Grant tüketimi: başarılı AI request sonrası read count artar; başarısız request grant tüketmez.
+5. Regresyon kilitleri: `pollen_ai_data_ref_without_access_grant_is_rejected`, `pollen_ai_data_ref_with_access_grant_is_consumed_once`, `non_pollen_ai_input_ref_still_uses_legacy_opaque_path`.
+6. Rapor: `docs/ARENA4_APPROVED_SYSTEMS_ROADMAP_2026-07-20.md`.
+
+**Kullanıcı kararları uygulandı:** strict no override, DAO decrypt/key yetkisi yok, D-Web Passport core API/spec önce.  
+**Budlumdevnet dokunulmadı.**  
+**Ne bekliyor:** STATUS kapanış commit'i push edilecek ve CI tekrar izlenecek; yeşil olursa yeni komut/ADIM beklenir.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
