@@ -450,6 +450,10 @@ pub trait BudlumApi {
     #[method(name = "bud_gatewayFetchContent")]
     async fn gateway_fetch_content(&self, name: String) -> Result<String, ErrorObjectOwned>;
 
+    /// D-Web Passport profile bundle for budlum.xyz. Read-only and evidence-labelled.
+    #[method(name = "bud_passportGetProfile")]
+    async fn passport_get_profile(&self, name: String) -> Result<serde_json::Value, ErrorObjectOwned>;
+
     // --- B.U.D. SocialFi extended ---
 
     /// Prepare an NFT burn transaction.

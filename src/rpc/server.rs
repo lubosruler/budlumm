@@ -2530,6 +2530,46 @@ impl BudlumApiServer for RpcServer {
         Ok(hex::encode(data))
     }
 
+    async fn passport_get_profile(
+        &self,
+        name: String,
+    ) -> Result<serde_json::Value, ErrorObjectOwned> {
+        let resolved = self.chain.bns_resolve_full(name.clone()).await;
+        let manifest_id = resolved
+            .as_ref()
+            .and_then(|r| r.content_id.or(r.storage_root.map(crate::storage::ContentId)));
+        let manifest = if let Some(id) = manifest_id {
+            let reg = self.storage.lock().map_err(|e| {
+                ErrorObjectOwned::owned(
+                    -32603,
+                    format!("storage registry lock poisoned: {e}"),
+                    None::<()>,
+                )
+            })?;
+            reg.get_manifest(&id).cloned()
+        } else {
+            None
+        };
+        let data_assets = self.chain.pollen_get_data_assets().await;
+        let access_grants = self.chain.pollen_get_access_grants().await;
+        let sale_authorizations = self.chain.pollen_get_sale_authorizations().await;
+        let profile = crate::gateway::build_passport_profile(
+            name,
+            resolved,
+            manifest,
+            &data_assets,
+            &access_grants,
+            &sale_authorizations,
+        );
+        serde_json::to_value(profile).map_err(|e| {
+            ErrorObjectOwned::owned(
+                -32603,
+                format!("failed to serialize passport profile: {e}"),
+                None::<()>,
+            )
+        })
+    }
+
     // --- Phase 10 (§1): AI Inference & Verifier Layer ---
 
     async fn ai_get_model(&self, model_id: String) -> Result<serde_json::Value, ErrorObjectOwned> {

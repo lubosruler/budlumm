@@ -4504,3 +4504,20 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 **Budlumdevnet:** dokunulmadı.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-20 15:46 UTC+03:00] ARENA4 — ADIM P12-6 BAŞLADI: D-Web Passport core API
+
+**Zemin:** origin/main `fb40359` — CI **19/19 success**.  
+**Kullanıcı kararı:** D-Web Passport budlum.xyz üzerinde yürütülecek; bu repoda core API/spec önce.  
+**Kapsam:**
+1. `gateway::passport` model: `DwebPassportProfile`, `EvidenceCard`, `EvidenceStatus`, manifest + pollen lineage summaries.
+2. RPC: `bud_passportGetProfile(name)` read-only profile bundle.
+3. Evidence etiketi: BNS verified/expired, manifest verified/pending/unavailable, Pollen registry-derived counts.
+4. budlum.xyz için proof'suz veri “verified” sayılmaz; endpoint raw data/plaintext döndürmez.
+
+**Budlumdevnet dokunulmadı.**  
+**Ne bekliyor:** Push + full main CI SLEEP.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
