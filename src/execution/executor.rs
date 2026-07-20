@@ -883,7 +883,13 @@ impl Executor {
                 }
                 // P5 ADIM9 Bulgu 26: Burn seized verifier stake (or send to treasury).
                 // For now, burned — prevents economic incentive to slash falsely.
-                let _ = seized_stake; // Burned
+                // V129 fix (ARENAS): Burn seized stake via burn_from() to maintain
+                // supply consistency. Previously `let _ = seized_stake;` silently
+                // dropped the value without reducing total supply — tokenomics
+                // budget equation (is_balanced) would be violated.
+                if seized_stake > 0 {
+                    state.burn_from(&slashed_verifier, seized_stake);
+                }
                 let sender = state.get_or_create(&tx.from);
                 sender.balance = sender.balance.saturating_sub(tx.fee);
                 sender.nonce = sender.nonce.saturating_add(1);
