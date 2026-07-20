@@ -5082,3 +5082,16 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Ne bekliyor:** Push + full main CI SLEEP tekrar.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-20 22:52 UTC+03:00] ARENA4 — P12-16 CI kırmızısı: root lockfile p3 transitive deps fix
+
+**Durum:** main `1a0b9995` CI'da Docker Smoke ve Devnet Multi-Node Smoke yine `cargo build --release --locked` aşamasında kırmızı oldu.
+**Kök neden:** Root `Cargo.lock` p3 paketleri 0.6.2'ye güncellenmişti ancak p3 0.6 transitive dependency'leri `itertools 0.15.0` ve `spin 0.12.2` root lockfile'a eklenmemişti; Docker root build lockfile update istedi.
+**Fix:** Root `Cargo.lock` içine `itertools 0.15.0` ve `spin 0.12.2` blokları `budzero/Cargo.lock` checksum'larıyla eklendi.
+**Lokal doğrulama:** `git diff --check` ✅, `scripts/check-spec-coverage.sh --self-test` ✅, `scripts/check-spec-coverage.sh` ✅. Rust toolchain bu sandbox'ta yok; Docker/compile hakemi CI.
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Push + full main CI SLEEP tekrar.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
