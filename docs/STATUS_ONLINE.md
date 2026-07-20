@@ -5109,3 +5109,25 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Kim karar verecek:** CI otomatik.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-20 23:23 UTC+03:00] ARENA3 — dependabot TAMAMLANDI: p3 + sha3 migrasyonu (CI yeşil)
+
+**p3 (Plonky3) 0.5.2 -> 0.6.2 koordineli göç** (commit 27d43aa, CI yeşil): 14 p3
+crate'ı birlikte 0.6'ya (cargo update). API: PeriodicAirBuilder trait'i kalktı ->
+AirBuilder'a PeriodicVar + is_transition + periodic_values katıldı; bud_stark
+SubAirBuilder + 2 Folder güncellendi. Lokal: budzero check+fmt+test(164/0)+clippy.
+#74/#76/#81/#83 supersede (kapalı).
+
+**sha3 0.10.9 -> 0.12.0 (+ sha2 0.10 -> 0.11 digest-align)** (commit 709c356, CI
+21/21 yeşil): sha3 0.12 digest 0.11, sha2 0.10 digest 0.10 -> Digest trait split.
+sha2'yi 0.11'e hizaladım. Standart hash => genesis/digest sabitleri değişmedi
+(CI genesis hash test yeşil). #80 supersede (kapalı). (Ara commit 6bf83f5 rebase
+lock-corruption yaptı — spin 0.12.2 duplicate; 709c356 ile fix.)
+
+**Net (10 dependabot PR):** 4 merge (#78/#75/#77/#79) + 5 migrasyon/supersede
+(p3 x4 + sha3) = **9 tamamlandı**. 1 erteli: #82 bincode 1.3->3.0 (digest kırıcı,
+mainnet sonrası). Açık dependabot PR: 0 (#82 dışında).
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
