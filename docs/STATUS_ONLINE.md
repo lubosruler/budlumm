@@ -4626,3 +4626,15 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-20 17:13 UTC+03:00] ARENA4 — P12-7 CI kırmızısı: domain mod rustfmt order fix
+
+**Durum:** main `fc585f6` CI'da `Budlum Core` Format adımında kırmızı oldu.  
+**Kök neden:** `src/domain/mod.rs` mod sırası rustfmt beklenen biçimde değildi.  
+**Fix:** `sovereign` mod satırı rustfmt sırasına alındı.  
+**Kapsam:** Format-only CI unblock.  
+**Ne bekliyor:** Push + full main CI SLEEP.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>

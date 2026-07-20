@@ -3,8 +3,8 @@ pub mod finality_adapter;
 pub mod plugin;
 pub mod plugin_registry;
 pub mod registry;
-pub mod storage_deal;
 pub mod sovereign;
+pub mod storage_deal;
 pub mod storage_params;
 pub mod types;
 
