@@ -4426,3 +4426,15 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Ne bekliyor:** Push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-20 15:23 UTC+03:00] ARENA4 — P12-4 CI kırmızısı: rustfmt second pass
+
+**Durum:** main `874fd5f` CI'da `Budlum Core` Format adımında kırmızı oldu.  
+**Kök neden:** `src/core/governance.rs`, `src/pollen/data_rights.rs`, `src/tests/encryption_dao.rs` rustfmt diff'leri hâlâ vardı.  
+**Fix:** CI rustfmt diff'leri uygulandı.  
+**Kapsam:** Format-only CI unblock.  
+**Ne bekliyor:** Push + full main CI SLEEP.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
