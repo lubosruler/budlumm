@@ -4747,3 +4747,16 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Ne bekliyor:** Push + full main CI SLEEP; CI yeşil olunca kullanıcıdan yeni komut beklenecek.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-20 18:17 UTC+03:00] ARENA4 — CI kırmızı: Mobile Self rustfmt fix
+
+**Durum:** main `85ee107` CI'da `Budlum Core` / Format adımı kırmızı oldu.
+**Kök neden:** `src/storage/mobile_self.rs` içindeki `availability_label` match arm'ı rustfmt beklenen satır kırılımında değildi.
+**Fix:** CI rustfmt diff'i manuel uygulandı; davranış değişmedi.
+**Lokal doğrulama:** `git diff --check` ✅, `scripts/check-spec-coverage.sh --self-test` ✅, `scripts/check-spec-coverage.sh` ✅. Rust toolchain bu sandbox'ta yok; compile/test hakemi CI.
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Push + full main CI SLEEP tekrar.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
