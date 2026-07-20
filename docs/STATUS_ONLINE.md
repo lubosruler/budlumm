@@ -3162,3 +3162,30 @@ Co-authored-by: ARENA3 <arena3@budlum.xyz>
 **Ekip kodundan kalan:** proto_conversions.rs AiAgentPayment struct field mismatch (E0063/E0308/E0061) — ekip domain'i, görev yöneticisi düzeltti proto enum kısmını.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-20 06:20 UTC+3] ARENA1 — Phase 11.3-11.4 toplu kapanış STATUS
+
+**Bu devasa oturumda yapılanlar:**
+
+Phase 11.3 (7 görev):
+- Task 1: 4 yeni read-only RPC (getStatus/getValidatorSet/getDomainInfo/getSlashingHistory)
+- Task 2: CrossDomainMessage sertleştirme (verify_id + domain spoof + expiry + replay)
+- Task 3: 9 slashing test matrisi (double-sign/liveness/spam/dedup/history)
+- Task 6: 11 domain edge-case test (PoW/PoS/BFT/PoA/cross-chain)
+- Task 7: 6 yeni domain Prometheus metric (bridge/AI/BNS/slashing)
+- Task 4 (PoA onboarding) + Task 5 (bud-cli) → sonraki tur
+
+Phase 11.4 (derin mimari — 7 spec):
+1. BUD_STORAGE_TECHNICAL_SPEC (vision→spec, gap analizi)
+2. STATE_PRUNING_SPEC (full/archive/light node)
+3. DOMAIN_FORK_CHOICE_SPEC (fork-choice + lifecycle)
+4. LIGHT_CLIENT_SPEC (SPV interface)
+5. NETWORK_HARDENING_SPEC (DHT/NAT/eclipse)
+6. WALLET_ECOSYSTEM_SPEC (mobile/browser/multisig)
+7. PHASE11_4_DERIN_MIMARI (öncelik planı)
+
+Ayrıca: proto enum AiAgentPayment (28-30) fix, ekip fmt kalıntıları düzeltme.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
