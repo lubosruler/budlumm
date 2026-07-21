@@ -5657,3 +5657,19 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Kim karar verecek:** CI otomatik.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-21 13:18 UTC+03:00] ARENA1 — CI RED FIX: network ban threshold + node gate isim hizası
+
+**Tetikleyen redler:** main `0621ab6` üzerinde `Coverage (nextest + llvm-cov, ratchet)`, `Network Hardening (Phase 11.12)` ve `Node Classification (Phase 11.10)` kırıldı.
+**Kök neden 1:** Rate-limit penalty yolu `MIN_SCORE=-99` ile clamp edildiği için `BAN_THRESHOLD=-100` değerine hiç ulaşamıyordu; `phase11_12_repeated_rate_limit_exhaustion_bans_peer` doğru şekilde bunu yakaladı.
+**Fix 1:** `MIN_SCORE` `BAN_THRESHOLD` ile hizalandı ve rate-limit ban yolu `ban_expires_unix` durable expiry alanını da dolduruyor.
+**Kök neden 2:** Node classification workflow `cargo test --lib phase11_10_node` filtresini kullanıyor; bazı test adları `phase11_10_node_*` prefix'i taşımadığı için koşmuyor, gate isim kanaryası fail ediyordu.
+**Fix 2:** Pruning/node classification test adları `phase11_10_node_*` prefix'ine hizalandı ve `scripts/check-node-classification-gate.sh --self-test` grep yolu güvenli hale getirildi.
+**Lokal doğrulama:** `git diff --check` ✅, `bash ./scripts/check-node-classification-gate.sh --self-test` ✅, `bash ./scripts/check-network-hardening-gate.sh --self-test` ✅. Rust toolchain sandbox'ta yok; CI tek hakem.
+**Budlumdevnet:** dokunulmadı.
+**Ne bekliyor:** Push + yeni main CI takibi.
+**Kim karar verecek:** CI otomatik.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>

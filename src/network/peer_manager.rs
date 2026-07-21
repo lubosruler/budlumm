@@ -13,7 +13,7 @@ pub const GOOD_BEHAVIOR_REWARD: i32 = 1;
 pub const BAN_THRESHOLD: i32 = -100;
 pub const BAN_DURATION: Duration = Duration::from_secs(3600);
 pub const MAX_SCORE: i32 = 100;
-pub const MIN_SCORE: i32 = -99;
+pub const MIN_SCORE: i32 = BAN_THRESHOLD;
 pub const MAX_MSG_BURST: f64 = 20.0;
 pub const MSG_REFILL_RATE: f64 = 5.0;
 #[derive(Debug, Clone)]
@@ -231,6 +231,8 @@ impl PeerManager {
             if score.score <= BAN_THRESHOLD {
                 let until = Instant::now() + BAN_DURATION;
                 score.banned_until = Some(until);
+                score.ban_expires_unix =
+                    Some(unix_now_secs().saturating_add(BAN_DURATION.as_secs()));
             }
             return false;
         }
@@ -656,6 +658,10 @@ mod tests {
         }
         assert!(manager.is_banned(&peer));
         assert!(manager.get_score(&peer) <= BAN_THRESHOLD);
+        assert!(manager
+            .get_peer_info(&peer)
+            .and_then(|score| score.ban_expires_unix)
+            .is_some());
     }
 
     /// H5.1: eclipse protection — /24 subnet connection bound.

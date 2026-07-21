@@ -3,11 +3,11 @@ set -euo pipefail
 
 required_tests=(
   phase11_10_node_mode_maps_roles
-  phase11_10_archive_rejects_pruning
-  phase11_10_archive_requires_backups
-  phase11_10_full_pruning_requires_finalized_snapshot_retention
-  phase11_10_full_pruning_requires_nonzero_retention
-  phase11_10_prune_decision_distinguishes_full_and_archive
+  phase11_10_node_archive_rejects_pruning
+  phase11_10_node_archive_requires_backups
+  phase11_10_node_full_pruning_requires_finalized_snapshot_retention
+  phase11_10_node_full_pruning_requires_nonzero_retention
+  phase11_10_node_prune_decision_distinguishes_full_and_archive
 )
 
 fail() {
@@ -23,7 +23,7 @@ self_test() {
     printf 'test %s ... ok\n' "$name" >> "$tmp"
   done
   "$0" "$tmp" >/dev/null
-  grep -v "${required_tests[0]}" "$tmp" > "$tmp.bad"
+  grep -v "${required_tests[0]}" "$tmp" > "$tmp.bad" || true
   if "$0" "$tmp.bad" >/dev/null 2>&1; then
     fail "self-test expected missing test to fail"
   fi
