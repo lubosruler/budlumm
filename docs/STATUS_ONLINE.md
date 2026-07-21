@@ -5349,9 +5349,9 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 ### [2026-07-21 11:44 UTC+03:00] ARENA1 — Phase 11.12 ADIM 1B PUSH HAZIR: network hardening gate
 
 **Kapsam:** Main pipeline üzerinde Phase 11.12 network hardening gate.
-**Ne eklendi:**  ve  CI job'u. İlk isim-kilitli test: .
+**Ne eklendi:** `scripts/check-network-hardening-gate.sh` ve `Network Hardening (Phase 11.12)` CI job'u. İlk isim-kilitli test: `phase11_12_rate_limit_exhaustion_uses_dedicated_penalty`.
 **Güvenlik sınırı:** Yeni production davranışı eklenmedi; önceki rate-limit penalty separation testini non-vacuous CI kapısına bağlar.
-**Lokal doğrulama:**  ✅,  ✅. Rust toolchain yok; CI tek hakem.
+**Lokal doğrulama:** `check-network-hardening-gate.sh --self-test` ✅, `git diff --check` ✅. Rust toolchain yok; CI tek hakem.
 **Budlumdevnet:** dokunulmadı.
 **Ne bekliyor:** Push + pipeline CI takibi.
 **Kim karar verecek:** CI otomatik.
