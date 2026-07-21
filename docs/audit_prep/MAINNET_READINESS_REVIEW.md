@@ -51,6 +51,8 @@ This review covers the pre-Phase12 hardening track:
 - `docs/audit_prep/CI_STABILITY_WINDOW.md` — 7-day launch-lock CI stability ledger
 - `docs/operations/HSM_CEREMONY_REHEARSAL.md` — YubiHSM 2 ceremony dry-run kanıtları
 - `docs/operations/POA_COMPLIANCE_RUNBOOK.md` — PoA compliance oracle/admin/export privacy
+- `docs/audit_prep/EXTERNAL_AUDIT_DRY_RUN.md` — auditor entry point + checklist
+- `docs/audit_prep/BRANCH_PROTECTION_REVIEW.md` — required checks verification
 
 ## Review conclusion template
 
