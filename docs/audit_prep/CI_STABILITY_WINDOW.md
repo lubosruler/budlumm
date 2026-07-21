@@ -58,9 +58,10 @@ check_contains "$root/docs/audit_prep/CI_STABILITY_WINDOW.md" "7 günlük launch
 
 - **Pencerenin başlangıç tarihi:** 2026-07-21
 - **Gün 1 (2026-07-21):** `01c8be2` — 28/28 success, 0 failure ✅
-- **Gün 2 (2026-07-21):** `6b88ed6` — CI çalışıyor (docs-only değişiklik)
+- **Gün 2 (2026-07-21):** `813b65d` — 30/30 success, 0 failure ✅ (EIP-1559 fixes)
+- **Gün 3 (2026-07-21):** `fee3687` — 30/30 success, 0 failure ✅ (ARENA4 audit summary)
 - **Hedef gün:** 2026-07-28 (7. gün)
-- **Durum:** 🟡 Pencerenin gün 1-2'si yeşil
+- **Durum:** 🟢 Gün 1-3 yeşil
 
 ---
 
