@@ -674,9 +674,9 @@ mod mainnet_genesis_tests {
     /// This test seals the constant so accidental genesis config change is caught.
     #[test]
     fn test_mainnet_genesis_hash_matches_documented_constant() {
-        // CI-computed current value (re-anchored 2026-07-20 after DAO encryption policy state-root change)
+        // CI-computed current value (re-anchored 2026-07-21 after EIP-1559 fee fields changed genesis tx signing preimage)
         const DOCUMENTED_MAINNET_GENESIS_HASH: &str =
-            "fd5f7cb272e01333517d9f85b7e1052b89489a80dd497b2655c3dea99d53add4";
+            "5037adf4481f978b388c9f9e33bd1e36f945b5d7825515c65837e83826318e41";
 
         let genesis = mainnet_genesis().build_genesis_block();
         assert_eq!(

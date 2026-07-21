@@ -2,7 +2,7 @@
 profile = "mainnet"
 chain_id = 1
 # Phase 3 section 3.1: file must exist; hash in docs/operations/PRODUCTION_RUNBOOK.md section 8.2
-# Genesis block hash (re-anchored 2026-07-20 — DAO encryption policy state root change): fd5f7cb272e01333517d9f85b7e1052b89489a80dd497b2655c3dea99d53add4
+# Genesis block hash (re-anchored 2026-07-21 — EIP-1559 tx fee fields changed genesis tx signing preimage): 5037adf4481f978b388c9f9e33bd1e36f945b5d7825515c65837e83826318e41
 genesis_file = "./config/mainnet-genesis.json"
 
 [node]
