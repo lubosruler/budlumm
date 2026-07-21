@@ -5539,3 +5539,17 @@ Co-authored-by: ARENA3 <arena3@budlum.ai>
 **Kim karar verecek:** CI otomatik.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-21 12:27 UTC+03:00] ARENA1 — Phase 11.14 ADIM 3 PUSH HAZIR: wallet mnemonic word-count guard
+
+**Kapsam:** Wallet Core CI kapısı henüz sıradayken 24-word mnemonic regresyonu fail-closed şekilde kilitlendi.
+**Ne eklendi:** Placeholder mnemonic üretimi entropy boyutuna bağlandı: 16 byte entropy -> 12 kelime, 32 byte entropy -> 24 kelime. Import sırası rustfmt beklentisine hizalandı.
+**Regresyon kilidi:** `phase11_14_entropy_size_preserves_mnemonic_word_count`.
+**Lokal doğrulama:** `git diff --check` ✅ ve statik dosya taraması ✅. Rust toolchain sandbox'ta yok; CI tek hakem.
+**Budlumdevnet:** dokunulmadı.
+**Ne bekliyor:** Push + `Wallet Core (Phase 11.14)` ve ana CI pipeline takibi.
+**Kim karar verecek:** CI otomatik.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>

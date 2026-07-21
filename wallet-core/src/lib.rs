@@ -19,7 +19,7 @@
 //! let sig = wallet.sign(b"message to sign");
 //! ```
 
-use ed25519_dalek::{Signer, SigningKey, VerifyingKey, Verifier, Signature};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use sha3::{Digest, Sha3_256};
 
 /// Wallet hatası.
@@ -59,6 +59,15 @@ const WORDLIST_PLACEHOLDER: &[&str] = &[
     // ... 2048 kelime — production'da tam liste
 ];
 
+fn placeholder_mnemonic(word_count: usize) -> String {
+    WORDLIST_PLACEHOLDER
+        .iter()
+        .copied()
+        .cycle()
+        .take(word_count)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
 
 /// Guardian-based social recovery policy (Phase 11.14).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -217,7 +226,12 @@ impl Wallet {
         }
 
         // BIP39 mnemonic (placeholder — production'da tam wordlist + checksum)
-        let mnemonic = format!("abandon ability able about above absent absorb abstract absurd abuse access accident");
+        let word_count = match entropy.len() {
+            16 => 12,
+            32 => 24,
+            _ => unreachable!("entropy length already validated"),
+        };
+        let mnemonic = placeholder_mnemonic(word_count);
 
         // SLIP-0010 Ed25519: seed = HMAC-SHA512("ed25519 seed", entropy)
         // Ed25519 hardened-only: master key = seed directly (no non-hardened derivation)
@@ -403,6 +417,14 @@ mod tests {
     fn from_entropy_valid_sizes() {
         assert!(Wallet::from_entropy(&[0u8; 16]).is_ok(), "16 bytes OK");
         assert!(Wallet::from_entropy(&[0u8; 32]).is_ok(), "32 bytes OK");
+    }
+
+    #[test]
+    fn phase11_14_entropy_size_preserves_mnemonic_word_count() {
+        let short = Wallet::from_entropy(&[0u8; 16]).unwrap();
+        let long = Wallet::from_entropy(&[0u8; 32]).unwrap();
+        assert_eq!(short.mnemonic().split_whitespace().count(), 12);
+        assert_eq!(long.mnemonic().split_whitespace().count(), 24);
     }
 
     #[test]
