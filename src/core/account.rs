@@ -744,9 +744,11 @@ impl AccountState {
                 && current_epoch >= proposal.end_epoch
             {
                 proposal.finalize(total_stake, quorum_pct, current_epoch);
-                if proposal.status == crate::core::governance::ProposalStatus::Passed {
-                    to_execute.push(proposal.clone());
-                }
+            }
+            if proposal.status == crate::core::governance::ProposalStatus::Passed
+                && proposal.activation_ready(current_epoch)
+            {
+                to_execute.push(proposal.clone());
             }
         }
 
@@ -1765,5 +1767,32 @@ mod tests {
         );
         state.execute_proposal(&p);
         assert_eq!(state.tokenomics.block_reward, 100);
+    }
+
+    #[test]
+    fn phase11_16_governance_parameter_update_waits_for_activation_epoch() {
+        use crate::core::governance::{Proposal, ProposalStatus, ProposalType};
+
+        let mut state = AccountState::new();
+        state.epoch_index = 10;
+        let old = state.registry.params().min_stake;
+        let mut proposal = Proposal::new(
+            99,
+            Address::from([4u8; 32]),
+            ProposalType::ParameterUpdate("min_stake".into(), "5000".into()),
+            0,
+            10,
+        );
+        proposal.status = ProposalStatus::Passed;
+        proposal.activation_epoch = Some(11);
+        state.governance.proposals.push(proposal);
+
+        state.advance_epoch(0);
+        assert_eq!(state.registry.params().min_stake, old);
+        assert_eq!(state.governance.proposals[0].status, ProposalStatus::Passed);
+
+        state.advance_epoch(0);
+        assert_eq!(state.registry.params().min_stake, 5000);
+        assert_eq!(state.governance.proposals[0].status, ProposalStatus::Executed);
     }
 }

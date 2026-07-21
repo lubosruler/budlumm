@@ -1,7 +1,61 @@
 use crate::core::address::Address;
 use crate::core::constitution::{ConstitutionParameter, ConstitutionRegistry};
+use crate::registry::params::RegistryParams;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+/// Phase 11.16: accepted parameter proposals activate after this delay.
+pub const GOVERNANCE_PARAMETER_ACTIVATION_DELAY_EPOCHS: u64 = 10;
+
+/// Phase 11.16: minimal on-chain governance is parameter-only and whitelist-bound.
+pub const GOVERNANCE_PARAMETER_WHITELIST: &[&str] = &[
+    "min_stake",
+    "unbonding_epochs",
+    "double_sign_slash_ratio_fixed",
+    "liveness_slash_ratio_fixed",
+    "malicious_slash_ratio_fixed",
+];
+
+pub fn is_governance_parameter_whitelisted(key: &str) -> bool {
+    GOVERNANCE_PARAMETER_WHITELIST.contains(&key)
+}
+
+pub fn validate_governance_parameter_update(key: &str, value: &str) -> Result<(), String> {
+    if !is_governance_parameter_whitelisted(key) {
+        return Err(format!("governance parameter is not whitelisted: {key}"));
+    }
+
+    let mut params = RegistryParams::default();
+    match key {
+        "min_stake" => {
+            params.min_stake = value
+                .parse::<u64>()
+                .map_err(|e| format!("invalid min_stake: {e}"))?;
+        }
+        "unbonding_epochs" => {
+            params.unbonding_epochs = value
+                .parse::<u64>()
+                .map_err(|e| format!("invalid unbonding_epochs: {e}"))?;
+        }
+        "double_sign_slash_ratio_fixed" => {
+            params.double_sign_slash_ratio_fixed = value
+                .parse::<u64>()
+                .map_err(|e| format!("invalid double_sign_slash_ratio_fixed: {e}"))?;
+        }
+        "liveness_slash_ratio_fixed" => {
+            params.liveness_slash_ratio_fixed = value
+                .parse::<u64>()
+                .map_err(|e| format!("invalid liveness_slash_ratio_fixed: {e}"))?;
+        }
+        "malicious_slash_ratio_fixed" => {
+            params.malicious_slash_ratio_fixed = value
+                .parse::<u64>()
+                .map_err(|e| format!("invalid malicious_slash_ratio_fixed: {e}"))?;
+        }
+        _ => unreachable!("whitelist checked above"),
+    }
+    params.validate()
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ProposalType {
@@ -50,6 +104,9 @@ pub struct Proposal {
     pub votes_against: u64, // Total stake voting AGAINST
     pub status: ProposalStatus,
     pub voters: HashMap<Address, bool>, // Address -> Vote (true = for)
+    /// Phase 11.16: optional delayed activation epoch after a proposal passes.
+    #[serde(default)]
+    pub activation_epoch: Option<u64>,
 }
 
 impl Proposal {
@@ -70,7 +127,16 @@ impl Proposal {
             votes_against: 0,
             status: ProposalStatus::Active,
             voters: HashMap::new(),
+            activation_epoch: None,
         }
+    }
+
+    pub fn activation_epoch(&self) -> u64 {
+        self.activation_epoch.unwrap_or(self.end_epoch)
+    }
+
+    pub fn activation_ready(&self, current_epoch: u64) -> bool {
+        current_epoch >= self.activation_epoch()
     }
 
     pub fn add_vote(
@@ -141,6 +207,9 @@ impl GovernanceState {
         duration: u64,
     ) -> Result<u64, String> {
         match &p_type {
+            ProposalType::ParameterUpdate(key, value) => {
+                validate_governance_parameter_update(key, value)?;
+            }
             ProposalType::SetEncryptionPolicy(policy) => policy.validate()?,
             ProposalType::SetConstitutionParameter(parameter) => parameter.validate_update()?,
             _ => {}
@@ -167,12 +236,19 @@ impl GovernanceState {
             return Err("Too many active proposals".into());
         }
 
-        current_epoch
+        let end_epoch = current_epoch
             .checked_add(duration)
             .ok_or_else(|| "Proposal end_epoch overflow".to_string())?;
 
         let id = self.next_proposal_id;
-        let proposal = Proposal::new(id, proposer, p_type, current_epoch, duration);
+        let mut proposal = Proposal::new(id, proposer, p_type, current_epoch, duration);
+        if matches!(proposal.p_type, ProposalType::ParameterUpdate(_, _)) {
+            proposal.activation_epoch = Some(
+                end_epoch
+                    .checked_add(GOVERNANCE_PARAMETER_ACTIVATION_DELAY_EPOCHS)
+                    .ok_or_else(|| "Proposal activation_epoch overflow".to_string())?,
+            );
+        }
         self.proposals.push(proposal);
         self.next_proposal_id += 1;
         Ok(id)
@@ -422,5 +498,57 @@ mod tests {
             actions,
             vec![GovernanceAction::SetConstitutionParameter(update)]
         );
+    }
+
+    #[test]
+    fn phase11_16_governance_rejects_non_whitelisted_parameter_proposal() {
+        let mut gov = GovernanceState::default();
+        let proposer = Address::from([0x01; 32]);
+        let err = gov
+            .create_proposal(
+                proposer,
+                ProposalType::ParameterUpdate("code_upgrade".into(), "v2".into()),
+                0,
+                10,
+            )
+            .unwrap_err();
+        assert!(err.contains("not whitelisted"));
+    }
+
+    #[test]
+    fn phase11_16_governance_rejects_invalid_parameter_value() {
+        let mut gov = GovernanceState::default();
+        let proposer = Address::from([0x01; 32]);
+        let err = gov
+            .create_proposal(
+                proposer,
+                ProposalType::ParameterUpdate("min_stake".into(), "1".into()),
+                0,
+                10,
+            )
+            .unwrap_err();
+        assert!(err.contains("min_stake"));
+    }
+
+    #[test]
+    fn phase11_16_governance_sets_parameter_activation_timelock() {
+        let mut gov = GovernanceState::default();
+        let proposer = Address::from([0x01; 32]);
+        let id = gov
+            .create_proposal(
+                proposer,
+                ProposalType::ParameterUpdate("min_stake".into(), "5000".into()),
+                7,
+                10,
+            )
+            .unwrap();
+        let proposal = gov.find_proposal_mut(id).unwrap();
+        assert_eq!(proposal.end_epoch, 17);
+        assert_eq!(
+            proposal.activation_epoch,
+            Some(17 + GOVERNANCE_PARAMETER_ACTIVATION_DELAY_EPOCHS)
+        );
+        assert!(!proposal.activation_ready(26));
+        assert!(proposal.activation_ready(27));
     }
 }

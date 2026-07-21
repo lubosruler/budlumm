@@ -5701,3 +5701,19 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Kim karar verecek:** CI otomatik.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-21 13:42 UTC+03:00] ARENA1 — Phase 11.16 ADIM 1 PUSH HAZIR: governance invariant gate
+
+**Kapsam:** Minimal on-chain governance için parameter-only whitelist ve activation timelock çekirdeği başlatıldı.
+**Ne eklendi:** `GOVERNANCE_PARAMETER_WHITELIST`, `validate_governance_parameter_update`, parameter proposal activation delay (`GOVERNANCE_PARAMETER_ACTIVATION_DELAY_EPOCHS`) ve `Proposal::activation_ready`.
+**Executor hizası:** `AccountState::advance_epoch` artık `Passed` proposal'ları yalnızca `activation_epoch` geldiğinde yürütür; legacy proposal'lar `end_epoch` semantiğini korur.
+**Regresyon kilitleri:** `phase11_16_governance_rejects_non_whitelisted_parameter_proposal`, `phase11_16_governance_rejects_invalid_parameter_value`, `phase11_16_governance_sets_parameter_activation_timelock`, `phase11_16_governance_parameter_update_waits_for_activation_epoch`.
+**CI kapısı:** `Governance Invariants (Phase 11.16)` job'u ve `scripts/check-governance-invariants.sh` isim kanaryası eklendi.
+**Lokal doğrulama:** `bash ./scripts/check-governance-invariants.sh --self-test` ✅, `git diff --check` ✅ ve statik governance/workflow taraması ✅. Rust toolchain sandbox'ta yok; CI tek hakem.
+**Budlumdevnet:** dokunulmadı.
+**Ne bekliyor:** Push + ana CI pipeline takibi.
+**Kim karar verecek:** CI otomatik.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
