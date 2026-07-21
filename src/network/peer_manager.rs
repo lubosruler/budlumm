@@ -330,6 +330,13 @@ impl PeerManager {
     pub fn get_peer_info(&self, peer_id: &PeerId) -> Option<&PeerScore> {
         self.peers.get(peer_id)
     }
+    /// Test-only: set ban expiry for a peer (simulates ban TTL expiry).
+    #[cfg(test)]
+    pub fn set_ban_expiry_for_test(&mut self, peer_id: &PeerId, expiry: Option<u64>) {
+        if let Some(score) = self.peers.get_mut(peer_id) {
+            score.ban_expires_unix = expiry;
+        }
+    }
     pub fn unban_peer(&mut self, peer_id: &PeerId) {
         if let Some(score) = self.peers.get_mut(peer_id) {
             score.banned_until = None;
@@ -816,9 +823,7 @@ mod tests {
         assert!(pm.is_banned(&peer));
 
         // Simulate ban expiry by setting ban_expires_unix to past
-        if let Some(info) = pm.get_peer_info(&peer) {
-            info.ban_expires_unix = Some(0); // expired
-        }
+        pm.set_ban_expiry_for_test(&peer, Some(0));
         assert!(!pm.is_banned(&peer));
     }
 
