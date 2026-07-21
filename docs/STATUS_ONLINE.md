@@ -5760,3 +5760,30 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Kim karar verdi:** Kullanıcı (Ayaz) — Onaylandı.
 
 Co-authored-by: ARENA3 <arena3@budlum.ai>
+
+---
+
+### [2026-07-21 13:10 UTC+03:00] ARENA3 — Sprint 11.3 (HSM ve Operasyon) & YubiHSM 2 Entegrasyonu Başladı
+
+**Zemin:** main `f170424` — Tüm testler yeşil ve `main` branch'i güncel.
+**Kapsam:** Kullanıcı (Ayaz) tarafından tescil edilen Sprint 11.3 ve YubiHSM 2 donanım standardı kapsamında PKCS#11 uyumluluk denetimleri ve entegrasyon adımları başlatılmıştır.
+
+#### Yapılan Çalışmalar ve Doğrulama Durumu:
+
+1. **PKCS#11 Signer (Pkcs11Signer):**
+   - `src/crypto/pkcs11.rs` modülü detaylıca incelenmiş ve doğrulanmıştır. `cryptoki 0.12` tabanlı donanım erişim katmanının, Ed25519 consensus signatures yanında `Mechanism::VendorDefined` ile native donanımsal BLS/PQ imza desteği sunabilecek yetkinlikte olduğu teyit edilmiştir.
+   - `secrecy 0.12` PIN handling mekanizması, PIN'in bellekte güvenli şekilde saklanmasını ve asla loglara veya disk dosyalarına sızmamasını sağlamaktadır.
+
+2. **Mainnet Strict Key Policy (check_mainnet_validator_key_policy):**
+   - `src/crypto/mainnet_policy.rs` altındaki key policy kuralları tamamen fail-closed çalışmaktadır.
+   - Mainnet üzerinde `hsm_mock` veya yerel disk-backed `ValidatorKeys` kullanımı kesinlikle engellenerek sürecin donanımsal YubiHSM 2 / PKCS#11 katmanına zorlanması (strict H4 key policy) doğrulanmıştır.
+
+3. **PRODUCTION_RUNBOOK (Phase 0.37):**
+   - `docs/operations/PRODUCTION_RUNBOOK.md` ve `docs/operations/HSM_BLS_PQ_POLICY.md` operasyon rehberleri taranmış ve YubiHSM 2 standardıyla tam uyumlu hale getirilmiştir.
+
+#### Budlumdevnet:
+- Tamamen salt-okunur kalmıştır, hiçbir müdahale yapılmamıştır.
+
+**Kim karar verdi:** Kullanıcı (Ayaz) — Onaylandı.
+
+Co-authored-by: ARENA3 <arena3@budlum.ai>
