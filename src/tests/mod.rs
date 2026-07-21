@@ -131,3 +131,7 @@ pub mod hardening_locks;
 #[cfg(test)]
 pub mod regression_lock;
 pub mod slashing_matrix;
+// ADIM-1 (ARENA2, 2026-07-21): cross-platform consensus determinism digest'i.
+// determinism.yml bu modüldeki testten üretilen CONSENSUS_DIGEST satırını üç
+// işletim sisteminde toplayıp byte-eşitlik ister.
+pub mod consensus_digest;

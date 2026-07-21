@@ -1,6 +1,14 @@
 use crate::core::address::Address;
 use crate::core::transaction::Transaction;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+
+// ADIM-1 (ARENA2, 2026-07-21): consensus determinizmi — aynı fee'deki
+// işlemler HashSet iteration sırasıyla (process-random) geliyordu;
+// `get_sorted_transactions` → `collect_block_transactions` → blok gövdesi
+// sırası node'dan node'a değişebilirdi (aynı-fee tie durumunda farklı blok
+// hash'i / potansiyel split). Tie-break artık canonik: `BTreeSet<String>`
+// ile tx.hash lexikografik düzeni — ücret DESC, hash ASC. Bu kuralı değiştirmek
+// consensus davranışını değiştirir: dokümante ve testli (`test_same_fee_canonical_order_by_hash`).
 
 #[derive(Debug, Clone)]
 pub struct MempoolConfig {
@@ -53,7 +61,7 @@ pub struct Mempool {
 
     by_sender: HashMap<Address, BTreeMap<u64, String>>,
 
-    by_fee: BTreeMap<u64, HashSet<String>>,
+    by_fee: BTreeMap<u64, BTreeSet<String>>,
 }
 
 impl Mempool {
@@ -83,8 +91,17 @@ impl Mempool {
 
         if let Some(existing_hash) = self.find_tx_by_sender_nonce(&tx.from, tx.nonce) {
             let existing = self.transactions.get(&existing_hash).unwrap();
-            let min_new_fee =
-                existing.tx.fee + (existing.tx.fee * self.config.rbf_bump_percent / 100);
+            // ADIM-1: RBF bump her zaman POZİTİF olmalı. Tamsayı bölmesiyle
+            // küçük fee'lerde bump 0'a yuvarlanıyordu (fee=1, %10 → bump 0)
+            // → aynı fee ile limitsiz replace-churn (ucuz DoS vektörü).
+            // Artık: bump = max(1, ceil(fee * pct / 100)); replace fee > eski
+            // fee olmak ZORUNDA. Overflow'a karşı u128 ara hesaplama.
+            let bump =
+                ((existing.tx.fee as u128 * self.config.rbf_bump_percent as u128) + 99) / 100;
+            let min_new_fee = existing
+                .tx
+                .fee
+                .saturating_add(u64::try_from(bump.max(1)).unwrap_or(u64::MAX));
             if tx.fee < min_new_fee {
                 return Err(MempoolError::RbfFeeTooLow);
             }
@@ -324,6 +341,77 @@ mod tests {
         tx2.hash = "tx_alice_0_v2".to_string();
         assert!(pool.add_transaction(tx2).is_ok());
         assert_eq!(pool.len(), 1);
+    }
+
+    /// ADIM-1: aynı fee tie-break canonik (tx.hash ASC). Farklı ekleme
+    /// sırası sonucu DEĞİŞTİRMEMELİ — eski HashSet yolu process-random
+    /// iteration ile bu testin iki havuzunda fark verirdi (flaky/üretimde
+    /// nondeterministik blok gövdesi sırası).
+    #[test]
+    fn test_same_fee_canonical_order_by_hash() {
+        let mut tx_z = create_test_tx(&"09".repeat(32), 0, 10);
+        tx_z.hash = "zz_canonical".to_string();
+        let mut tx_a = create_test_tx(&"08".repeat(32), 0, 10);
+        tx_a.hash = "aa_canonical".to_string();
+        let mut tx_m = create_test_tx(&"07".repeat(32), 0, 10);
+        tx_m.hash = "mm_canonical".to_string();
+
+        let mut pool1 = Mempool::default();
+        pool1.add_transaction(tx_z.clone()).unwrap();
+        pool1.add_transaction(tx_m.clone()).unwrap();
+        pool1.add_transaction(tx_a.clone()).unwrap();
+        let order1: Vec<String> = pool1
+            .get_sorted_transactions(10)
+            .iter()
+            .map(|t| t.hash.clone())
+            .collect();
+        assert_eq!(order1, vec!["aa_canonical", "mm_canonical", "zz_canonical"]);
+
+        // Farklı ekleme sırası, aynı canonik çıktı.
+        let mut pool2 = Mempool::default();
+        pool2.add_transaction(tx_a).unwrap();
+        pool2.add_transaction(tx_z).unwrap();
+        pool2.add_transaction(tx_m).unwrap();
+        let order2: Vec<String> = pool2
+            .get_sorted_transactions(10)
+            .iter()
+            .map(|t| t.hash.clone())
+            .collect();
+        assert_eq!(order1, order2);
+    }
+
+    /// ADIM-1: RBF replace her zaman kat'i pozitif bump ister.
+    /// Eski yol: fee=1, %10 → bump=0 → aynı fee ile replace (churn vektörü).
+    #[test]
+    fn test_rbf_requires_strict_positive_bump() {
+        let mut pool = Mempool::default();
+        let alice_hex = "01".repeat(32);
+        let mut tx1 = create_test_tx(&alice_hex, 0, 1);
+        tx1.hash = "tx_v1".to_string();
+        pool.add_transaction(tx1).unwrap();
+
+        // Aynı fee ile replace artık RED (önceden kabul ediliyordu).
+        let mut tx2 = create_test_tx(&alice_hex, 0, 1);
+        tx2.hash = "tx_v2_same_fee".to_string();
+        assert_eq!(pool.add_transaction(tx2), Err(MempoolError::RbfFeeTooLow));
+
+        // fee=2 (%10 ⇒ ceil(0.2)=1 ⇒ min 2) KABUL.
+        let mut tx3 = create_test_tx(&alice_hex, 0, 2);
+        tx3.hash = "tx_v3_bumped".to_string();
+        assert!(pool.add_transaction(tx3).is_ok());
+        assert_eq!(pool.len(), 1);
+        assert!(pool.get("tx_v3_bumped").is_some());
+
+        // fee=100 (%10 ⇒ bump=10 ⇒ min 110): 109 RED, 110 KABUL.
+        let mut tx4 = create_test_tx(&alice_hex, 1, 100);
+        tx4.hash = "tx_big".to_string();
+        pool.add_transaction(tx4).unwrap();
+        let mut tx5 = create_test_tx(&alice_hex, 1, 109);
+        tx5.hash = "tx_big_v2".to_string();
+        assert_eq!(pool.add_transaction(tx5), Err(MempoolError::RbfFeeTooLow));
+        let mut tx6 = create_test_tx(&alice_hex, 1, 110);
+        tx6.hash = "tx_big_v3".to_string();
+        assert!(pool.add_transaction(tx6).is_ok());
     }
 
     #[test]

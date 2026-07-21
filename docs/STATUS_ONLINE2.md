@@ -302,3 +302,56 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 **Kim karar verecek:** Ayaz (yön) / CI (tek yargıç).
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+---
+
+## [2026-07-21 ~16:40 UTC+03:00] ARENA2 — GERİ DÖNÜŞ: Kullanıcı 2026-07-21 görev seti devralındı + ADIM-1 (CI sertleştirme) PUSH
+
+**Rol:** ARENA2 (ZK/AIR + denetim + bu sette CI/protokol sertleştirme). Ben önceki
+BudL/VM/AIR sertleştirme oturumlarının ARENA2'siyim; yeni kullanıcı görev setini
+(CI sertleştirme → mempool → state sync → tokenomics sim → faucet + EVM strateji
+sorusu) sırayla ADIM'lara bölerek yürüyorum. `budlumdevnet` salt-okunur, dokunulmayacak.
+
+**Zemin okuması:** `ARENA_AI.md`, `CLAUDE.md`, `docs/STATUS_ONLINE.md`,
+`docs/STATUS_ONLINE2.md` (tamamı), ARENA1_GURUR.md okundu. Main zemin
+`ef80abf`'te Budlum Core/Format KIRMIK idi (rustfmt drifti) — bu push ile kapatıldı.
+
+### ADIM-1 — CI sertleştirme doğrulaması + sertleştirme (bu commit)
+
+**Doğrulama sonucu (6 madde):** kullanıcının listelediği altı kalemden beşi repo'da
+mevcut; ikisi gerçek kapı değildi, biri eksikti:
+
+| # | Madde | Bulgu | Kapatma |
+|---|-------|-------|---------|
+| Miri UB | vardı, kayan nightly | nightly-2026-07-19 pinlendi |
+| cargo-semver-checks | vardı ama `continue-on-error` + base'siz (süs) | iki-checkout `--baseline-root` + `scripts/check-semver.sh` FAIL kapısı + `.github/semver-exceptions.txt` disiplini |
+| MSRV pin | tamdı (1.94.0 çift kilit) | — |
+| Cross-platform determinism | yalnız ubuntu+macos, ÇIKTI KIYASI YOKTU | Windows eklendi + `consensus_scenario_digest_cross_platform` testi + `consensus-digest-compare` byte-eşitlik gate'i |
+| Genesis reproducibility | vardı | pipefail + boş-hash kilitleri |
+| cargo-audit + cargo-deny | tamdı (deny.toml/audit.toml kanıtlı ignore) | — |
+
+**Ek kök-neden kapatmaları (aynı push, determinizm zinciri):**
+1. `src/core/account.rs` fmt drift'i (main'i yeşile döndürür).
+2. **Mempool aynı-fee nondeterminizmi:** `get_sorted_transactions` aynı ücretteki
+   tx'leri HashSet iteration'ıyla (process-random) döndürüyordu → blok gövdesi
+   sırası node'dan node'a değişebilirdi (consensus determinizmi ihlali).
+   Fix: tie-break canonical (fee DESC, hash ASC). Kilitleme:
+   `mempool::pool::tests::test_same_fee_canonical_order_by_hash`.
+3. **RBF bump yuvarlama deliği:** fee*pct/100 tamsayı bölmesi fee=1'de bump=0
+   → aynı fee ile limitsiz replace-churn (DoS). Fix: max(1, ceil) pozitif bump.
+   Kilitleme: `test_rbf_requires_strict_positive_bump`.
+
+**Rapor:** `docs/audit_prep/CI_HARDENING_AUDIT_2026-07-21.md` (matris + kalan riskler).
+
+**Lokal kanıt:** `cargo fmt --check` ✅ · `cargo check --lib` ✅ · hedefli
+testler (mempool + digest) yeşil; tam suite CI'da.
+
+**CI kanıtı:** push sonrası (SLEEP takibinde; madde 3).
+
+**Ne bekliyor:** ADIM-1 CI yeşili → sonra ADIM-2 (mempool derin tasarım:
+admission-time imza/öncelik matrisi, spam/DoS sınıflandırma) — kullanıcı listesi
+sırası. EVM-uyumlu VM strateji sorusu kullanıcıya ask_user ile ayrıca sorulacak.
+
+**Kim karar verecek:** CI (bu push) / Ayaz (sonraki ADIM onayı + EVM kararı).
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>

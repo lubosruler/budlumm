@@ -1,0 +1,17 @@
+# SEMVER EXCEPTIONS — budlum-core public API kırılması istisna listesi (ADIM-1, 2026-07-21)
+#
+# Bu liste BOŞ kalmalıdır; boş liste = cargo-semver-checks kapısı tam
+# fail-closed çalışır (Madde 5: public API kırılması tespiti → FAIL).
+#
+# İstisna kuralları (deny.toml [advisories] disipliniyle aynı):
+#   * Her satır tek bir kırılma kabulü taşır ve MUTLAKA gerekçe içerir.
+#   * Kullanıcı onayı olmadan satır eklenmez; onay kanıtı (STATUS_ONLINE
+#     girdisi / karar notu) satırda referanslanır.
+#   * Format: <semver-checks lint adı veya API yüzeyi> | <gerekçe> | <onay kanıtı>
+#
+# Örnek (şablon — AKTİF DEĞİL, satır # ile yorumda tutulur):
+#   # method_missing: AccountState::legacy_probe | mainnet-öncesi bilinçli API
+#   #   temizliği, 0.x sürüm hattı | STATUS_ONLINE 2026-07-21 onayı
+#
+# Not: Bu dosyadaki yorum satırları gate'i ETKİLEMEZ; yalnızca yorum-olmayan
+# satırlar istisna sayılır (bkz. scripts/check-semver.sh).
