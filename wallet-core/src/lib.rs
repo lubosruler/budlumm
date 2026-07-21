@@ -88,9 +88,9 @@ pub fn entropy_to_mnemonic(entropy: &[u8]) -> Result<String, WalletError> {
             bits.push((byte >> i) & 1);
         }
     }
-    // Append checksum bits (first `checksum_bits` bits of hash)
+    // Append checksum bits (first `checksum_bits` MSBs of hash)
     for i in (0..checksum_bits).rev() {
-        bits.push((checksum_byte >> i) & 1);
+        bits.push((checksum_byte >> (8 - checksum_bits + i)) & 1);
     }
 
     // Convert 11-bit groups to word indices
