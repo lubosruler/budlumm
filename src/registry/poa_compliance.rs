@@ -175,6 +175,24 @@ impl PoaComplianceRegistry {
     pub fn audit_events(&self) -> &[ComplianceAuditEvent] {
         &self.audit_log
     }
+
+    pub fn export_audit_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(&self.audit_log)
+    }
+
+    pub fn export_audit_csv(&self) -> String {
+        let mut out = String::from("action,address,block,evidence_hash\n");
+        for event in &self.audit_log {
+            out.push_str(&format!(
+                "{:?},{},{},{}\n",
+                event.action,
+                hex::encode(event.address.as_bytes()),
+                event.block,
+                hex::encode(event.evidence_hash)
+            ));
+        }
+        out
+    }
 }
 
 #[cfg(test)]
@@ -299,5 +317,34 @@ mod tests {
                 .unwrap_err(),
             PoaComplianceError::ZeroEvidenceHash
         );
+    }
+
+    #[test]
+    fn phase11_18_poa_compliance_exports_audit_csv() {
+        let mut registry = PoaComplianceRegistry::new();
+        registry
+            .screen_address(
+                ComplianceDomainKind::PoA,
+                addr(7),
+                ScreeningStatus::Clear,
+                hash(7),
+                40,
+            )
+            .unwrap();
+        let csv = registry.export_audit_csv();
+        assert!(csv.starts_with("action,address,block,evidence_hash\n"));
+        assert!(csv.contains("ScreeningUpdated"));
+        assert!(csv.contains(&hex::encode(addr(7).as_bytes())));
+    }
+
+    #[test]
+    fn phase11_18_poa_compliance_exports_audit_json() {
+        let mut registry = PoaComplianceRegistry::new();
+        registry
+            .freeze_suspicious(ComplianceDomainKind::PoA, true, addr(8), hash(8), 41)
+            .unwrap();
+        let json = registry.export_audit_json().unwrap();
+        assert!(json.contains("AccountFrozen"));
+        assert!(json.contains("evidence_hash"));
     }
 }

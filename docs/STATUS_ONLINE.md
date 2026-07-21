@@ -5876,3 +5876,18 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Budlumdevnet dokunulmadı.**
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-21 14:42 UTC+03:00] ARENA1 — Phase 11.18 ADIM 2 PUSH HAZIR: PoA audit export helpers
+
+**Kapsam:** PoA compliance audit trail için raporlama/export helper'ları eklendi.
+**Ne eklendi:** `PoaComplianceRegistry::export_audit_csv` ve `export_audit_json`; append-only audit event listesi CSV/JSON raporlanabilir hale geldi.
+**Regresyon kilitleri:** `phase11_18_poa_compliance_exports_audit_csv`, `phase11_18_poa_compliance_exports_audit_json`.
+**CI kapısı:** `scripts/check-poa-compliance-gate.sh` yeni export test adlarını zorunlu tutar.
+**Lokal doğrulama:** `bash ./scripts/check-poa-compliance-gate.sh --self-test` ✅, `git diff --check` ✅ ve statik audit export taraması ✅. Rust toolchain sandbox'ta yok; CI tek hakem.
+**Budlumdevnet:** dokunulmadı.
+**Ne bekliyor:** Push + ana CI pipeline takibi.
+**Kim karar verecek:** CI otomatik.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
