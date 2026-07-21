@@ -81,6 +81,26 @@ mod tests {
         }
     }
 
+    /// REGRESSION V116: AiAgentPayment round-trips through proto encode/decode
+    /// as AiAgentPayment (not AiFeeReclaim). Previously 4 tx types collided on
+    /// the AiFeeReclaim proto enum, making AiAgentPayment undecodable remotely.
+    #[test]
+    fn v116_ai_agent_payment_proto_roundtrip_preserves_type() {
+        use crate::network::proto_conversions::pb::ProtoTransaction;
+        let from = addr(0xA1);
+        let to = addr(0xB2);
+        let pay = payment(0x71, from, to, 500, false);
+        let tx = payment_tx(from, pay, 0, 10);
+        let proto: ProtoTransaction = (&tx).into();
+        let back: Transaction = proto
+            .try_into()
+            .expect("AiAgentPayment proto round-trip must decode");
+        assert!(
+            matches!(back.tx_type, TransactionType::AiAgentPayment(_)),
+            "AiAgentPayment must round-trip as AiAgentPayment, not AiFeeReclaim (V116)"
+        );
+    }
+
     /// REGRESSION V89: non-escrowed settle keeps audit receipt; payment_id not reusable.
     #[test]
     fn v89_non_escrowed_settlement_retains_receipt_and_blocks_reuse() {
