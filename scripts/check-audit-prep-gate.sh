@@ -18,6 +18,7 @@ check_root() {
   [[ -f "$root/docs/audit_prep/README.md" ]] || fail "missing docs/audit_prep/README.md"
   [[ -f "$root/docs/VALIDATOR_KEY_MANAGEMENT.md" ]] || fail "missing docs/VALIDATOR_KEY_MANAGEMENT.md"
   [[ -f "$root/docs/MAINNET_LOCKDOWN_CHECKLIST.md" ]] || fail "missing docs/MAINNET_LOCKDOWN_CHECKLIST.md"
+  [[ -f "$root/docs/audit_prep/MAINNET_READINESS_REVIEW.md" ]] || fail "missing docs/audit_prep/MAINNET_READINESS_REVIEW.md"
   [[ -f "$root/docs/operations/PRODUCTION_RUNBOOK.md" ]] || fail "missing docs/operations/PRODUCTION_RUNBOOK.md"
   [[ -f "$root/docs/operations/HSM_BLS_PQ_POLICY.md" ]] || fail "missing docs/operations/HSM_BLS_PQ_POLICY.md"
 
@@ -35,6 +36,9 @@ check_root() {
   check_contains "$root/docs/MAINNET_LOCKDOWN_CHECKLIST.md" "Mainnet Lockdown Checklist"
   check_contains "$root/docs/MAINNET_LOCKDOWN_CHECKLIST.md" "7 consecutive days green"
   check_contains "$root/docs/MAINNET_LOCKDOWN_CHECKLIST.md" "Waiver policy"
+  check_contains "$root/docs/audit_prep/MAINNET_READINESS_REVIEW.md" "Mainnet Readiness Review"
+  check_contains "$root/docs/audit_prep/MAINNET_READINESS_REVIEW.md" "MR-1..MR-10 review ledger"
+  check_contains "$root/docs/audit_prep/MAINNET_READINESS_REVIEW.md" "Required sign-offs before launch lock"
   echo "Audit prep gate OK"
 }
 
@@ -65,6 +69,11 @@ DOC
 # Mainnet Lockdown Checklist
 7 consecutive days green
 Waiver policy
+DOC
+  cat > "$tmp/docs/audit_prep/MAINNET_READINESS_REVIEW.md" <<'DOC'
+# Mainnet Readiness Review
+## MR-1..MR-10 review ledger
+## Required sign-offs before launch lock
 DOC
   printf 'runbook\n' > "$tmp/docs/operations/PRODUCTION_RUNBOOK.md"
   printf 'hsm policy\n' > "$tmp/docs/operations/HSM_BLS_PQ_POLICY.md"

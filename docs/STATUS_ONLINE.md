@@ -6041,3 +6041,17 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Kim karar verecek:** CI otomatik.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-21 15:32 UTC+03:00] ARENA1 — Phase 11.20 ADIM 4 PUSH HAZIR: mainnet readiness review ledger
+
+**Kapsam:** MR-1..MR-10 ana karar seti için Phase 11.20 audit-prep review ledger eklendi.
+**Ne eklendi:** `docs/audit_prep/MAINNET_READINESS_REVIEW.md`; MR-1..MR-10 review ledger, launch-lock sign-off listesi, evidence bundle ve review conclusion template.
+**CI kapısı:** `scripts/check-audit-prep-gate.sh` readiness review dosyasını ve markerlarını zorunlu tutar; audit-prep evidence map'e readiness review satırı eklendi.
+**Lokal doğrulama:** `bash ./scripts/check-audit-prep-gate.sh --self-test` ✅, `bash ./scripts/check-audit-prep-gate.sh .` ✅, `git diff --check` ✅.
+**Budlumdevnet:** dokunulmadı.
+**Ne bekliyor:** Push + ana CI pipeline takibi.
+**Kim karar verecek:** CI otomatik.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
