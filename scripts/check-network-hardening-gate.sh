@@ -3,6 +3,13 @@ set -euo pipefail
 
 required_tests=(
   phase11_12_rate_limit_exhaustion_uses_dedicated_penalty
+  h5_eclipse_subnet_bound_rejects_fifth_peer
+  h5_eclipse_disconnect_frees_subnet_slot
+  h5_eclipse_peer_accounting_is_idempotent
+  h5_3_rpc_auth_required_by_default
+  h5_5_max_message_size_rejected
+  h5_1_eclipse_bound_still_active
+  h5_6_multinode_smoke_artifacts_present
 )
 
 fail() {
