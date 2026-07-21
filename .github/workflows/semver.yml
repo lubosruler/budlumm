@@ -59,10 +59,17 @@ jobs:
       - name: Semver gate — budlum-core vs baseline
         env:
           SEMVER_BEFORE: ${{ github.event.pull_request.base.sha || github.event.before }}
-          # İlk koşu kök-nedeni: rustdoc-json üretimi tüm bağımlılık grafiğini
-          # derlerken runner'da öldü (hata gövdesi log'a düşmeden kesildi —
-          # klasik OOM deseni). Paralellik kısılır ve debuginfo kapatılır;
-          # hata tekrarlarsa memory snapshot ile kanıtlanır.
+          # Kök-neden analizi (üçüncü koşu kanıtı): rustdoc-json üretimi,
+          # bağımlılıkların DERLENMESİ tamamlandıktan sonra, crate'in kendi
+          # rustdoc-json adımında ölüyordu ve memory snapshot 9.7GB boş
+          # gösteriyordu (OOM tezi çürütüldü). Neden: `rust-toolchain.toml`
+          # (channel=1.94.0) araç zinciri seçiminde `RUSTUP_TOOLCHAIN`'i yener;
+          # rustdoc'un `--output-format json` modu HALA nightly-only olduğundan
+          # stable rustdoc crate-adımında kırılıyordu. Çözüm: gate adımına
+          # RUSTUP_TOOLCHAIN=nightly (rust-toolchain.toml'u yener, hem current
+          # hem baseline aynı nightly ile diff'lenir → tutarlı). MSRV yükümlülüğü
+          # ayrı job'ların (build/test 1.94.0) sorumluluğunda kalır.
+          RUSTUP_TOOLCHAIN: nightly
           CARGO_BUILD_JOBS: "2"
           RUSTFLAGS: "-C debuginfo=0"
         run: |
