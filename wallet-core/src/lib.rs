@@ -31,6 +31,8 @@ pub enum WalletError {
     InvalidEntropy(usize),
     /// Geçersiz seed.
     InvalidSeed,
+    /// Geçersiz multisig policy.
+    InvalidMultisigPolicy(String),
 }
 
 impl std::fmt::Display for WalletError {
@@ -39,6 +41,7 @@ impl std::fmt::Display for WalletError {
             WalletError::InvalidMnemonic(m) => write!(f, "invalid mnemonic: {m}"),
             WalletError::InvalidEntropy(n) => write!(f, "invalid entropy size: {n} bytes (expected 16 or 32)"),
             WalletError::InvalidSeed => write!(f, "invalid seed"),
+            WalletError::InvalidMultisigPolicy(m) => write!(f, "invalid multisig policy: {m}"),
         }
     }
 }
@@ -63,6 +66,58 @@ pub struct Wallet {
 /// Budlum Address = Ed25519 pubkey'nin SHA3-256 hash'i (32 byte).
 /// `core::address::Address` deseni ile uyumlu.
 pub type BudlumAddress = [u8; 32];
+
+
+/// M-of-N multisig policy (Phase 11.14).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MultisigPolicy {
+    pub owners: Vec<[u8; 32]>,
+    pub threshold: usize,
+}
+
+/// One owner approval over a proposal digest.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MultisigApproval {
+    pub public_key: [u8; 32],
+    pub signature: [u8; 64],
+}
+
+impl MultisigPolicy {
+    pub fn new(mut owners: Vec<[u8; 32]>, threshold: usize) -> Result<Self, WalletError> {
+        owners.sort();
+        owners.dedup();
+        if owners.is_empty() {
+            return Err(WalletError::InvalidMultisigPolicy("owners empty".into()));
+        }
+        if threshold == 0 || threshold > owners.len() {
+            return Err(WalletError::InvalidMultisigPolicy(format!(
+                "threshold {threshold} outside 1..={}",
+                owners.len()
+            )));
+        }
+        Ok(Self { owners, threshold })
+    }
+
+    pub fn owner_count(&self) -> usize {
+        self.owners.len()
+    }
+
+    pub fn verify_threshold(&self, message: &[u8], approvals: &[MultisigApproval]) -> bool {
+        let mut seen = Vec::<[u8; 32]>::new();
+        for approval in approvals {
+            if !self.owners.contains(&approval.public_key) {
+                continue;
+            }
+            if seen.contains(&approval.public_key) {
+                continue;
+            }
+            if Wallet::verify(&approval.public_key, message, &approval.signature) {
+                seen.push(approval.public_key);
+            }
+        }
+        seen.len() >= self.threshold
+    }
+}
 
 impl Wallet {
     /// Yeni wallet oluştur (rastgele entropy → mnemonic → seed → keypair).
@@ -307,5 +362,78 @@ mod tests {
         // CLAUDE.md §2: "Herkes relayer olabilir, stake + slashing ile güvenlik."
         // Wallet-core bir WALLET'tir, RELAYER değildir.
         assert!(true, "wallet-core has no relayer registration/stake code");
+    }
+
+    #[test]
+    fn phase11_14_multisig_policy_validates_threshold() {
+        let w1 = Wallet::from_entropy(&[1u8; 16]).unwrap();
+        let w2 = Wallet::from_entropy(&[2u8; 16]).unwrap();
+        let policy = MultisigPolicy::new(vec![w1.public_key(), w2.public_key()], 2).unwrap();
+        assert_eq!(policy.owner_count(), 2);
+        assert!(MultisigPolicy::new(vec![w1.public_key()], 0).is_err());
+        assert!(MultisigPolicy::new(vec![w1.public_key()], 2).is_err());
+    }
+
+    #[test]
+    fn phase11_14_multisig_requires_distinct_valid_owner_signatures() {
+        let w1 = Wallet::from_entropy(&[1u8; 16]).unwrap();
+        let w2 = Wallet::from_entropy(&[2u8; 16]).unwrap();
+        let w3 = Wallet::from_entropy(&[3u8; 16]).unwrap();
+        let msg = b"budlum multisig proposal digest";
+        let policy = MultisigPolicy::new(
+            vec![w1.public_key(), w2.public_key(), w3.public_key()],
+            2,
+        )
+        .unwrap();
+
+        let one = [MultisigApproval {
+            public_key: w1.public_key(),
+            signature: w1.sign(msg),
+        }];
+        assert!(!policy.verify_threshold(msg, &one));
+
+        let duplicate = [
+            MultisigApproval {
+                public_key: w1.public_key(),
+                signature: w1.sign(msg),
+            },
+            MultisigApproval {
+                public_key: w1.public_key(),
+                signature: w1.sign(msg),
+            },
+        ];
+        assert!(!policy.verify_threshold(msg, &duplicate));
+
+        let quorum = [
+            MultisigApproval {
+                public_key: w1.public_key(),
+                signature: w1.sign(msg),
+            },
+            MultisigApproval {
+                public_key: w2.public_key(),
+                signature: w2.sign(msg),
+            },
+        ];
+        assert!(policy.verify_threshold(msg, &quorum));
+    }
+
+    #[test]
+    fn phase11_14_multisig_rejects_wrong_message_or_non_owner() {
+        let w1 = Wallet::from_entropy(&[1u8; 16]).unwrap();
+        let w2 = Wallet::from_entropy(&[2u8; 16]).unwrap();
+        let outsider = Wallet::from_entropy(&[9u8; 16]).unwrap();
+        let policy = MultisigPolicy::new(vec![w1.public_key(), w2.public_key()], 2).unwrap();
+        let msg = b"proposal";
+        let approvals = [
+            MultisigApproval {
+                public_key: w1.public_key(),
+                signature: w1.sign(b"different"),
+            },
+            MultisigApproval {
+                public_key: outsider.public_key(),
+                signature: outsider.sign(msg),
+            },
+        ];
+        assert!(!policy.verify_threshold(msg, &approvals));
     }
 }

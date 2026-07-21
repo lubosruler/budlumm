@@ -321,6 +321,24 @@ jobs:
           cargo test --lib h5_ 2>&1 | tee -a /tmp/network-hardening-gate.txt
           bash ./scripts/check-network-hardening-gate.sh /tmp/network-hardening-gate.txt
 
+  wallet-core-gate:
+    # Phase 11.14: wallet-core multisig/social recovery primitives.
+    name: Wallet Core (Phase 11.14)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master 2026-07-16
+        with:
+          toolchain: "1.94.0"
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          workspaces: wallet-core
+      - name: wallet-core tests
+        run: cargo test --manifest-path wallet-core/Cargo.toml
+
   # ============================ Phase 10 / Bolum 4 (BNS gate) ============================
   bns-gate:
     # Phase 10 Bolum 4 modul-ayrimi: BNS'in kendi CI gate'i (B.U.D. kapi deseni).
