@@ -23,6 +23,7 @@ pub mod manifest;
 pub mod merkle_trie;
 pub mod mobile_self;
 pub mod provider;
+pub mod pruning;
 pub mod traits;
 
 pub use content_id::{ContentId, DEFAULT_CHUNK_SIZE_BYTES};
@@ -35,3 +36,4 @@ pub use provider::{
     provider_challenge_id, ChallengeId, DealId, InMemoryStorageProvider, ProviderChallengeResult,
     PutReceipt, StorageProof, StorageProvider, StorageProviderError,
 };
+pub use pruning::{NodeMode, PruningPolicy};
