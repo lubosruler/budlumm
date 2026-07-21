@@ -1,5 +1,6 @@
 pub mod commitment_registry;
 pub mod finality_adapter;
+pub mod fork_choice;
 pub mod plugin;
 pub mod plugin_registry;
 pub mod registry;
@@ -13,6 +14,10 @@ pub use finality_adapter::{
     hash_finality_proof, hash_pow_header, BftFinalityAdapter, DomainFinalityAdapter, FinalityError,
     FinalityProof, FinalityStatus, PoAFinalityAdapter, PoSFinalityAdapter, PoWFinalityAdapter,
     PoWHeader, PoWHeaderChainFinalityAdapter, StorageAttestationFinalityAdapter, ZkFinalityAdapter,
+};
+pub use fork_choice::{
+    ConsensusDomainForkChoice, DomainFinalityStatus, DomainForkChoice, DomainLifecycleStatus,
+    ForkCandidate, ForkChoiceError, ForkChoiceReason, ResolvedHead,
 };
 pub use plugin::{
     default_domain, BftDomainPlugin, ConsensusDomainPlugin, DomainContext, DomainError,
