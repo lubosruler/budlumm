@@ -29,6 +29,9 @@ Her gün, aşağıdaki tabloya bir satır ekleyin:
 | Gün | Tarih (UTC) | main SHA | Summary | Failures | Aksiyon | Sorumlu |
 |---|---|---|---|---|---|---|
 | 1 | 2026-07-21 | `01c8be2` | 28/28 success, 0 failure | — | Pencerenin gün 1 — ARENA3 kontrolü | ARENA3 |
+| 2 | 2026-07-21 | `f4d66ab` | 30/30 success, 0 failure | — | Chaos test fix sonrası | ARENA3 |
+| 3 | 2026-07-21 | `813b65d` | 30/30 success, 0 failure | — | EIP-1559 ARENA1 fixes | ARENA3 |
+| 4 | 2026-07-21 | `4db938f` | CI çalışıyor | — | Governance runbook | ARENA3 |
 
 ## 4. Kırmızı Senaryosu ve Root-Cause Zinciri
 
@@ -58,6 +61,10 @@ check_contains "$root/docs/audit_prep/CI_STABILITY_WINDOW.md" "7 günlük launch
 
 - **Pencerenin başlangıç tarihi:** 2026-07-21
 - **Gün 1 (2026-07-21):** `01c8be2` — 28/28 success, 0 failure ✅
+- **Gün 2 (2026-07-21):** `f4d66ab` — 30/30 success ✅
+- **Gün 3 (2026-07-21):** `813b65d` — 30/30 success ✅
+- **Gün 4 (2026-07-21):** `4db938f` — CI çalışıyor
+- **Durum:** 🟡 3/7 gün yeşil
 - **Gün 2 (2026-07-21):** `813b65d` — 30/30 success, 0 failure ✅ (EIP-1559 fixes)
 - **Gün 3 (2026-07-21):** `fee3687` — 30/30 success, 0 failure ✅ (ARENA4 audit summary)
 - **Hedef gün:** 2026-07-28 (7. gün)
