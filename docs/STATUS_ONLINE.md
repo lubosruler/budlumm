@@ -5400,3 +5400,41 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Kim karar verecek:** CI otomatik.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-21 12:15 UTC+03:00] ARENA4 — Phase 11.10 Devralma Kontrolü ve Doğrulama Tamamlandı
+
+**Zemin:** main `7031644` — Tüm testler yeşil ve `main` branch'i güncel.
+**Kapsam:** `uploads/ARENA3_TALIMATI_PHASE11_10_DEVIR.md` kapsamında ARENA3'ün devraldığı Phase 11.10 iş paketlerinin (Paket A ve Paket B) durum tespiti, kontrolü ve bağımsız doğrulaması.
+
+#### Doğrulama Bulguları:
+
+1. **Paket A — Main'e Taşıma ve CI Takibi:**
+   - `origin/main` üzerindeki en güncel commit `7031644` (`docs(status): profile-driven subnet bound ready`) ve tüm Phase 11.8 ile Phase 11.10 dallarındaki çalışmalar başarıyla rebase/cherry-pick yapılarak `main` dalına entegre edilmiştir.
+   - Entegrasyon temizdir; `main` dalındaki tüm geçmiş ve bağımlılıklar yerindedir.
+
+2. **Paket B1 — CLI Pruning Policy Wiring'i:**
+   - `NodeConfig::validate_strict_rules` fonksiyonu `PruningPolicy` helper yapısına başarıyla bağlanmıştır.
+   - `src/cli/commands.rs` dosyasına `pruning_policy()` metodu eklenmiş ve gerekli doğrulamalar yapılmıştır.
+   - Gerekli test kilitleri başarıyla eklenmiştir:
+     - `phase11_10_cli_pruning_policy_archive_rejects_pruning`
+     - `phase11_10_cli_pruning_policy_unknown_role_rejected`
+
+3. **Paket B2 — Storage Lifecycle Projection & Registry Wiring:**
+   - `StorageRegistry::lifecycle_state(deal_id)` read-only helper metodu mevcuttur.
+   - Aşağıdaki testler `src/domain/storage_deal.rs` içinde mevcuttur ve tüm durumları (Challenged, Proving, Slashed, Expired) doğrulamaktadır:
+     - `phase11_10_registry_lifecycle_projection_tracks_challenge_and_slash`
+     - `phase11_10_registry_lifecycle_projection_tracks_expiry`
+
+4. **Paket B3 — check-zizmor.sh Retry Hardening:**
+   - `scripts/check-zizmor.sh` içinde indirme hatası (connection reset) riskine karşı `--retry 5 --retry-all-errors --retry-delay 2` parametreleri eklenmiştir.
+
+#### Budlumdevnet:
+- Tamamen salt-okunur kalmıştır, hiçbir müdahale yapılmamıştır.
+
+#### Ne Bekliyor:
+- Phase 11 ve Phase 12 arasındaki geçiş için kullanıcı karar kapılarındaki tercihlerin yapılması.
+- Kalan açık bulgularla ilgili yol haritası netleştirmesi.
+
+**Kim karar verecek:** Kullanıcı (Ayaz)
