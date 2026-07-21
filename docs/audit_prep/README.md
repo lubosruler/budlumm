@@ -18,7 +18,7 @@
 | Phase 11.14 wallet core | `wallet-core/src/lib.rs`, `scripts/check-wallet-core-gate.sh` | `Wallet Core (Phase 11.14)` |
 | Phase 11.16 governance | `src/core/governance.rs`, `scripts/check-governance-invariants.sh` | `Governance Invariants (Phase 11.16)` |
 | Phase 11.18 PoA compliance | `src/registry/poa_compliance.rs`, `scripts/check-poa-compliance-gate.sh` | `PoA Compliance Isolation (Phase 11.18)` |
-| Phase 11.20 validator keys | `docs/VALIDATOR_KEY_MANAGEMENT.md`, `docs/operations/HSM_BLS_PQ_POLICY.md` | `Audit Prep (Phase 11.20)` |
+| Phase 11.20 validator keys | `docs/VALIDATOR_KEY_MANAGEMENT.md`, `docs/operations/HSM_BLS_PQ_POLICY.md` | `Audit Prep (Phase 11.20)` |\n| Phase 11.20 HSM ceremony | `docs/operations/HSM_CEREMONY_REHEARSAL.md` | `Audit Prep (Phase 11.20)` |
 | Phase 11.20 lockdown | `docs/MAINNET_LOCKDOWN_CHECKLIST.md` | `Audit Prep (Phase 11.20)` |
 | Phase 11.20 readiness review | `docs/audit_prep/MAINNET_READINESS_REVIEW.md` | `Audit Prep (Phase 11.20)` |\n| Phase 11.20 CI stability | `docs/audit_prep/CI_STABILITY_WINDOW.md` | `Audit Prep (Phase 11.20)` |
 

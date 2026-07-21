@@ -49,6 +49,7 @@ This review covers the pre-Phase12 hardening track:
 - `docs/operations/PRODUCTION_RUNBOOK.md`
 - `docs/operations/HSM_BLS_PQ_POLICY.md`
 - `docs/audit_prep/CI_STABILITY_WINDOW.md` — 7-day launch-lock CI stability ledger
+- `docs/operations/HSM_CEREMONY_REHEARSAL.md` — YubiHSM 2 ceremony dry-run kanıtları
 
 ## Review conclusion template
 

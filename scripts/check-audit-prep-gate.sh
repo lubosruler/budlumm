@@ -42,6 +42,8 @@ check_root() {
   check_contains "$root/docs/audit_prep/MAINNET_READINESS_REVIEW.md" "Required sign-offs before launch lock"
   check_contains "$root/docs/audit_prep/CI_STABILITY_WINDOW.md" "CI Stability Window"
   check_contains "$root/docs/audit_prep/CI_STABILITY_WINDOW.md" "7 günlük launch-lock stabilite penceresi"
+  check_contains "$root/docs/operations/HSM_CEREMONY_REHEARSAL.md" "HSM Ceremony Rehearsal"
+  check_contains "$root/docs/operations/HSM_CEREMONY_REHEARSAL.md" "Mock geçmez kanıtı"
   echo "Audit prep gate OK"
 }
 
@@ -81,6 +83,7 @@ DOC
   printf 'runbook\n' > "$tmp/docs/operations/PRODUCTION_RUNBOOK.md"
   printf 'hsm policy\n' > "$tmp/docs/operations/HSM_BLS_PQ_POLICY.md"
   printf '# CI Stability Window\n7 günlük launch-lock stabilite penceresi\n' > "$tmp/docs/audit_prep/CI_STABILITY_WINDOW.md"
+  printf '# HSM Ceremony Rehearsal\nMock geçmez kanıtı\n' > "$tmp/docs/operations/HSM_CEREMONY_REHEARSAL.md"
   check_root "$tmp" >/dev/null
   rm "$tmp/docs/VALIDATOR_KEY_MANAGEMENT.md"
   if ( check_root "$tmp" ) >/dev/null 2>&1; then
