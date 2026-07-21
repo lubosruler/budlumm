@@ -308,11 +308,7 @@ impl RelayerPolicyRegistry {
         Ok(id)
     }
 
-    pub fn submit_bid(
-        &mut self,
-        bid: SolverBid,
-        current_block: u64,
-    ) -> Result<(), String> {
+    pub fn submit_bid(&mut self, bid: SolverBid, current_block: u64) -> Result<(), String> {
         let intent = self
             .intents
             .get(&bid.intent_id)
@@ -658,7 +654,10 @@ mod tests {
         };
         registry.submit_bid(first, 10).unwrap();
         registry.submit_bid(second.clone(), 10).unwrap();
-        assert_eq!(registry.best_bid(&intent_id).unwrap().relayer, second.relayer);
+        assert_eq!(
+            registry.best_bid(&intent_id).unwrap().relayer,
+            second.relayer
+        );
         let before = registry.root();
         let settlement = registry
             .settle_intent(intent_id, second.relayer, second.quoted_fee, 20)
@@ -681,7 +680,10 @@ mod tests {
             bond: 10,
             expires_at_block: 80,
         };
-        assert!(registry.submit_bid(bid.clone(), 10).unwrap_err().contains("not found"));
+        assert!(registry
+            .submit_bid(bid.clone(), 10)
+            .unwrap_err()
+            .contains("not found"));
         registry.submit_intent(intent, &policy, 10).unwrap();
         registry.submit_bid(bid.clone(), 10).unwrap();
         assert!(registry
@@ -737,7 +739,6 @@ mod tests {
         assert!(!registry.bids.contains_key(&intent_id));
     }
 
-
     #[test]
     fn registry_rejects_over_quote_and_expired_bid_settlement() {
         let owner = addr(1);
@@ -763,5 +764,4 @@ mod tests {
             .unwrap_err()
             .contains("bid expired"));
     }
-
 }

@@ -5285,3 +5285,16 @@ Co-authored-by: ARENA4 <arena4@budlum.ai>
 **Ne bekliyor:** Kod + lokal statik kontroller + push + full main CI SLEEP.
 
 Co-authored-by: ARENA4 <arena4@budlum.ai>
+
+---
+
+### [2026-07-21 07:59 UTC+03:00] ARENA4 — P12-21 CI kırmızısı: relayer registry rustfmt fix
+
+**Durum:** main `495ebbb6` CI'da `Budlum Core` / Format adımı kırmızı oldu.
+**Kök neden:** `src/relayer/policy.rs` yeni registry/test satırları rustfmt beklenen biçimde değildi.
+**Fix:** CI rustfmt diff'i manuel uygulandı; davranış değişmedi.
+**Lokal doğrulama:** `git diff --check` ✅, `scripts/check-spec-coverage.sh --self-test` ✅, `scripts/check-spec-coverage.sh` ✅. Rust toolchain bu sandbox'ta yok; compile/test hakemi CI.
+**Budlumdevnet dokunulmadı.**
+**Ne bekliyor:** Push + full main CI SLEEP tekrar.
+
+Co-authored-by: ARENA4 <arena4@budlum.ai>
