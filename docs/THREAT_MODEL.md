@@ -1,9 +1,10 @@
-# Budlum Threat Model v1
+# Budlum Threat Model v2 (Phase 11.20)
 
-**Durum:** Draft v1 (Phase 11.6) → v2 Phase 11.20 (tüm fazların azaltmalarıyla güncellenir)
+**Durum:** Final v2 (Phase 11.20) — Phase 11.8 → 11.18 azaltmaları CI-gated olarak işlenmiştir
 **ADR:** [ADR-010](adr/ADR-010-security-audit-hsm.md)
 **Metodoloji:** STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege)
 **Tehdit sınıflandırması:** 🔴 Kritik / 🟠 Yüksek / 🟡 Orta / 🔵 Düşük
+**CI yargıcı:** Her azaltma için GitHub CI yeşil olmalıdır; lokal kontrol yalnızca ön doğrulamadır.
 
 ## 1. Sistem Sınırları ve Güven Varlıkları
 
@@ -98,25 +99,33 @@
 | S2 | Storage node plaintext zorunlu kılma | EoP | 🔴 | Encryption policy (P12-4, DAO dokunamaz) | P12-4 |
 | S3 | Pruning ile finalized state kaybı | Tampering | 🟠 | Snapshot retantion (ADR-003) | ADR-003 impl |
 
-## 10. Özet: Açık Riskler (v2'de takip)
+## 10. Phase 11.20 Mitigation Closure Matrix
 
-**🔴 Kritik açık (mainnet öncesi kapatılmalı):**
-- C2 Long-range attack → light client checkpoint (ADR-007)
-- C5 Validator key theft → HSM policy (ADR-010)
-- W1 Anahtar kaybı → social recovery (ADR-005)
-- A4 DAO decrypt gaslighting → P12-4 invariant
-- S1 Forged storage proof → ADR-002 impl
-- G4 DAO halt rollback → sürekli kanıt
+| Faz | Kapatılan risk sınıfı | Gerçekleşmiş azaltma | CI kanıtı | Kalan risk |
+|---|---|---|---|---|
+| 11.6 | Spec drift / audit blind spot | Frozen specs + spec-review checklist | Repo Lint spec coverage | Yeni spec değişiklikleri aynı gate'e bağlanmalı |
+| 11.8 | Economy cap / fee-market / fork-choice tampering | Committed supply denominator, EIP-1559 fail-closed migration, domain fork-choice primitives, lifecycle guards | `Economy Invariants`, `Fork-Choice Invariants` | Fee distribution full wiring sonraki ekonomi ADIM'i |
+| 11.10 | Storage proof / pruning state loss | Storage provider proof API, lifecycle projection, full/archive pruning policy | `StorageProvider Gate`, `Node Classification` | Production storage incentives için uzun soak |
+| 11.12 | Eclipse / rate-limit DoS | /24 profile-driven peer bound, idempotent peer accounting, rate-limit ban threshold | `Network Hardening` | Chaos/fuzz tuning devam etmeli |
+| 11.14 | Wallet key loss / multisig compromise | Multisig matrix, social recovery, guardian rotation, recovery proposal digest, binding stubs | `Wallet Core` | UI/mobile production binding generation ayrıca denetlenecek |
+| 11.16 | Governance EoP / timelock bypass | Parameter whitelist, activation timelock, vote-weight snapshot | `Governance Invariants` | Governance UX and voter education risk |
+| 11.18 | PoA compliance leakage | PoA-only screening/freeze/travel-rule metadata + audit export | `PoA Compliance Isolation` | Regulator oracle integration is off-chain and must be audited separately |
+| 11.20 | Audit/HSM operational blind spot | Audit prep index + validator YubiHSM 2 / PKCS#11 key policy | `Audit Prep` | 7-day CI stability window before launch lock |
 
-**🟠 Yüksek (mainnet öncesi azaltma):**
-- N1 Eclipse → ADR-008
-- W2 Guardian collusion → ADR-005
-- P2 PoA admin abuse → ADR-009
-- G1/G2/G3 Governance → ADR-004
+## 11. Residual Risk Register (mainnet sonrası takip)
 
-**v2 (Phase 11.20):** tüm fazların (11.8-11.18) gerçekleşmiş azaltmalarıyla güncellenir; kalan açık riskler + mainnet sonrası takip listesi çıkarılır.
+**🔴 Kritik:** Bu v2 snapshot itibarıyla pre-Phase12 kapsamda CI-gated ve açık kritik kod riski bırakılmaması hedeflenmiştir. Kritik sınıf yeniden açılırsa yeni ADIM kırmızı kabul edilir ve yeni scope durdurulur.
 
-## 11. İlgili
+**🟠 Yüksek / operasyonel:**
+- R1 — Long-range / checkpoint operations: validator onboarding ve genesis ceremony prosedürleri HSM policy ile birlikte dry-run edilmelidir.
+- R2 — Hardware signer rollout: YubiHSM 2 / PKCS#11 cihaz envanteri, PIN custody ve backup quorum bağımsız audit tarafından örneklenmelidir.
+- R3 — Network chaos tuning: Eclipse/rate-limit kapıları yeşil olsa da multi-node partition/Byzantine chaos senaryoları mainnet öncesi soak ister.
+- R4 — Storage proof economics: Proof verification strict; incentive and slashing parameter calibration uzun devnet gözlemi gerektirir.
+- R5 — Wallet UX: wallet-core primitive'leri hazır; kullanıcı-facing recovery/multisig UX sonraki ürün fazında yanlış kullanım riskini azaltmalıdır.
+- R6 — PoA oracle/regulator data: On-chain hash kayıtları PoA'ya izole; off-chain oracle doğruluğu ve veri saklama politikası ayrı audit alanıdır.
+- R7 — CI stability: Launch lock için tüm required + extended gates en az 7 gün kırmızısız izlenmelidir.
+
+## 12. İlgili
 
 - `docs/SECURITY_AUDIT_HACKER.md` — V17-V7 bulguları (geçmiş tehdit denetimi)
 - `SECURITY.md`, `docs/BUG_BOUNTY.md` — sürekli tehdit tespiti

@@ -5935,3 +5935,17 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Kim karar verecek:** CI otomatik.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-21 15:18 UTC+03:00] ARENA1 — Phase 11.20 ADIM 2 PUSH HAZIR: threat model v2 closure matrix
+
+**Kapsam:** `docs/THREAT_MODEL.md` Phase 11.20 v2 seviyesine yükseltildi.
+**Ne eklendi:** Phase 11.20 mitigation closure matrix, residual risk register ve CI-yargıcı notu. Audit-prep evidence map artık threat model v2 satırını içeriyor.
+**CI kapısı:** `scripts/check-audit-prep-gate.sh` artık `Threat Model v2`, `Phase 11.20 Mitigation Closure Matrix` ve `Residual Risk Register` markerlarını zorunlu kılar.
+**Lokal doğrulama:** `bash ./scripts/check-audit-prep-gate.sh --self-test` ✅, `bash ./scripts/check-audit-prep-gate.sh .` ✅, `git diff --check` ✅.
+**Budlumdevnet:** dokunulmadı.
+**Ne bekliyor:** Push + ana CI pipeline takibi.
+**Kim karar verecek:** CI otomatik.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>

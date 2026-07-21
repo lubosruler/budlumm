@@ -8,6 +8,7 @@
 
 | Area | Primary evidence | CI gate |
 | --- | --- | --- |
+| Phase 11.20 threat model v2 | `docs/THREAT_MODEL.md` | `Audit Prep (Phase 11.20)` |
 | Phase 11.6 specs | `docs/spec-review/`, `scripts/check-spec-coverage.sh` | Repo Lint spec coverage gate |
 | Phase 11.8 economy | `src/chain/fee_market.rs`, `src/tokenomics/reward_pool.rs`, `scripts/check-economy-invariants.sh` | `Economy Invariants (Phase 11.8)` |
 | Phase 11.8 fork choice | `src/domain/fork_choice.rs`, `scripts/check-fork-choice-gate.sh` | `Fork-Choice Invariants (Phase 11.8)` |

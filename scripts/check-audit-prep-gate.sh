@@ -20,7 +20,11 @@ check_root() {
   [[ -f "$root/docs/operations/PRODUCTION_RUNBOOK.md" ]] || fail "missing docs/operations/PRODUCTION_RUNBOOK.md"
   [[ -f "$root/docs/operations/HSM_BLS_PQ_POLICY.md" ]] || fail "missing docs/operations/HSM_BLS_PQ_POLICY.md"
 
+  check_contains "$root/docs/THREAT_MODEL.md" "Threat Model v2"
+  check_contains "$root/docs/THREAT_MODEL.md" "Phase 11.20 Mitigation Closure Matrix"
+  check_contains "$root/docs/THREAT_MODEL.md" "Residual Risk Register"
   check_contains "$root/docs/audit_prep/README.md" "Phase 11.20 Audit Prep Index"
+  check_contains "$root/docs/audit_prep/README.md" "threat model v2"
   check_contains "$root/docs/audit_prep/README.md" "Evidence map"
   check_contains "$root/docs/audit_prep/README.md" "Known limits"
   check_contains "$root/docs/VALIDATOR_KEY_MANAGEMENT.md" "YubiHSM 2"
@@ -35,9 +39,14 @@ self_test() {
   tmp="$(mktemp -d)"
   trap "rm -rf '$tmp'" EXIT
   mkdir -p "$tmp/docs/audit_prep" "$tmp/docs/operations"
-  printf 'threat model\n' > "$tmp/docs/THREAT_MODEL.md"
+  cat > "$tmp/docs/THREAT_MODEL.md" <<'DOC'
+# Threat Model v2
+## Phase 11.20 Mitigation Closure Matrix
+## Residual Risk Register
+DOC
   cat > "$tmp/docs/audit_prep/README.md" <<'DOC'
 # Phase 11.20 Audit Prep Index
+threat model v2
 ## Evidence map
 ## Known limits
 DOC
