@@ -931,4 +931,89 @@ mod tests {
             res.err()
         );
     }
+
+    // === CONDITION TYPE HARDENING ==============================================
+
+    /// Branching on a struct value (a heap pointer, always non-zero) is
+    /// rejected — the branch would be trivially true, a near-certain bug.
+    #[test]
+    fn test_if_on_struct_condition_rejected() {
+        let source = r#"
+            contract StructCond {
+                struct Point {
+                    x: u64,
+                    y: u64,
+                }
+
+                pub fn main() {
+                    let p = Point { x: 1, y: 2 };
+                    if (p) {
+                        emit Result(1);
+                    }
+                }
+            }
+        "#;
+
+        let res = compile(source, IsaProfile::Production);
+        assert!(res.is_err(), "if-condition on a struct must be rejected");
+        match res.unwrap_err() {
+            CompileError::SemanticError(msg) => {
+                assert!(msg.contains("condition must be a scalar"), "got: {msg}");
+            }
+            other => panic!("expected SemanticError, got: {other:?}"),
+        }
+    }
+
+    /// `constrain` on a struct value (always non-zero) is rejected for the
+    /// same reason — the assertion would be vacuously satisfied.
+    #[test]
+    fn test_constrain_on_struct_condition_rejected() {
+        let source = r#"
+            contract StructConstrain {
+                struct Point {
+                    x: u64,
+                    y: u64,
+                }
+
+                pub fn main() {
+                    let p = Point { x: 1, y: 2 };
+                    constrain(p);
+                }
+            }
+        "#;
+
+        let res = compile(source, IsaProfile::Production);
+        assert!(res.is_err(), "constrain on a struct must be rejected");
+        match res.unwrap_err() {
+            CompileError::SemanticError(msg) => {
+                assert!(msg.contains("condition must be a scalar"), "got: {msg}");
+            }
+            other => panic!("expected SemanticError, got: {other:?}"),
+        }
+    }
+
+    /// A scalar condition (here a comparison result) still compiles — the
+    /// check rejects only struct/void conditions.
+    #[test]
+    fn test_scalar_condition_still_compiles() {
+        let source = r#"
+            contract ScalarCond {
+                pub fn main() {
+                    let a = 1;
+                    let b = 2;
+                    if (a == b) {
+                        emit Result(1);
+                    }
+                    constrain(a);
+                }
+            }
+        "#;
+
+        let res = compile(source, IsaProfile::Production);
+        assert!(
+            res.is_ok(),
+            "scalar conditions should compile: {:?}",
+            res.err()
+        );
+    }
 }

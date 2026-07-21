@@ -147,6 +147,21 @@ impl SemanticAnalyzer {
         }
     }
 
+    /// A value used as a condition (`if` / `while` / `constrain`) is
+    /// tested for non-zero by the VM, so it must be a scalar
+    /// (u64 / bool / field). A struct value is a heap pointer — always
+    /// non-zero, so the branch/assertion is trivially true — and `void`
+    /// is not a value; both are near-certain bugs, rejected at compile
+    /// time. (match has its own stricter scrutinee check.)
+    fn check_condition_type(&self, ty: &Type, ctx: &str, errors: &mut Vec<CompileError>) {
+        if matches!(ty, Type::Struct(_) | Type::Void) {
+            errors.push(CompileError::SemanticError(format!(
+                "{} condition must be a scalar (u64/bool/field), got {:?}",
+                ctx, ty
+            )));
+        }
+    }
+
     fn analyze_function(&mut self, func: &Function, errors: &mut Vec<CompileError>) {
         let mut env = HashMap::new();
         for param in &func.params {
@@ -176,7 +191,8 @@ impl SemanticAnalyzer {
                 env.insert(name.clone(), ty);
             }
             Stmt::Constrain(expr) => {
-                self.analyze_expr(expr, env, errors);
+                let ty = self.analyze_expr(expr, env, errors);
+                self.check_condition_type(&ty, "constrain", errors);
             }
             Stmt::Assign(name, expr) => {
                 if let Some(expected_ty) = env.get(name).cloned() {
@@ -203,7 +219,8 @@ impl SemanticAnalyzer {
                 self.analyze_expr(val, env, errors);
             }
             Stmt::If(cond, then_branch, else_branch) => {
-                self.analyze_expr(cond, env, errors);
+                let cond_ty = self.analyze_expr(cond, env, errors);
+                self.check_condition_type(&cond_ty, "if", errors);
                 for s in then_branch {
                     self.analyze_stmt(s, env, errors);
                 }
@@ -214,7 +231,8 @@ impl SemanticAnalyzer {
                 }
             }
             Stmt::While(cond, body) => {
-                self.analyze_expr(cond, env, errors);
+                let cond_ty = self.analyze_expr(cond, env, errors);
+                self.check_condition_type(&cond_ty, "while", errors);
                 for s in body {
                     self.analyze_stmt(s, env, errors);
                 }
