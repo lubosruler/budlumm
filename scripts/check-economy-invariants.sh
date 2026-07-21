@@ -16,6 +16,11 @@ required_tests=(
   phase11_8_priority_fee_is_fail_closed_until_distribution_wiring
   phase11_8_max_fee_must_match_legacy_fee_during_migration
   phase11_8_fee_field_tampering_invalidates_signature
+  phase11_8_fee_distribution_burns_base_fee_and_pays_proposer
+  phase11_8_fee_distribution_treasury_split_is_deterministic
+  phase11_8_fee_distribution_rejects_underpriced
+  phase11_8_fee_distribution_zero_treasury_rate
+  phase11_8_fee_distribution_full_treasury_rate
 )
 
 fail() {

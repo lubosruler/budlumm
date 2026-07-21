@@ -100,6 +100,51 @@ pub fn effective_fee(bid: FeeBid, block_base_fee: u64) -> Result<EffectiveFee, F
     })
 }
 
+/// Full fee distribution: base fee burn + proposer tip + treasury split.
+///
+/// `treasury_rate` is a fraction in parts-per-million (ppm): e.g. 10_000 = 1%.
+/// The treasury takes a cut of the priority fee before the proposer receives
+/// the remainder. This makes the burn/treasury/proposer split explicit and
+/// auditable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FeeDistribution {
+    pub base_fee_burned: u64,
+    pub priority_fee_to_proposer: u64,
+    pub treasury_fee: u64,
+}
+
+/// Distribute a fee bid into burn / proposer / treasury.
+///
+/// `gas_used` is the actual gas consumed by the transaction.
+/// `treasury_rate_ppm` is the treasury cut in parts-per-million (0 = no treasury).
+pub fn distribute_fee(
+    bid: FeeBid,
+    block_base_fee: u64,
+    gas_used: u64,
+    treasury_rate_ppm: u64,
+) -> Result<FeeDistribution, FeeError> {
+    let effective = effective_fee(bid, block_base_fee)?;
+
+    let base_fee_burned = block_base_fee.saturating_mul(gas_used);
+    let total_priority = effective.priority_fee_paid.saturating_mul(gas_used);
+
+    // Treasury cut (saturating to prevent overflow)
+    let treasury_fee = total_priority
+        .saturating_mul(treasury_rate_ppm)
+        .saturating_div(1_000_000);
+
+    let priority_fee_to_proposer = total_priority.saturating_sub(treasury_fee);
+
+    Ok(FeeDistribution {
+        base_fee_burned,
+        priority_fee_to_proposer,
+        treasury_fee,
+    })
+}
+
+/// Default treasury rate: 1% (10_000 ppm).
+pub const DEFAULT_TREASURY_RATE_PPM: u64 = 10_000;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,5 +220,69 @@ mod tests {
         let fee = effective_fee(FeeBid::legacy(10), 10).unwrap();
         assert_eq!(fee.base_fee_burned, 10);
         assert_eq!(fee.priority_fee_paid, 0);
+    }
+
+    #[test]
+    fn phase11_8_fee_distribution_burns_base_fee_and_pays_proposer() {
+        let bid = FeeBid {
+            max_fee: 15,
+            priority_fee: 5,
+        };
+        let dist = distribute_fee(bid, 10, 1_000, 0).unwrap();
+        assert_eq!(dist.base_fee_burned, 10_000);       // 10 * 1_000
+        assert_eq!(dist.priority_fee_to_proposer, 5_000); // 5 * 1_000
+        assert_eq!(dist.treasury_fee, 0);                // no treasury
+    }
+
+    #[test]
+    fn phase11_8_fee_distribution_treasury_split_is_deterministic() {
+        let bid = FeeBid {
+            max_fee: 20,
+            priority_fee: 10,
+        };
+        // 1% treasury rate (10_000 ppm)
+        let dist = distribute_fee(bid, 10, 1_000, 10_000).unwrap();
+        assert_eq!(dist.base_fee_burned, 10_000);
+        assert_eq!(dist.treasury_fee, 100);             // 1% of 10_000
+        assert_eq!(dist.priority_fee_to_proposer, 9_900); // 99% of 10_000
+    }
+
+    #[test]
+    fn phase11_8_fee_distribution_rejects_underpriced() {
+        let bid = FeeBid {
+            max_fee: 5,
+            priority_fee: 1,
+        };
+        let err = distribute_fee(bid, 10, 1_000, 0).unwrap_err();
+        assert_eq!(
+            err,
+            FeeError::MaxFeeBelowBaseFee {
+                max_fee: 5,
+                base_fee: 10,
+            }
+        );
+    }
+
+    #[test]
+    fn phase11_8_fee_distribution_zero_treasury_rate() {
+        let bid = FeeBid {
+            max_fee: 15,
+            priority_fee: 5,
+        };
+        let dist = distribute_fee(bid, 10, 1_000, 0).unwrap();
+        assert_eq!(dist.treasury_fee, 0);
+        assert_eq!(dist.priority_fee_to_proposer, 5_000);
+    }
+
+    #[test]
+    fn phase11_8_fee_distribution_full_treasury_rate() {
+        let bid = FeeBid {
+            max_fee: 15,
+            priority_fee: 5,
+        };
+        // 100% treasury rate (1_000_000 ppm)
+        let dist = distribute_fee(bid, 10, 1_000, 1_000_000).unwrap();
+        assert_eq!(dist.treasury_fee, 5_000);
+        assert_eq!(dist.priority_fee_to_proposer, 0);
     }
 }
