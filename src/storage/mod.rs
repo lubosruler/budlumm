@@ -21,10 +21,15 @@ pub mod db;
 pub mod manifest;
 pub mod merkle_trie;
 pub mod mobile_self;
+pub mod provider;
 pub mod traits;
 
 pub use content_id::{ContentId, DEFAULT_CHUNK_SIZE_BYTES};
 pub use manifest::{manifest_id_from_shards, ContentManifest, ShardRef};
 pub use mobile_self::{
     MobileAvailabilityClass, MobileSelfContentPolicy, MobileSelfProfile, ReplicaRecommendation,
+};
+pub use provider::{
+    provider_challenge_id, ChallengeId, DealId, InMemoryStorageProvider, ProviderChallengeResult,
+    PutReceipt, StorageProof, StorageProvider, StorageProviderError,
 };
