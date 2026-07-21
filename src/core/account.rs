@@ -778,13 +778,7 @@ impl AccountState {
         // The correct denominator is circulating_supply + total_stake (= all BUD
         // that currently exists on-chain). Unbonding queue is also included since
         // those tokens are committed but not yet released.
-        let total_bud = self.circulating_supply()
-            + self.get_total_stake() as u128
-            + self
-                .unbonding_queue
-                .iter()
-                .map(|e| e.amount as u128)
-                .sum::<u128>();
+        let total_bud = self.total_bud_committed();
         let max_supply = crate::tokenomics::BUD_TOTAL_SUPPLY as u128;
 
         if total_bud < max_supply {
@@ -997,13 +991,51 @@ impl AccountState {
         balance
     }
 
-    /// Total $BUD in circulation: the sum of all account balances. There is no
-    /// separate `total_supply` field, so this is the authoritative supply figure.
-    /// (Validator stake is bonded separately and is not part of `accounts`.)
+    /// Total $BUD in liquid account balances.
+    ///
+    /// Validator stake and unbonding entries are bonded separately and are not
+    /// part of `accounts`, so supply-cap checks must use [`total_bud_committed`]
+    /// instead of this helper alone.
     pub fn circulating_supply(&self) -> u128 {
         self.accounts
             .values()
             .fold(0u128, |acc, a| acc + a.balance as u128)
+    }
+
+    /// Total $BUD locked in validator stake, including inactive/jailed validators.
+    ///
+    /// This is a supply-denominator helper, not an active-consensus-stake helper:
+    /// inactive but unslashed stake still exists and must count against the fixed
+    /// 100M cap.
+    pub fn total_staked_supply(&self) -> u128 {
+        self.validators
+            .values()
+            .fold(0u128, |acc, v| acc + v.stake as u128)
+    }
+
+    /// Total $BUD in unbonding limbo.
+    pub fn total_unbonding_supply(&self) -> u128 {
+        self.unbonding_queue
+            .iter()
+            .fold(0u128, |acc, e| acc + e.amount as u128)
+    }
+
+    /// Total BUD currently committed on-chain.
+    ///
+    /// V144 hardened the cap denominator from "liquid balances only" to
+    /// `circulating + staked + unbonding`. Centralising that formula prevents
+    /// future mint paths from accidentally reintroducing the old inflation gap.
+    pub fn total_bud_committed(&self) -> u128 {
+        self.circulating_supply()
+            .saturating_add(self.total_staked_supply())
+            .saturating_add(self.total_unbonding_supply())
+    }
+
+    /// Remaining headroom under the fixed 100M cap.
+    pub fn supply_capacity_remaining(&self) -> u64 {
+        let cap = crate::tokenomics::BUD_TOTAL_SUPPLY as u128;
+        cap.saturating_sub(self.total_bud_committed())
+            .min(u64::MAX as u128) as u64
     }
 
     /// Burn `amount` from `address`: reduce its balance and credit it NOWHERE,
@@ -1439,6 +1471,46 @@ mod tests {
         assert!(!released.jailed);
         assert!(released.slashed);
         assert!(!released.active);
+    }
+
+    #[test]
+    fn phase11_8_total_bud_committed_counts_stake_and_unbonding() {
+        let liquid = Address::from([11u8; 32]);
+        let validator = Address::from([12u8; 32]);
+        let unbonding = Address::from([13u8; 32]);
+        let mut state = AccountState::new();
+
+        state.add_balance(&liquid, 1_000);
+        state.add_validator(validator, 2_000);
+        if let Some(v) = state.get_validator_mut(&validator) {
+            v.active = false;
+            v.jailed = true;
+        }
+        state.unbonding_queue.push(UnbondingEntry {
+            address: unbonding,
+            amount: 3_000,
+            release_epoch: 99,
+        });
+
+        assert_eq!(state.circulating_supply(), 1_000);
+        assert_eq!(state.get_total_stake(), 0, "inactive stake is not consensus-active");
+        assert_eq!(state.total_staked_supply(), 2_000);
+        assert_eq!(state.total_unbonding_supply(), 3_000);
+        assert_eq!(state.total_bud_committed(), 6_000);
+    }
+
+    #[test]
+    fn phase11_8_supply_capacity_remaining_uses_committed_denominator() {
+        let liquid = Address::from([21u8; 32]);
+        let validator = Address::from([22u8; 32]);
+        let mut state = AccountState::new();
+        state.add_balance(&liquid, crate::tokenomics::BUD_TOTAL_SUPPLY - 1);
+        state.add_validator(validator, 10);
+        assert_eq!(
+            state.supply_capacity_remaining(),
+            0,
+            "staked BUD must consume supply headroom"
+        );
     }
 
     // === Phase 0.60 SUPPLY-CAP INTEGER-ONLY TESTİ ===
