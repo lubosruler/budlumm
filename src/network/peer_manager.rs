@@ -144,6 +144,7 @@ impl PeerManager {
     pub fn apply_security_config(&mut self, security: crate::core::chain_config::SecurityConfig) {
         let per_min = security.peer_rate_limit_per_minute.max(1);
         self.msg_refill_rate = (per_min as f64) / 60.0;
+        self.max_peers_per_subnet = security.max_peers_per_subnet.max(1);
         // Keep a hard memory ceiling independent of max_peers (connected).
         self.max_tracked_peers = 10_000;
     }
@@ -566,6 +567,7 @@ mod tests {
         // 120/min => 2.0 tokens/sec
         assert!((manager.msg_refill_rate() - 2.0).abs() < f64::EPSILON);
         assert_eq!(mainnet.max_peers, 100);
+        assert_eq!(manager.max_peers_per_subnet(), 4);
         assert_eq!(mainnet.rpc_rate_limit_per_minute, 300);
         assert!(mainnet.rpc_auth_required);
         assert!(!mainnet.mdns_enabled);
@@ -574,6 +576,7 @@ mod tests {
         dev.apply_security_config(Network::Devnet.security_config());
         // 1000/min => ~16.666 tokens/sec
         assert!((dev.msg_refill_rate() - (1000.0 / 60.0)).abs() < 1e-9);
+        assert_eq!(dev.max_peers_per_subnet(), 8);
     }
 
     /// Phase 3 §3.4: tracked peer map has a hard ceiling (memory DoS guard).

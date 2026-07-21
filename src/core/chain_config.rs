@@ -155,6 +155,7 @@ impl Network {
             Network::Mainnet => SecurityConfig {
                 max_peers: 100,
                 peer_rate_limit_per_minute: 120,
+                max_peers_per_subnet: 4,
                 rpc_rate_limit_per_minute: 300,
                 rpc_auth_required: true,
                 persist_banned_peers: true,
@@ -163,6 +164,7 @@ impl Network {
             Network::Testnet => SecurityConfig {
                 max_peers: 75,
                 peer_rate_limit_per_minute: 240,
+                max_peers_per_subnet: 4,
                 rpc_rate_limit_per_minute: 600,
                 rpc_auth_required: true,
                 persist_banned_peers: true,
@@ -171,6 +173,7 @@ impl Network {
             Network::Devnet => SecurityConfig {
                 max_peers: 25,
                 peer_rate_limit_per_minute: 1_000,
+                max_peers_per_subnet: 8,
                 rpc_rate_limit_per_minute: 10_000,
                 rpc_auth_required: false,
                 persist_banned_peers: false,
@@ -270,6 +273,7 @@ pub struct ConsensusParams {
 pub struct SecurityConfig {
     pub max_peers: usize,
     pub peer_rate_limit_per_minute: u64,
+    pub max_peers_per_subnet: usize,
     pub rpc_rate_limit_per_minute: u64,
     pub rpc_auth_required: bool,
     pub persist_banned_peers: bool,
