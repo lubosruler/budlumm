@@ -150,7 +150,13 @@ fn e2e_three_actor_manifest_to_challenge_flow() {
     // yapı kontrol eder (interim sınırlama, plan §2.5).
     let dummy_hash = ContentId::of_subrange(b"x", 0, 0);
     let result = reg
-        .answer_challenge(challenge_id, dummy_hash, operator_a, 175, None)
+        .answer_challenge(
+            challenge_id,
+            dummy_hash,
+            operator_a,
+            175,
+            Some(b"test-mock-proof"),
+        )
         .expect("A answer");
     assert_eq!(result.outcome, ChallengeOutcome::Answered);
     assert_eq!(result.slashed_bond, 0);

@@ -1163,7 +1163,13 @@ mod tests {
             .open_challenge(deal_id, 0, 4, 110, 120, opener(), 50)
             .unwrap();
         let res = reg
-            .answer_challenge(cid, ContentId([1u8; 32]), operator(), 115, None)
+            .answer_challenge(
+                cid,
+                ContentId([1u8; 32]),
+                operator(),
+                115,
+                Some(b"test-mock-proof"),
+            )
             .unwrap();
         assert_eq!(res.outcome, ChallengeOutcome::Answered);
         assert_eq!(res.slashed_bond, 0);
@@ -1234,8 +1240,14 @@ mod tests {
         let cid = reg
             .open_challenge(deal_id, 0, 4, 110, 120, opener(), 50)
             .unwrap();
-        reg.answer_challenge(cid, ContentId([1u8; 32]), operator(), 115, None)
-            .unwrap();
+        reg.answer_challenge(
+            cid,
+            ContentId([1u8; 32]),
+            operator(),
+            115,
+            Some(b"test-mock-proof"),
+        )
+        .unwrap();
         let err = reg.finalize_missed_challenge(cid, 200).unwrap_err();
         assert!(matches!(err, StorageError::ChallengeAlreadyResolved(_)));
     }

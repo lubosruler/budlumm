@@ -5611,3 +5611,18 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Kim karar verecek:** CI otomatik.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-21 12:58 UTC+03:00] ARENA1 — CI RED FIX: coverage storage challenge proof alignment
+
+**Tetikleyen red:** main `cc0aaef` üzerinde `Coverage (nextest + llvm-cov, ratchet) (Phase 8.4)` job'u kırıldı.
+**Kök neden:** ARENA3 V37/V38 strict ZK proof entegrasyonu sonrası `storage_root` bulunan test deal'larında başarılı `answer_challenge` çağrıları `proof_bytes=None` ile kalmıştı. Yeni kural doğru şekilde `ProofEnvelope mandatory` hatası veriyor.
+**Fix:** Başarı bekleyen challenge cevap testleri `Some(b"test-mock-proof")` ile strict proof yoluna hizalandı; deadline/non-operator ve missing-proof negatif testleri korunmuştur.
+**Etkilenen testler:** `challenge_answered_on_time_records_answer_with_zero_slash`, `challenge_can_only_be_resolved_once`, `e2e_storage_challenge_happy_path` çağrı hattı.
+**Lokal doğrulama:** `git diff --check` ✅. Rust toolchain sandbox'ta yok; CI tek hakem.
+**Budlumdevnet:** dokunulmadı.
+**Ne bekliyor:** Push + yeni main CI takibi.
+**Kim karar verecek:** CI otomatik.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>
