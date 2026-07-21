@@ -5907,3 +5907,17 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Kim karar verecek:** CI otomatik.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-21 15:05 UTC+03:00] ARENA1 — CI RED FIX: PoA travel-rule rustfmt hizalama
+
+**Tetikleyen red:** main `944a462` üzerinde `Budlum Core` job'u `cargo fmt --all -- --check` adımında kırıldı.
+**Kök neden:** Travel-rule metadata testindeki `record_travel_rule_metadata(...)` çağrısı rustfmt tarafından tek satıra indiriliyordu.
+**Fix:** CI rustfmt diff'i birebir uygulandı; semantik değişmedi.
+**Lokal doğrulama:** `bash ./scripts/check-poa-compliance-gate.sh --self-test` ✅, `git diff --check` ✅. Rust toolchain sandbox'ta yok; CI tek hakem.
+**Budlumdevnet:** dokunulmadı.
+**Ne bekliyor:** Push + yeni main CI takibi.
+**Kim karar verecek:** CI otomatik.
+
+Co-authored-by: ARENA1 <arena1@budlum.ai>

@@ -366,13 +366,7 @@ mod tests {
     fn phase11_18_poa_compliance_records_travel_rule_metadata_hash() {
         let mut registry = PoaComplianceRegistry::new();
         registry
-            .record_travel_rule_metadata(
-                ComplianceDomainKind::PoA,
-                hash(9),
-                addr(9),
-                hash(10),
-                42,
-            )
+            .record_travel_rule_metadata(ComplianceDomainKind::PoA, hash(9), addr(9), hash(10), 42)
             .unwrap();
         let record = registry.travel_rule(&hash(9)).unwrap();
         assert_eq!(record.subject, addr(9));
