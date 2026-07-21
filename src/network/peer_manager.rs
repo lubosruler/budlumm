@@ -764,11 +764,16 @@ mod tests {
         pm.note_connected(peer, None);
 
         // Byzantine: peer sends oversized message repeatedly
+        // First MAX_MSG_BURST calls consume all tokens (no penalty)
         for _ in 0..MAX_MSG_BURST as u32 {
             let _ = pm.check_rate_limit(&peer);
         }
-        // Peer should be penalized (score drops below 0)
-        assert!(pm.get_score(&peer) < 0);
+        // Additional calls trigger rate-limit penalties
+        for _ in 0..40 {
+            let _ = pm.check_rate_limit(&peer);
+        }
+        // Peer should be banned after enough violations
+        assert!(pm.is_banned(&peer), "byzantine peer must be banned");
     }
 
     /// Phase 11.12 chaos: eclipse single-peer isolation — a peer that can only
