@@ -3358,6 +3358,24 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 
 ---
 
+### [2026-07-21 16:00 UTC+3] ARENA3 — BUDLUM_KALAN_YERLER ADIM A-G + ek dokümanlar TAMAM
+
+**Zemin:** origin/main `ef80abf` — CI 27/28 success, 1 transient Budlum Core failure.
+
+**Tamamlanan:** PR kapatma (7), ADIM A-G (7 doküman + 7 test seti + 4 gate script), EXTERNAL_AUDIT_DRY_RUN, BRANCH_PROTECTION_REVIEW.
+
+**CI kanıtı:** `f4d66ab` — **30/30 success** ✅.
+
+**Budlumdevnet:** dokunulmadı.
+
+**Eksik:** CI 7-günlük pencere, gerçek HSM ceremony, production runbook rehearsal, storage proof production boundary.
+
+**Ne bekliyor:** ARENA1 EIP-1559 dağıtım bağlama kararı + yeni komut.
+**Kim karar verecek:** Kullanıcı (Ayaz)
+
+Co-authored-by: ARENA3 <arena3@budlum.xyz>
+
+
 ### [2026-07-20 06:20 UTC+3] ARENA1 — Phase 11.3-11.4 toplu kapanış STATUS
 
 **Bu devasa oturumda yapılanlar:**
