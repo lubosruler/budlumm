@@ -265,7 +265,7 @@ impl PeerManager {
     pub fn report_invalid_block(&mut self, peer_id: &PeerId) {
         let score = self.get_or_create(peer_id);
         score.invalid_blocks += 1;
-        score.score += INVALID_BLOCK_PENALTY;
+        score.score = (score.score + INVALID_BLOCK_PENALTY).max(MIN_SCORE);
         score.last_seen = Some(Instant::now());
         if score.score <= BAN_THRESHOLD {
             self.ban_peer(peer_id);
@@ -274,7 +274,7 @@ impl PeerManager {
     pub fn report_invalid_tx(&mut self, peer_id: &PeerId) {
         let score = self.get_or_create(peer_id);
         score.invalid_txs += 1;
-        score.score += INVALID_TX_PENALTY;
+        score.score = (score.score + INVALID_TX_PENALTY).max(MIN_SCORE);
         score.last_seen = Some(Instant::now());
         if score.score <= BAN_THRESHOLD {
             self.ban_peer(peer_id);
@@ -282,7 +282,7 @@ impl PeerManager {
     }
     pub fn report_oversized_message(&mut self, peer_id: &PeerId) {
         let score = self.get_or_create(peer_id);
-        score.score += OVERSIZED_MESSAGE_PENALTY;
+        score.score = (score.score + OVERSIZED_MESSAGE_PENALTY).max(MIN_SCORE);
         score.last_seen = Some(Instant::now());
         if score.score <= BAN_THRESHOLD {
             self.ban_peer(peer_id);
@@ -859,6 +859,46 @@ mod tests {
         assert!(
             final_score <= BAN_THRESHOLD,
             "score must reach ban threshold after 100 violations"
+        );
+    }
+
+    /// Reputation invariant (Phase 11.12 / §3.4): score must stay within
+    /// `[MIN_SCORE, MAX_SCORE]` under any penalty sequence. The
+    /// invalid-block / invalid-tx / oversized-message penalty paths clamp to
+    /// `MIN_SCORE` (like `report_bad_behavior`) so `get_score()` never
+    /// undershoots. Without the clamp these paths could return e.g. -105.
+    #[test]
+    fn phase11_12_reputation_score_clamped_under_repeated_penalties() {
+        let mut pm = PeerManager::new();
+
+        let pb = test_peer_id();
+        for _ in 0..50 {
+            pm.report_invalid_block(&pb);
+        }
+        assert!(
+            (MIN_SCORE..=MAX_SCORE).contains(&pm.get_score(&pb)),
+            "invalid-block penalty must clamp to MIN_SCORE, got {}",
+            pm.get_score(&pb)
+        );
+
+        let pt = test_peer_id();
+        for _ in 0..50 {
+            pm.report_invalid_tx(&pt);
+        }
+        assert!(
+            (MIN_SCORE..=MAX_SCORE).contains(&pm.get_score(&pt)),
+            "invalid-tx penalty must clamp to MIN_SCORE, got {}",
+            pm.get_score(&pt)
+        );
+
+        let po = test_peer_id();
+        for _ in 0..50 {
+            pm.report_oversized_message(&po);
+        }
+        assert!(
+            (MIN_SCORE..=MAX_SCORE).contains(&pm.get_score(&po)),
+            "oversized-message penalty must clamp to MIN_SCORE, got {}",
+            pm.get_score(&po)
         );
     }
 }
