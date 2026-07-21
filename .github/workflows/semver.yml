@@ -44,9 +44,9 @@ jobs:
         with:
           toolchain: "1.94.0"
       - name: Install pinned nightly (rustdoc-json backend for semver-checks)
-        run: |
-          rustup toolchain install nightly-2026-07-19 --profile minimal
-          rustup component add rustdoc --toolchain nightly-2026-07-19
+        # 'rustdoc' nightly'de ayrı bir component DEĞİL — rustc component'inin
+        # parçası (rustup: "did you mean 'rust-docs'?" ile exit 1, 2026-07-21 CI kanıtı).
+        run: rustup toolchain install nightly-2026-07-19 --profile minimal
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
         with:
           # İki-checkout yerleşiminde workspace kökünde Cargo.toml yok;
@@ -58,7 +58,12 @@ jobs:
         run: cargo +1.94.0 install cargo-semver-checks --locked
       - name: Gate canary (vacuous-gate koruması)
         run: bash ./current/scripts/check-semver.sh --self-test
-      - name: Teşhis (GEÇİCİ, kanıt toplama) — doğrudan rustdoc-json
+      - name: Teşhis (kalıcı kanıt adımı) — doğrudan rustdoc-json
+        # Gelecekteki sessiz-crash sınıflarında wrapper'ın yuttuğu hata gövdesini
+        # ham olarak görünür kılar (continue-on-error: koşuyu bloklamaz).
+        # NOT: `-o <dir>` YASAK — cargo rustdoc kendisi --out-dir ekler; ikinci
+        # veriliş "Option 'out-dir' given more than once" ile ölür (2026-07-21
+        # lokal kanıt). JSON target/doc/budlum_core.json'a düşer.
         continue-on-error: true
         env:
           RUSTUP_TOOLCHAIN: nightly-2026-07-19
@@ -68,18 +73,15 @@ jobs:
         run: |
           set +e
           cd current
-          cargo rustdoc -p budlum-core --lib -- -Z unstable-options --output-format json -o target/semv_diag 2>&1 | tail -60
-          echo "RUSTDOC_DIRECT_EXIT: $?"
+          cargo rustdoc -p budlum-core --lib -- -Z unstable-options --output-format json 2>&1 | tail -60
+          echo "RUSTDOC_DIRECT_EXIT: ${PIPESTATUS[0]}"
       - name: Semver gate — budlum-core vs baseline
         env:
           SEMVER_BEFORE: ${{ github.event.pull_request.base.sha || github.event.before }}
-          # Kök-neden analizi (dördüncü koşu kanıtı): rustdoc-json ölümü
-          # floating nightly'de de tekrarlandı — sessiz crash, error body
-          # log'a düşmüyor. Miri job'unun derleyebildiği KANITLI pin
-          # (nightly-2026-07-19, budzero/crypto miri derlemesi başarılı)
-          # kullanılıyor; floating-nightly rustdoc regresyon ihtimali elenir.
-          # Ayrıca gate öncesi doğrudan rustdoc-json teşhis adımı ham
-          # stderr'ı görünür kılar (wrapper'ın kaybettiği hata gövdesi).
+          # Kök-neden (kapandı, 2026-07-21): rustdoc-json ölümü nightly'den
+          # değil --all-features heuristiğinden kaynaklanıyordu — pq-dilithium+
+          # pq-ml-dsa compile_error! kilidi. Fix: check-semver.sh --default-features.
+          # nightly pin rustdoc-json'un -Z gereksinimi için zorunlu kalıyor.
           RUSTUP_TOOLCHAIN: nightly-2026-07-19
           CARGO_BUILD_JOBS: "2"
           RUSTFLAGS: "-C debuginfo=0"

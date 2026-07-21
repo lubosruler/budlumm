@@ -40,7 +40,10 @@ self_test() {
   # 3) Gate fonksiyonları tanımlı mı?
   grep -Fq "semver_checks_gate" "$repo_root/scripts/check-semver.sh" \
     || fail "self-test: gate function missing"
-  echo "check-semver self-test OK"
+  # 4) Sınıflandırma kanaryası: INFRA kilidi mevcut mu (crash≠kırılma — istisna
+  #    yalnız kırılma raporuna uygulanabilir; altyapı çökmesi maskelenemez).
+  grep -Fq "SEMVER_INFRA_PATTERN" "$repo_root/scripts/check-semver.sh" \
+    || fail "self-test: infra/crash classification missing"
 }
 
 semver_checks_gate() {
@@ -63,8 +66,19 @@ semver_checks_gate() {
   local status=0
   (
     cd "$current"
-    cargo semver-checks check-release -p budlum-core --baseline-root "$baseline"
+    # Renkli çıktı sınıflandırma regex'lerini bozar (ANSI kaçışları "error:"
+    # kelimesini böler); kapı her ortamda plaintext rapor üzerinden karar verir.
+    # --default-features (kök-neden, 2026-07-21 CI kanıtı + lokal tam repro):
+    # cargo-semver-checks default'ta ~--all-features heuristiğiyle rustdoc
+    # üretir; budlum-core'da `pq-dilithium`+`pq-ml-dsa` mutually-exclusive
+    # (src/crypto/primitives.rs compile_error!) olduğundan heuristic doc
+    # derlemesini exit 101 "could not document" ile öldürüyordu. Gate,
+    # projenin gerçek build'ini temsil eden crate-defined default setiyle koşar.
+    CARGO_TERM_COLOR=never \
+      cargo semver-checks check-release -p budlum-core --baseline-root "$baseline" --default-features
   ) >"$out" 2>&1 || status=$?
+  # Güvenlik ağı: env'in etkisiz kaldığı senaryo için ANSI strip idempotent'tir.
+  sed -i 's/\x1b\[[0-9;]*[A-Za-z]//g' "$out"
   sed -n '1,240p' "$out"
 
   if [ "$status" -eq 0 ]; then
@@ -74,6 +88,26 @@ semver_checks_gate() {
   fi
 
   echo "::warning::cargo-semver-checks kırılma/hata raporladı (exit=$status)."
+  # SINIFLANDIRMA (v2, ARENA2 2026-07-21): exit 101 iki TAMAMEN farklı
+  # sınıftan gelir — (a) breakage raporu ("--- failure <lint>" +
+  # "requires new major/minor version"), (b) altyapı hatası (rustdoc-json
+  # crash, cargo-doc/metadata başarısızlığı, E45xx derleme hatası).
+  # İstisnaların anlamı "(b-c) bilinen kırılmayı gerekçesiyle kabul"
+  # olduğundan maskelenmesi KABUL EDİLEMEZ şey altyapı crash'idir:
+  # crash = "kırılma olup olmadığı BİLİNEMEZ" (kanıt yok), sahte-yeşil olur.
+  # Bu yüzden INFRA sınıfında istisna listesi DEVRE DIŞI — kapı fail-closed.
+  local SEMVER_INFRA_PATTERN='^error: running cargo-(doc|metadata)|error\[E[0-9]+\]|^error: could not (compile|document)|^error: failed to build rustdoc|failed to parse lock file|no matching package|^error: no such command'
+  if grep -Eq "$SEMVER_INFRA_PATTERN" "$out"; then
+    echo "SEMVER GATE: FAIL — araç ALTYAPI hatasıyla sonuçsuz kaldı (crash≠kırılma; istisna uygulanamaz)." >&2
+    echo "İstisna mekanizması yalnızca gerçek kırılma raporlarına uygulanır." >&2
+    rm -f "$out"
+    return 1
+  fi
+  if ! grep -Eq '^--- (failure|warning)|requires new (major|minor) version' "$out"; then
+    echo "SEMVER GATE: FAIL — çıktı ne kırılma raporu ne bilinen altyapı hatası (fail-closed sınıflandırma)." >&2
+    rm -f "$out"
+    return 1
+  fi
   if [ -f "$exc" ] && grep -vqE '^[[:space:]]*(#|$)' "$exc"; then
     echo "SEMVER GATE: PASS-İSTİSNA — .github/semver-exceptions.txt gerekçeli kabul içeriyor:"
     grep -vE '^[[:space:]]*(#|$)' "$exc" | sed 's/^/  ISTISNA: /'
