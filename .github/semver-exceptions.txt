@@ -15,3 +15,9 @@
 #
 # Not: Bu dosyadaki yorum satırları gate'i ETKİLEMEZ; yalnızca yorum-olmayan
 # satırlar istisna sayılır (bkz. scripts/check-semver.sh).
+#
+# ARENA3 EIP-1559 fee distribution (ADIM G): yeni public metod.
+# AccountState::distribute_block_fees — block finalization'da fee dağıtımı.
+# cargo-semver-checks yeni metod eklediğini tespit eder; bu 0.x sürüm
+# hattında minor ekleme kabul edilir. Onay: STATUS_ONLINE 2026-07-21.
+AccountState::distribute_block_fees | EIP-1559 fee distribution wiring (ADIM G) — yeni public metod, block finalization'a bağlandı | STATUS_ONLINE 2026-07-21 onayı
