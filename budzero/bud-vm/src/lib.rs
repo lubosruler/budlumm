@@ -1124,6 +1124,28 @@ mod tests {
     }
 
     #[test]
+    fn d2_privacy_opcode_stubs_execute_without_panic() {
+        // D2 (2026-07-22): the three privacy opcodes are execution stubs (Faz A).
+        // They decode, execute as no-op returning 0 to rd, and advance pc — must
+        // not panic. Real Poseidon commitment / nullifier / sum-conservation
+        // semantics are Faz B+. MainnetActivation gates these on mainnet; in the
+        // Testing profile used here they decode and execute.
+        let program = vec![
+            inst(Opcode::PrivacyCommit, 1, 2, 3, 0),
+            inst(Opcode::NullifierCheck, 1, 2, 3, 0),
+            inst(Opcode::SumConservation, 1, 2, 3, 0),
+            inst(Opcode::Halt, 0, 0, 0, 0),
+        ];
+        let mut vm = Vm::new(64);
+        let receipt = vm.run_receipt(&program);
+        assert!(receipt.success, "D2 stubs must execute without error");
+        assert_eq!(
+            vm.registers[1], 0,
+            "D2 stubs return 0 (not verified / not yet implemented)"
+        );
+    }
+
+    #[test]
     fn gas_limit_stops_unbounded_execution() {
         let program = vec![inst(Opcode::Jmp, 0, 0, 0, 0)];
         let mut vm = Vm::with_gas_limit(64, 3);
