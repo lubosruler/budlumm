@@ -3750,6 +3750,18 @@ impl BudlumApiServer for RpcServer {
             "note": "slashing history query — wire to ChainActor in next iteration",
         }))
     }
+
+    async fn lubot_stats(&self) -> Result<serde_json::Value, ErrorObjectOwned> {
+        Ok(serde_json::json!({
+            "module": "lubot",
+            "status": "active",
+            "submodules": ["inference", "social", "verify", "storage", "executor", "metrics", "query"],
+            "operator_role": "LUBOT_OPERATOR (RoleId 8)",
+            "verification": "plonky3 STARK (prove + verify)",
+            "economy": "80/10/5/5 (operator/data_owner/verifier/treasury)",
+            "data_layer": "closed-circuit (Pollen AccessGrant)",
+        }))
+    }
 }
 
 #[cfg(test)]

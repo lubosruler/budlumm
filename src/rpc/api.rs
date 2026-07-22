@@ -789,4 +789,8 @@ pub trait BudlumApi {
     /// Phase 11.3 Task 1: Slashing history (audit trail).
     #[method(name = "bud_getSlashingHistory")]
     async fn get_slashing_history(&self) -> Result<serde_json::Value, ErrorObjectOwned>;
+
+    /// Lubot: decentralized AI layer status (models, operators, metrics).
+    #[method(name = "bud_lubotStats")]
+    async fn lubot_stats(&self) -> Result<serde_json::Value, ErrorObjectOwned>;
 }
