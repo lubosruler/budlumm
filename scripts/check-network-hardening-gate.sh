@@ -18,7 +18,7 @@ required_tests=(
   phase11_12_chaos_sybil_subnet_bound_rejects_excess
   phase11_12_chaos_ban_ttl_allows_reconnect_after_expiry
   phase11_12_chaos_reputation_fuzz_decay
-  h52_outbound_subnet_diversity_rejects_excess
+  h5_2_outbound_subnet_diversity_rejects_excess
   phase11_12_reputation_score_clamped_under_repeated_penalties
 )
 

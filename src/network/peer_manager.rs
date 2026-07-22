@@ -961,7 +961,7 @@ mod tests {
     }
     /// H5.2: outbound subnet diversity rejects excess connections.
     #[test]
-    fn h52_outbound_subnet_diversity_rejects_excess() {
+    fn h5_2_outbound_subnet_diversity_rejects_excess() {
         let mut pm = PeerManager::new();
         pm.max_outbound_per_subnet = 2;
         let subnet = [10u8, 0, 1];
