@@ -6,6 +6,10 @@ use tiny_keccak::{Hasher, Keccak};
 
 pub type Hash = [u8; 32];
 
+// D2 (2026-07-22): gizlilik katmanı note/UTXO modeli — account model'den
+// izole, paralel subtree (Bölüm 7).
+pub mod note;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Account {
     pub nonce: u64,
