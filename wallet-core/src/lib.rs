@@ -48,7 +48,9 @@ impl std::fmt::Display for WalletError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             WalletError::InvalidMnemonic(m) => write!(f, "invalid mnemonic: {m}"),
-            WalletError::InvalidEntropy(n) => write!(f, "invalid entropy size: {n} bytes (expected 16 or 32)"),
+            WalletError::InvalidEntropy(n) => {
+                write!(f, "invalid entropy size: {n} bytes (expected 16 or 32)")
+            }
             WalletError::InvalidSeed => write!(f, "invalid seed"),
             WalletError::InvalidMultisigPolicy(m) => write!(f, "invalid multisig policy: {m}"),
             WalletError::InvalidRecoveryPolicy(m) => write!(f, "invalid recovery policy: {m}"),
@@ -100,8 +102,9 @@ pub fn entropy_to_mnemonic(entropy: &[u8]) -> Result<String, WalletError> {
         for j in 0..11 {
             index = (index << 1) | (bits[i * 11 + j] as u16);
         }
-        let word = bip39_wordlist::index_to_word(index as usize)
-            .ok_or_else(|| WalletError::InvalidMnemonic(format!("word index {index} out of range")))?;
+        let word = bip39_wordlist::index_to_word(index as usize).ok_or_else(|| {
+            WalletError::InvalidMnemonic(format!("word index {index} out of range"))
+        })?;
         words.push(word);
     }
 
@@ -119,7 +122,7 @@ pub fn mnemonic_to_entropy(mnemonic: &str) -> Result<Vec<u8>, WalletError> {
     }
 
     let entropy_bits = words.len() * 32 / 3; // 128 or 256
-    let checksum_bits = entropy_bits / 32;    // 4 or 8
+    let checksum_bits = entropy_bits / 32; // 4 or 8
     let total_bits = entropy_bits + checksum_bits;
 
     // Convert words to indices
@@ -362,6 +365,70 @@ pub struct Wallet {
 /// `core::address::Address` deseni ile uyumlu.
 pub type BudlumAddress = [u8; 32];
 
+/// D2 (2026-07-22) Faz E — cüzdan içi TEE opt-in privacy toggle (Bölüm 10 #5).
+///
+/// Kullanıcı kararı (ask_user, 2026-07-22): *"Bu cüzdanın işlemleri TEE
+/// katmanıyla gizli kılınsın mı? → Evet (işlemleriniz biraz yavaşlar)."*
+///
+/// Varsayılan **kapalı** (opt-in). Açıldığında işlem üretimi bir TEE enklavı
+/// üzerinden geçer; operatör düz-metin veriyi görmez (execution-time
+/// confidentiality). Backend: client-side TEE (kullanıcı cihazı / laptop SGX)
+/// öncelikli, zayıf cihazda server-side (AWS Nitro) fallback. STARK yine
+/// bütünlüğü bağımsız korur (defense-in-depth).
+///
+/// Gerçek TEE entegrasyonu (SGX/Nitro prover) ayrı bir araştırma hattı; bu
+/// struct toggle durumunu + backend tercihini tutar (opcode stub'ları gibi).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WalletPrivacyConfig {
+    /// TEE gizlilik toggle'ı. `false` = varsayılan (mevcut akış, operatör veriyi
+    /// görür, sadece STARK integrity). `true` = işlemler TEE ile gizli (yavaşlar).
+    pub tee_enabled: bool,
+    /// Client-side TEE öncelikli mi. `true` = önce kullanıcı cihazı (laptop SGX),
+    /// başarısızsa server-side (AWS Nitro) fallback. `false` = doğrudan server-side.
+    pub prefer_client_side_tee: bool,
+}
+
+impl Default for WalletPrivacyConfig {
+    fn default() -> Self {
+        // Bölüm 10 #5: varsayılan KAPALI (opt-in). Kullanıcı cüzdan içinde açar.
+        Self {
+            tee_enabled: false,
+            prefer_client_side_tee: true,
+        }
+    }
+}
+
+impl WalletPrivacyConfig {
+    /// Toggle prompt yanıtı (Bölüm 10 #5 UX): "Bu cüzdanın işlemleri TEE
+    /// katmanıyla gizli kılınsın mı?" → `enable`.
+    #[must_use]
+    pub fn from_user_opt_in(enable: bool) -> Self {
+        Self {
+            tee_enabled: enable,
+            prefer_client_side_tee: true,
+        }
+    }
+
+    /// TEE gizlilik aktif mi (işlem yavaşlama uyarısı bu durumda geçerli).
+    #[must_use]
+    pub fn is_privacy_active(&self) -> bool {
+        self.tee_enabled
+    }
+
+    /// Kullanılacak TEE backend'i (client-side öncelikli karar mantığı).
+    /// `"client"` (cihaz SGX) | `"server"` (AWS Nitro) | `"none"` (TEE kapalı).
+    #[must_use]
+    pub fn effective_backend(&self) -> &'static str {
+        if !self.tee_enabled {
+            "none"
+        } else if self.prefer_client_side_tee {
+            "client"
+        } else {
+            "server"
+        }
+    }
+}
+
 /// Phase 11.14 mobile/browser binding ABI marker.
 pub const WALLET_BINDING_STUB_VERSION: &str = "phase11.14-binding-stub-v1";
 
@@ -476,8 +543,8 @@ impl Wallet {
     /// ortamına sızar. Test/dev ortamları için `from_entropy` kullanın.
     pub fn generate(word_count: usize) -> Result<Self, WalletError> {
         let entropy_len = match word_count {
-            12 => 16,  // 128 bit
-            24 => 32,  // 256 bit
+            12 => 16, // 128 bit
+            24 => 32, // 256 bit
             _ => return Err(WalletError::InvalidEntropy(word_count * 4 / 3)),
         };
 
@@ -498,7 +565,8 @@ impl Wallet {
         {
             return Err(WalletError::ProductionEntropyUnavailable(
                 "Wallet::generate requires the 'production' feature for real CSPRNG entropy. \
-                 Use Wallet::from_entropy() for test/dev, or build with --features production.".into(),
+                 Use Wallet::from_entropy() for test/dev, or build with --features production."
+                    .into(),
             ));
         }
 
@@ -662,10 +730,7 @@ mod tests {
         let msg = b"hello budlum";
         let sig = wallet.sign(msg);
         let pubkey = wallet.public_key();
-        assert!(
-            Wallet::verify(&pubkey, msg, &sig),
-            "signature must verify"
-        );
+        assert!(Wallet::verify(&pubkey, msg, &sig), "signature must verify");
     }
 
     #[test]
@@ -708,7 +773,10 @@ mod tests {
     #[test]
     fn from_entropy_invalid_size_rejected() {
         assert!(Wallet::from_entropy(&[0u8; 8]).is_err(), "8 bytes rejected");
-        assert!(Wallet::from_entropy(&[0u8; 64]).is_err(), "64 bytes rejected");
+        assert!(
+            Wallet::from_entropy(&[0u8; 64]).is_err(),
+            "64 bytes rejected"
+        );
     }
 
     #[test]
@@ -751,7 +819,10 @@ mod tests {
         // With --features production, generate should succeed (uses getrandom)
         #[cfg(feature = "production")]
         {
-            assert!(result.is_ok(), "Wallet::generate should succeed with production feature");
+            assert!(
+                result.is_ok(),
+                "Wallet::generate should succeed with production feature"
+            );
         }
     }
 
@@ -776,7 +847,10 @@ mod tests {
             }
         }
         let tampered_mnemonic = tampered.join(" ");
-        assert_ne!(tampered_mnemonic, valid_mnemonic, "test setup: mnemonic must be tampered");
+        assert_ne!(
+            tampered_mnemonic, valid_mnemonic,
+            "test setup: mnemonic must be tampered"
+        );
         assert!(
             Wallet::from_mnemonic(&tampered_mnemonic).is_err(),
             "tampered mnemonic must fail checksum validation"
@@ -868,11 +942,9 @@ mod tests {
         let w2 = Wallet::from_entropy(&[2u8; 16]).unwrap();
         let w3 = Wallet::from_entropy(&[3u8; 16]).unwrap();
         let msg = b"budlum multisig proposal digest";
-        let policy = MultisigPolicy::new(
-            vec![w1.public_key(), w2.public_key(), w3.public_key()],
-            2,
-        )
-        .unwrap();
+        let policy =
+            MultisigPolicy::new(vec![w1.public_key(), w2.public_key(), w3.public_key()], 2)
+                .unwrap();
 
         let one = [MultisigApproval {
             public_key: w1.public_key(),
@@ -946,8 +1018,8 @@ mod tests {
         let wallets = (0u8..3)
             .map(|i| Wallet::from_entropy(&[10u8 + i; 16]).unwrap())
             .collect::<Vec<_>>();
-        let policy = MultisigPolicy::new(wallets.iter().map(Wallet::public_key).collect(), 2)
-            .unwrap();
+        let policy =
+            MultisigPolicy::new(wallets.iter().map(Wallet::public_key).collect(), 2).unwrap();
         let msg = b"two of three exhaustive matrix";
 
         for mask in 0..(1usize << wallets.len()) {
@@ -965,8 +1037,8 @@ mod tests {
         let wallets = (0u8..5)
             .map(|i| Wallet::from_entropy(&[20u8 + i; 16]).unwrap())
             .collect::<Vec<_>>();
-        let policy = MultisigPolicy::new(wallets.iter().map(Wallet::public_key).collect(), 3)
-            .unwrap();
+        let policy =
+            MultisigPolicy::new(wallets.iter().map(Wallet::public_key).collect(), 3).unwrap();
         let msg = b"three of five exhaustive matrix";
 
         for mask in 0..(1usize << wallets.len()) {
@@ -983,8 +1055,8 @@ mod tests {
     fn phase11_14_social_recovery_policy_validates_threshold_and_timelock() {
         let g1 = Wallet::from_entropy(&[1u8; 16]).unwrap();
         let g2 = Wallet::from_entropy(&[2u8; 16]).unwrap();
-        let policy = SocialRecoveryPolicy::new(vec![g1.public_key(), g2.public_key()], 2, 100)
-            .unwrap();
+        let policy =
+            SocialRecoveryPolicy::new(vec![g1.public_key(), g2.public_key()], 2, 100).unwrap();
         assert_eq!(policy.threshold, 2);
         assert_eq!(policy.timelock_blocks, 100);
         assert!(SocialRecoveryPolicy::new(vec![g1.public_key()], 0, 100).is_err());
@@ -1033,8 +1105,8 @@ mod tests {
         let g2 = Wallet::from_entropy(&[2u8; 16]).unwrap();
         let outsider = Wallet::from_entropy(&[9u8; 16]).unwrap();
         let digest = b"recover";
-        let policy = SocialRecoveryPolicy::new(vec![g1.public_key(), g2.public_key()], 2, 100)
-            .unwrap();
+        let policy =
+            SocialRecoveryPolicy::new(vec![g1.public_key(), g2.public_key()], 2, 100).unwrap();
         let approvals = [
             GuardianApproval {
                 public_key: g1.public_key(),
@@ -1216,8 +1288,9 @@ mod tests {
         let new_owner = Wallet::from_entropy(&[8u8; 16]).unwrap();
         let guardian = Wallet::from_entropy(&[1u8; 16]).unwrap();
         let policy = SocialRecoveryPolicy::new(vec![guardian.public_key()], 1, 100).unwrap();
-        assert!(RecoveryProposal::new(owner.public_key(), owner.public_key(), &policy, 1_000)
-            .is_err());
+        assert!(
+            RecoveryProposal::new(owner.public_key(), owner.public_key(), &policy, 1_000).is_err()
+        );
         assert!(RecoveryProposal::new(
             owner.public_key(),
             new_owner.public_key(),
@@ -1225,5 +1298,32 @@ mod tests {
             u64::MAX,
         )
         .is_err());
+    }
+
+    // ===== D2 Faz E — WalletPrivacyConfig (Bölüm 10 #5) =====
+
+    #[test]
+    fn d2_privacy_config_defaults_off() {
+        let cfg = WalletPrivacyConfig::default();
+        assert!(
+            !cfg.is_privacy_active(),
+            "Bölüm 10 #5: varsayılan KAPALI (opt-in)"
+        );
+        assert_eq!(cfg.effective_backend(), "none");
+    }
+
+    #[test]
+    fn d2_privacy_config_user_opt_in_client_first() {
+        let cfg = WalletPrivacyConfig::from_user_opt_in(true);
+        assert!(cfg.is_privacy_active());
+        // Client-side TEE öncelikli (kullanıcı cihazı/laptop SGX).
+        assert_eq!(cfg.effective_backend(), "client");
+    }
+
+    #[test]
+    fn d2_privacy_config_server_backend_fallback() {
+        let mut cfg = WalletPrivacyConfig::from_user_opt_in(true);
+        cfg.prefer_client_side_tee = false; // zayıf cihaz → server-side
+        assert_eq!(cfg.effective_backend(), "server");
     }
 }
