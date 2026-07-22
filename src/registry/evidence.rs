@@ -247,6 +247,62 @@ impl SlashingReport {
         )
     }
 
+    /// D4/D1: Relayer invalid proof — griefing/fronting/yanlış-relay.
+    /// Uses `Other` with tag `relayer_invalid_proof` and maps to MaliciousBehaviour (100% slash in default params).
+    /// Per decision reuse_malicious to avoid semver break.
+    pub fn consensus_invalid_relay_proof(
+        offender: Address,
+        reason: String,
+        reporter: Option<Address>,
+    ) -> Self {
+        Self::new(
+            offender,
+            roles::RELAYER,
+            SlashingProof::Other {
+                tag: "relayer_invalid_proof".into(),
+                data: reason.into_bytes(),
+            },
+            ProofProvenance::ConsensusVerified,
+            reporter,
+        )
+    }
+
+    /// D4: Attester invalid attestation — supply-chain forged attestation.
+    pub fn consensus_invalid_attester_proof(
+        offender: Address,
+        reason: String,
+        reporter: Option<Address>,
+    ) -> Self {
+        Self::new(
+            offender,
+            roles::ATTESTER,
+            SlashingProof::Other {
+                tag: "attester_invalid_attestation".into(),
+                data: reason.into_bytes(),
+            },
+            ProofProvenance::ConsensusVerified,
+            reporter,
+        )
+    }
+
+    /// D4: Content validator invalid validation — SocialFi content forgery.
+    pub fn consensus_invalid_content_validation(
+        offender: Address,
+        reason: String,
+        reporter: Option<Address>,
+    ) -> Self {
+        Self::new(
+            offender,
+            roles::CONTENT_VALIDATOR,
+            SlashingProof::Other {
+                tag: "content_validator_malicious".into(),
+                data: reason.into_bytes(),
+            },
+            ProofProvenance::ConsensusVerified,
+            reporter,
+        )
+    }
+
     /// The condition this report attests to.
     pub fn condition(&self) -> SlashingCondition {
         self.proof.condition()

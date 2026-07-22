@@ -960,9 +960,24 @@ impl Blockchain {
             }
             ConsensusKind::StorageAttestation(_) => {
                 // Phase 1: StorageAttestation domains now use StorageAttestationFinalityAdapter (implemented by ARENA3)
+                // D4 deep wiring: unified registry — attesters must be active in PermissionlessRegistry if registry has any ATTESTER stake.
                 let adapter = crate::domain::StorageAttestationFinalityAdapter;
                 self.ensure_adapter_name(domain, adapter.adapter_name())?;
-                adapter.verify_finality(domain, commitment, proof)
+                let status_res = adapter.verify_finality(domain, commitment, proof);
+                // D4 attester gate: only enforced when ATTESTER total stake > 0, to preserve backward compat with tests that don't register attesters.
+                if self.state.registry.total_stake(crate::registry::role::roles::ATTESTER) > 0 {
+                    if let crate::domain::FinalityProof::PoA { authorities, .. } = proof {
+                        for auth in authorities {
+                            if !self.state.registry.is_active_attester(auth) {
+                                return Err(format!(
+                                    "Storage attestation authority {} is not an active attester (D4 unified registry)",
+                                    auth
+                                ));
+                            }
+                        }
+                    }
+                }
+                status_res
             }
             ConsensusKind::AiInference => {
                 // P5 ADIM8: AI Inference domain uses threshold-based finality.

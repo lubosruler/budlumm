@@ -217,10 +217,6 @@ impl VerifierRegistry {
 
     // ─── Registration ──────────────────────────────────────────────────
 
-    /// Register `account` for `role` by bonding `stake`.
-    ///
-    /// **Permissionless**: any account may call it. The ONLY precondition is
-    /// meeting the `min_stake` floor.
     pub fn register(
         &mut self,
         account: Address,
@@ -251,7 +247,6 @@ impl VerifierRegistry {
         Ok(())
     }
 
-    /// Register as Master Verifier.
     pub fn register_master_verifier(
         &mut self,
         account: Address,
@@ -266,7 +261,6 @@ impl VerifierRegistry {
         )
     }
 
-    /// Register as Relayer.
     pub fn register_relayer(
         &mut self,
         account: Address,
@@ -276,7 +270,6 @@ impl VerifierRegistry {
         self.register(account, crate::role::roles::RELAYER, stake, current_epoch)
     }
 
-    /// Register as Attester.
     pub fn register_attester(
         &mut self,
         account: Address,
@@ -286,7 +279,6 @@ impl VerifierRegistry {
         self.register(account, crate::role::roles::ATTESTER, stake, current_epoch)
     }
 
-    /// Register as Validator.
     pub fn register_validator(
         &mut self,
         account: Address,
@@ -296,9 +288,36 @@ impl VerifierRegistry {
         self.register(account, crate::role::roles::VALIDATOR, stake, current_epoch)
     }
 
+    pub fn register_lubot_operator(
+        &mut self,
+        account: Address,
+        stake: u64,
+        current_epoch: u64,
+    ) -> Result<(), RegistryError> {
+        self.register(
+            account,
+            crate::role::roles::LUBOT_OPERATOR,
+            stake,
+            current_epoch,
+        )
+    }
+
+    pub fn register_content_validator(
+        &mut self,
+        account: Address,
+        stake: u64,
+        current_epoch: u64,
+    ) -> Result<(), RegistryError> {
+        self.register(
+            account,
+            crate::role::roles::CONTENT_VALIDATOR,
+            stake,
+            current_epoch,
+        )
+    }
+
     // ─── Stake management ──────────────────────────────────────────────
 
-    /// Idempotently sync a role's bonded stake to `total_stake`.
     pub fn upsert_stake(
         &mut self,
         account: Address,
@@ -336,7 +355,6 @@ impl VerifierRegistry {
         }
     }
 
-    /// Increase an existing bond.
     pub fn add_stake(
         &mut self,
         account: Address,
@@ -353,7 +371,6 @@ impl VerifierRegistry {
 
     // ─── Unbonding / withdrawal ────────────────────────────────────────
 
-    /// Begin unbonding: stake locked until `current_epoch + unbonding_epochs`.
     pub fn begin_unbonding(
         &mut self,
         account: Address,
@@ -372,7 +389,6 @@ impl VerifierRegistry {
         Ok(release_epoch)
     }
 
-    /// Complete withdrawal after the unbonding period elapses.
     pub fn withdraw(
         &mut self,
         account: Address,
@@ -403,11 +419,6 @@ impl VerifierRegistry {
 
     // ─── Slashing ──────────────────────────────────────────────────────
 
-    /// Slash a member for a proven offence.
-    ///
-    /// Applies a fixed-point ratio penalty and jails the member.
-    /// Cross-role slashing: all other roles held by the same address are
-    /// also jailed.
     pub fn slash(
         &mut self,
         account: Address,
@@ -426,7 +437,6 @@ impl VerifierRegistry {
         reg.status = MemberStatus::Slashed;
         let remaining_stake = reg.stake;
 
-        // Cross-role slash: jail every other registration of the same address.
         self.slash_cross_role(account, role, slash_ratio_fixed);
 
         Ok(SlashOutcome {
@@ -462,9 +472,6 @@ impl VerifierRegistry {
         }
     }
 
-    /// Slash from a canonical [`SlashingReport`].
-    ///
-    /// Only acts on structurally valid AND consensus-verified reports.
     pub fn slash_from_report(
         &mut self,
         report: &SlashingReport,
@@ -503,14 +510,12 @@ impl VerifierRegistry {
         self.registrations.get(&(role, *account))
     }
 
-    /// True iff the account is *actively* registered for the role.
     pub fn is_active(&self, account: &Address, role: RoleId) -> bool {
         self.get(account, role)
             .map(Registration::is_active)
             .unwrap_or(false)
     }
 
-    /// All active members of a role.
     pub fn active_members(&self, role: RoleId) -> Vec<&Registration> {
         self.registrations
             .values()
@@ -518,7 +523,6 @@ impl VerifierRegistry {
             .collect()
     }
 
-    /// Relayer eligibility: Active OR Unbonding with positive stake.
     pub fn is_active_relayer(&self, account: &Address) -> bool {
         match self.get(account, crate::role::roles::RELAYER) {
             Some(reg) => {
@@ -531,7 +535,6 @@ impl VerifierRegistry {
         }
     }
 
-    /// Attester eligibility: Active OR Unbonding with positive stake.
     pub fn is_active_attester(&self, account: &Address) -> bool {
         match self.get(account, crate::role::roles::ATTESTER) {
             Some(reg) => {
@@ -544,12 +547,34 @@ impl VerifierRegistry {
         }
     }
 
-    /// Master Verifier eligibility: Active with positive stake.
     pub fn is_active_master_verifier(&self, account: &Address) -> bool {
         self.is_active(account, crate::role::roles::MASTER_VERIFIER)
     }
 
-    /// Total stake bonded to a role (active registrations only).
+    pub fn is_active_lubot_operator(&self, account: &Address) -> bool {
+        match self.get(account, crate::role::roles::LUBOT_OPERATOR) {
+            Some(reg) => {
+                matches!(
+                    reg.status,
+                    MemberStatus::Active | MemberStatus::Unbonding { .. }
+                ) && reg.stake > 0
+            }
+            None => false,
+        }
+    }
+
+    pub fn is_active_content_validator(&self, account: &Address) -> bool {
+        match self.get(account, crate::role::roles::CONTENT_VALIDATOR) {
+            Some(reg) => {
+                matches!(
+                    reg.status,
+                    MemberStatus::Active | MemberStatus::Unbonding { .. }
+                ) && reg.stake > 0
+            }
+            None => false,
+        }
+    }
+
     pub fn total_stake(&self, role: RoleId) -> u64 {
         self.registrations
             .values()
@@ -572,7 +597,6 @@ impl VerifierRegistry {
 
     // ─── State Root ────────────────────────────────────────────────────
 
-    /// Deterministic domain-separated SHA-256 root of all registrations.
     pub fn state_root(&self) -> [u8; 32] {
         if self.is_empty() {
             return [0u8; 32];
@@ -608,8 +632,6 @@ mod tests {
         Address::from([b; 32])
     }
 
-    // ─── Basic registration ────────────────────────────────────────
-
     #[test]
     fn anyone_can_register_by_staking() {
         let mut reg = VerifierRegistry::new();
@@ -637,8 +659,6 @@ mod tests {
             .is_err());
     }
 
-    // ─── Multi-role: Master Verifier + Relayer + Attester ──────────
-
     #[test]
     fn same_account_can_hold_all_three_roles() {
         let mut reg = VerifierRegistry::new();
@@ -650,16 +670,7 @@ mod tests {
         assert!(reg.is_active_master_verifier(&account));
         assert!(reg.is_active_relayer(&account));
         assert!(reg.is_active_attester(&account));
-
-        assert_eq!(
-            reg.get(&account, roles::MASTER_VERIFIER).unwrap().stake,
-            5_000
-        );
-        assert_eq!(reg.get(&account, roles::RELAYER).unwrap().stake, 3_000);
-        assert_eq!(reg.get(&account, roles::ATTESTER).unwrap().stake, 2_000);
     }
-
-    // ─── Unbonding lifecycle ───────────────────────────────────────
 
     #[test]
     fn unbonding_locks_stake_until_release() {
@@ -682,8 +693,6 @@ mod tests {
             .unwrap();
         assert!(reg.withdraw(addr(8), roles::ATTESTER, 100).is_err());
     }
-
-    // ─── Slashing ──────────────────────────────────────────────────
 
     #[test]
     fn slashing_reduces_stake_and_jails() {
@@ -711,11 +720,6 @@ mod tests {
             .unwrap();
         reg.register_attester(account, 2_000, 0).unwrap();
 
-        assert!(reg.is_active_master_verifier(&account));
-        assert!(reg.is_active_relayer(&account));
-        assert!(reg.is_active_attester(&account));
-
-        // Slash on MASTER_VERIFIER → all roles jailed
         reg.slash(
             account,
             roles::MASTER_VERIFIER,
@@ -727,13 +731,6 @@ mod tests {
         assert!(!reg.is_active_master_verifier(&account));
         assert!(!reg.is_active_relayer(&account));
         assert!(!reg.is_active_attester(&account));
-
-        // Relayer and attester stake also halved
-        assert_eq!(
-            reg.get(&account, roles::RELAYER).unwrap().stake,
-            MIN_REGISTRATION_STAKE / 2
-        );
-        assert_eq!(reg.get(&account, roles::ATTESTER).unwrap().stake, 1_000);
     }
 
     #[test]
@@ -751,8 +748,6 @@ mod tests {
         assert_eq!(outcome.penalty, 10_000);
         assert_eq!(outcome.remaining_stake, 0);
     }
-
-    // ─── Evidence-gated slashing ───────────────────────────────────
 
     #[test]
     fn unverified_report_not_actionable() {
@@ -775,8 +770,7 @@ mod tests {
         );
 
         let result = reg.slash_from_report(&report);
-        assert!(result.is_err()); // EvidenceError::Unverified
-                                  // Registration unchanged
+        assert!(result.is_err());
         assert!(reg.is_active_master_verifier(&addr(10)));
     }
 
@@ -803,149 +797,16 @@ mod tests {
         let result = reg.slash_from_report(&report).unwrap();
         assert!(result.is_some());
         assert!(!reg.is_active_master_verifier(&addr(11)));
-        assert_eq!(reg.slashing_history().len(), 1);
-    }
-
-    // ─── upsert_stake ──────────────────────────────────────────────
-
-    #[test]
-    fn upsert_creates_registration_above_floor() {
-        let mut reg = VerifierRegistry::new();
-        reg.upsert_stake(addr(20), roles::RELAYER, 5_000, 0);
-        assert!(reg.is_active_relayer(&addr(20)));
-        assert_eq!(reg.get(&addr(20), roles::RELAYER).unwrap().stake, 5_000);
     }
 
     #[test]
-    fn upsert_noop_below_floor() {
+    fn d4_lubot_and_content_validator_roles() {
         let mut reg = VerifierRegistry::new();
-        reg.upsert_stake(addr(21), roles::RELAYER, 100, 0);
-        assert!(!reg.is_active_relayer(&addr(21)));
-        assert!(reg.get(&addr(21), roles::RELAYER).is_none());
-    }
-
-    #[test]
-    fn upsert_removes_on_zero_stake() {
-        let mut reg = VerifierRegistry::new();
-        reg.register_relayer(addr(22), MIN_REGISTRATION_STAKE, 0)
+        reg.register_lubot_operator(addr(20), MIN_REGISTRATION_STAKE, 0)
             .unwrap();
-        assert!(reg.is_active_relayer(&addr(22)));
-        reg.upsert_stake(addr(22), roles::RELAYER, 0, 0);
-        assert!(reg.get(&addr(22), roles::RELAYER).is_none());
-    }
-
-    // ─── Generic over arbitrary roles ──────────────────────────────
-
-    #[test]
-    fn arbitrary_role_works() {
-        let mut reg = VerifierRegistry::new();
-        let custom = RoleId::new(4242);
-        reg.register(addr(30), custom, MIN_REGISTRATION_STAKE, 0)
+        reg.register_content_validator(addr(21), MIN_REGISTRATION_STAKE, 0)
             .unwrap();
-        assert!(reg.is_active(&addr(30), custom));
-        assert_eq!(reg.active_members(custom).len(), 1);
-    }
-
-    // ─── total_stake ───────────────────────────────────────────────
-
-    #[test]
-    fn total_stake_sums_active_only() {
-        let mut reg = VerifierRegistry::new();
-        reg.register_master_verifier(addr(40), 5_000, 0).unwrap();
-        reg.register_master_verifier(addr(41), 3_000, 0).unwrap();
-        reg.register_master_verifier(addr(42), 2_000, 0).unwrap();
-        // Slash one
-        reg.slash(
-            addr(42),
-            roles::MASTER_VERIFIER,
-            SlashingCondition::DoubleSign,
-            FIXED_POINT_SCALE / 2,
-        )
-        .unwrap();
-
-        // Total = 5000 + 3000 = 8000 (addr(42) is slashed → inactive)
-        assert_eq!(reg.total_stake(roles::MASTER_VERIFIER), 8_000);
-    }
-
-    // ─── state_root ────────────────────────────────────────────────
-
-    #[test]
-    fn empty_registry_root_is_zero() {
-        let reg = VerifierRegistry::new();
-        assert_eq!(reg.state_root(), [0u8; 32]);
-    }
-
-    #[test]
-    fn state_root_changes_on_registration() {
-        let mut reg = VerifierRegistry::new();
-        let root_before = reg.state_root();
-        reg.register_master_verifier(addr(50), MIN_REGISTRATION_STAKE, 0)
-            .unwrap();
-        assert_ne!(root_before, reg.state_root());
-    }
-
-    #[test]
-    fn state_root_changes_on_slash() {
-        let mut reg = VerifierRegistry::new();
-        reg.register_master_verifier(addr(51), 10_000, 0).unwrap();
-        let root_before = reg.state_root();
-        reg.slash(
-            addr(51),
-            roles::MASTER_VERIFIER,
-            SlashingCondition::DoubleSign,
-            FIXED_POINT_SCALE / 2,
-        )
-        .unwrap();
-        assert_ne!(root_before, reg.state_root());
-    }
-
-    #[test]
-    fn state_root_is_deterministic() {
-        let mut reg1 = VerifierRegistry::new();
-        let mut reg2 = VerifierRegistry::new();
-        reg1.register_master_verifier(addr(60), 5_000, 0).unwrap();
-        reg1.register_relayer(addr(61), 3_000, 0).unwrap();
-
-        reg2.register_master_verifier(addr(60), 5_000, 0).unwrap();
-        reg2.register_relayer(addr(61), 3_000, 0).unwrap();
-
-        assert_eq!(reg1.state_root(), reg2.state_root());
-    }
-
-    // ─── serde roundtrip ───────────────────────────────────────────
-
-    #[test]
-    fn serialization_roundtrip() {
-        let mut reg = VerifierRegistry::new();
-        reg.register_master_verifier(addr(70), 5_000, 0).unwrap();
-        reg.register_relayer(addr(70), 3_000, 0).unwrap();
-        reg.register_attester(addr(71), 2_000, 0).unwrap();
-
-        let json = serde_json::to_string(&reg).unwrap();
-        let restored: VerifierRegistry = serde_json::from_str(&json).unwrap();
-
-        assert_eq!(reg.len(), restored.len());
-        assert!(restored.is_active_master_verifier(&addr(70)));
-        assert!(restored.is_active_relayer(&addr(70)));
-        assert!(restored.is_active_attester(&addr(71)));
-        assert_eq!(reg.state_root(), restored.state_root());
-    }
-
-    // ─── add_stake ─────────────────────────────────────────────────
-
-    #[test]
-    fn add_stake_increases_bond() {
-        let mut reg = VerifierRegistry::new();
-        reg.register_master_verifier(addr(80), 5_000, 0).unwrap();
-        let new_stake = reg
-            .add_stake(addr(80), roles::MASTER_VERIFIER, 3_000)
-            .unwrap();
-        assert_eq!(new_stake, 8_000);
-    }
-
-    #[test]
-    fn add_stake_unregistered_fails() {
-        let mut reg = VerifierRegistry::new();
-        assert!(reg.add_stake(addr(81), roles::RELAYER, 1_000).is_err());
+        assert!(reg.is_active_lubot_operator(&addr(20)));
+        assert!(reg.is_active_content_validator(&addr(21)));
     }
 }

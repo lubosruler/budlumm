@@ -173,26 +173,10 @@ pub struct SlashOutcome {
 /// slash ratios are governance/config-driven, never hard-coded.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PermissionlessRegistry {
-    // NOTE: the key is a `(RoleId, Address)` tuple, which serde_json cannot emit
-    // as a JSON object key (JSON requires string keys). We therefore (de)serialize
-    // this map as a flat sequence of `Registration`s — each already carries its
-    // `role` + `account`, so the map is rebuilt losslessly on load. Without this,
-    // snapshot serialization silently produced empty output (Phase 0.16 bug).
     #[serde(with = "registrations_as_seq")]
     registrations: BTreeMap<(RoleId, Address), Registration>,
     #[serde(default)]
     params: RegistryParams,
-    /// Persistent audit log of actioned slashing reports (Phase 0.40, Görev 1).
-    ///
-    /// Phase 0.38 slashed equivocators immediately but kept no record, so a restart
-    /// or a governance/dispute/audit query lost the evidence. Every report that
-    /// the registry actually acts on (`slash_from_report` → `Ok(Some)`) is
-    /// appended here. It is `#[serde(default)]` so schema-3 snapshots taken
-    /// before Phase 0.40 still deserialize (the log simply comes back empty).
-    ///
-    /// This does NOT open a second slashing path: the log is written *inside*
-    /// the one canonical `slash_from_report`, recording what that path already
-    /// did.
     #[serde(default)]
     slashing_history: Vec<SlashingRecord>,
 }
@@ -205,8 +189,6 @@ pub struct SlashingRecord {
     pub remaining_stake: u64,
 }
 
-/// (De)serialize the registrations map as a `Vec<Registration>` so it survives
-/// JSON (which cannot key an object by a tuple).
 mod registrations_as_seq {
     use super::{Address, Registration, RoleId};
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -246,8 +228,6 @@ impl PermissionlessRegistry {
         }
     }
 
-    /// Construct with explicit parameters (e.g. loaded from chain config or
-    /// updated by governance).
     pub fn with_params(params: RegistryParams) -> Self {
         Self {
             registrations: BTreeMap::new(),
@@ -256,22 +236,14 @@ impl PermissionlessRegistry {
         }
     }
 
-    /// Current parameters.
     pub fn params(&self) -> &RegistryParams {
         &self.params
     }
 
-    /// Replace parameters (e.g. after a governance parameter update). Existing
-    /// registrations are untouched; the new floor applies to future actions.
     pub fn set_params(&mut self, params: RegistryParams) {
         self.params = params;
     }
 
-    /// Register `account` for `role` by bonding `stake`.
-    ///
-    /// This is the permissionless entry point: **any** account may call it.
-    /// The ONLY precondition is meeting [`MIN_REGISTRATION_STAKE`]. There is no
-    /// whitelist lookup, no approval step, and no admin gate.
     pub fn register(
         &mut self,
         account: Address,
@@ -302,7 +274,8 @@ impl PermissionlessRegistry {
         Ok(())
     }
 
-    /// Convenience wrappers for the well-known protocol roles.
+    // Convenience wrappers for well-known roles (D4 unified)
+
     pub fn register_validator(
         &mut self,
         account: Address,
@@ -331,6 +304,21 @@ impl PermissionlessRegistry {
         )
     }
 
+    /// D4: DeEd master verifier — alias to VERIFIER (RoleId 2)
+    pub fn register_master_verifier(
+        &mut self,
+        account: Address,
+        stake: u64,
+        current_epoch: u64,
+    ) -> Result<(), RegistryError> {
+        self.register(
+            account,
+            crate::registry::role::roles::MASTER_VERIFIER,
+            stake,
+            current_epoch,
+        )
+    }
+
     pub fn register_relayer(
         &mut self,
         account: Address,
@@ -345,10 +333,6 @@ impl PermissionlessRegistry {
         )
     }
 
-    /// Phase 0.38, Faz 1: convenience wrapper for the B.U.D. `STORAGE_OPERATOR`
-    /// role. Like every other role, registration is permissionless — any
-    /// account can join by staking the `min_stake` floor. There is no
-    /// whitelist, no admin gate (master context, CLAUDE.md §2).
     pub fn register_storage_operator(
         &mut self,
         account: Address,
@@ -363,20 +347,65 @@ impl PermissionlessRegistry {
         )
     }
 
-    /// Idempotently synchronise a role's bonded stake to `total_stake`.
-    ///
-    /// This is the bridge used to keep the registry in lock-step with the
-    /// consensus validator set: applying a `Stake`/`Unstake` transaction calls
-    /// this so that "staking == being registered" holds automatically, with no
-    /// separate manual registration step.
-    ///
-    /// Semantics:
-    /// - Not yet registered and `total_stake >= params.min_stake` → registered
-    ///   `Active`.
-    /// - Not yet registered and below the floor → no-op (the economic floor is
-    ///   the only gate; there is still no whitelist).
-    /// - Already registered → its stake is set to `total_stake`; if that drops
-    ///   to zero the registration is removed. A slashed member is left slashed.
+    pub fn register_ai_verifier(
+        &mut self,
+        account: Address,
+        stake: u64,
+        current_epoch: u64,
+    ) -> Result<(), RegistryError> {
+        self.register(
+            account,
+            crate::registry::role::roles::AI_VERIFIER,
+            stake,
+            current_epoch,
+        )
+    }
+
+    /// D4: supply-chain attester (ATTESTER=7) — unified registry
+    pub fn register_attester(
+        &mut self,
+        account: Address,
+        stake: u64,
+        current_epoch: u64,
+    ) -> Result<(), RegistryError> {
+        self.register(
+            account,
+            crate::registry::role::roles::ATTESTER,
+            stake,
+            current_epoch,
+        )
+    }
+
+    /// D4: Lubot operator (RoleId 8) — must be preserved
+    pub fn register_lubot_operator(
+        &mut self,
+        account: Address,
+        stake: u64,
+        current_epoch: u64,
+    ) -> Result<(), RegistryError> {
+        self.register(
+            account,
+            crate::registry::role::roles::LUBOT_OPERATOR,
+            stake,
+            current_epoch,
+        )
+    }
+
+    /// D4: SocialFi content validator (RoleId 9)
+    pub fn register_content_validator(
+        &mut self,
+        account: Address,
+        stake: u64,
+        current_epoch: u64,
+    ) -> Result<(), RegistryError> {
+        self.register(
+            account,
+            crate::registry::role::roles::CONTENT_VALIDATOR,
+            stake,
+            current_epoch,
+        )
+    }
+
     pub fn upsert_stake(
         &mut self,
         account: Address,
@@ -387,7 +416,6 @@ impl PermissionlessRegistry {
         let key = (role, account);
         match self.registrations.get_mut(&key) {
             Some(reg) => {
-                // Do not silently un-slash a jailed member by re-staking.
                 if matches!(reg.status, MemberStatus::Slashed) {
                     reg.stake = total_stake;
                     return;
@@ -415,7 +443,6 @@ impl PermissionlessRegistry {
         }
     }
 
-    /// Increase an existing bond.
     pub fn add_stake(
         &mut self,
         account: Address,
@@ -430,8 +457,6 @@ impl PermissionlessRegistry {
         Ok(reg.stake)
     }
 
-    /// Begin unbonding: the registration is marked `Unbonding` and its stake is
-    /// locked until `current_epoch + UNBONDING_EPOCHS`.
     pub fn begin_unbonding(
         &mut self,
         account: Address,
@@ -450,8 +475,6 @@ impl PermissionlessRegistry {
         Ok(release_epoch)
     }
 
-    /// Complete withdrawal after the unbonding period elapses. Returns the
-    /// released stake and removes the registration.
     pub fn withdraw(
         &mut self,
         account: Address,
@@ -480,8 +503,6 @@ impl PermissionlessRegistry {
         Ok(reg.stake)
     }
 
-    /// Slash a member for a proven offence. Applies a fixed-point ratio penalty
-    /// (`FIXED_POINT_SCALE`-scaled) and jails the member (`Slashed`).
     pub fn slash(
         &mut self,
         account: Address,
@@ -494,8 +515,6 @@ impl PermissionlessRegistry {
             .get_mut(&(role, account))
             .ok_or(RegistryError::NotRegistered { account, role })?;
 
-        // Already jailed: treat as no-op so the same evidence cannot inflate
-        // slashing_history / re-apply penalty (dedup for slash_from_report).
         if matches!(reg.status, MemberStatus::Slashed) {
             return Ok(SlashOutcome {
                 condition,
@@ -510,8 +529,6 @@ impl PermissionlessRegistry {
         reg.status = MemberStatus::Slashed;
         let remaining_stake = reg.stake;
 
-        // Phase 0.334 / A5: cross-role slash — jail every other registration of
-        // the same address so a slashed validator cannot continue as relayer/prover.
         self.slash_cross_role(account, role, condition, slash_ratio_fixed);
 
         Ok(SlashOutcome {
@@ -521,7 +538,6 @@ impl PermissionlessRegistry {
         })
     }
 
-    /// Jail (and proportionally slash) all other roles held by `account`.
     fn slash_cross_role(
         &mut self,
         account: Address,
@@ -554,18 +570,6 @@ impl PermissionlessRegistry {
         }
     }
 
-    /// Slash directly from a canonical [`SlashingReport`].
-    ///
-    /// This is the entry point the rest of the node (consensus, RPC, other
-    /// domains) should use: the report carries its own condition and the slash
-    /// ratio is resolved from [`RegistryParams`]. The registry will only act on
-    /// reports that are structurally valid AND consensus-verified
-    /// (`report.is_actionable()`), so an externally-submitted, unverified report
-    /// can be accepted by a permissionless RPC endpoint without ever slashing on
-    /// unproven claims.
-    ///
-    /// Returns `Ok(None)` if the offender is not registered for that role
-    /// (nothing to slash) and `Ok(Some(outcome))` on success.
     pub fn slash_from_report(
         &mut self,
         report: &SlashingReport,
@@ -575,8 +579,6 @@ impl PermissionlessRegistry {
         let ratio = self.params.slash_ratio(condition);
         match self.slash(report.offender, report.role, condition, ratio) {
             Ok(outcome) => {
-                // Dedup: already-slashed re-submission (penalty==0) must not
-                // inflate audit history.
                 if outcome.penalty == 0 {
                     return Ok(None);
                 }
@@ -588,20 +590,14 @@ impl PermissionlessRegistry {
                 Ok(Some(outcome))
             }
             Err(RegistryError::NotRegistered { .. }) => Ok(None),
-            // The only other error paths are unreachable here (slash never
-            // returns NotActive/etc.), but be defensive: treat as no-op.
             Err(_) => Ok(None),
         }
     }
 
-    /// All persisted slashing records, in the order they were actioned.
     pub fn slashing_history(&self) -> &[SlashingRecord] {
         &self.slashing_history
     }
 
-    /// Persisted slashing records for a specific offender (Phase 0.40, Görev 1).
-    /// Includes equivocation (`DoubleSign`), liveness, invalid-vote-spam and any
-    /// other actioned report against `offender`.
     pub fn slashing_history_for(&self, offender: &Address) -> Vec<&SlashingRecord> {
         self.slashing_history
             .iter()
@@ -609,21 +605,16 @@ impl PermissionlessRegistry {
             .collect()
     }
 
-    /// Read a registration.
     pub fn get(&self, account: &Address, role: RoleId) -> Option<&Registration> {
         self.registrations.get(&(role, *account))
     }
 
-    /// True iff the account is *actively* registered for the role. This is the
-    /// authorization check the rest of the node should use — it is purely a
-    /// function of bonded stake + status, never of any allow-list.
     pub fn is_active(&self, account: &Address, role: RoleId) -> bool {
         self.get(account, role)
             .map(Registration::is_active)
             .unwrap_or(false)
     }
 
-    /// All active members of a role.
     pub fn active_members(&self, role: RoleId) -> Vec<&Registration> {
         self.registrations
             .values()
@@ -631,12 +622,8 @@ impl PermissionlessRegistry {
             .collect()
     }
 
-    /// Eligibility check for submitting relayed cross-domain messages.
-    ///
-    /// A relayer may submit while `Active` OR while `Unbonding` — unbonding is
-    /// an exit process, not a punishment: the stake is still locked and remains
-    /// slashable, so economic security still holds. A `Slashed` relayer (or an
-    /// unregistered account) is rejected.
+    // Active checks for all well-known roles (D4 unified)
+
     pub fn is_active_relayer(&self, account: &Address) -> bool {
         match self.get(account, crate::registry::role::roles::RELAYER) {
             Some(reg) => {
@@ -649,8 +636,6 @@ impl PermissionlessRegistry {
         }
     }
 
-    /// Result-returning variant of [`Self::is_active_relayer`] for call sites
-    /// that want a descriptive error.
     pub fn ensure_active_relayer(&self, account: &Address) -> Result<(), RegistryError> {
         if self.is_active_relayer(account) {
             Ok(())
@@ -659,14 +644,69 @@ impl PermissionlessRegistry {
         }
     }
 
-    /// Reward-eligibility check for a prover.
-    ///
-    /// IMPORTANT: unlike [`Self::is_active_relayer`], this is NOT a submission
-    /// gate. Proof submission is fully permissionless (STARK proofs are
-    /// self-verifying, so the network need not trust the submitter). This
-    /// predicate is consulted ONLY when deciding whether a successful proof
-    /// earns its submitter a reward. Active = registered with positive stake and
-    /// not slashed (unbonding still counts, mirroring the relayer semantics).
+    pub fn is_active_attester(&self, account: &Address) -> bool {
+        match self.get(account, crate::registry::role::roles::ATTESTER) {
+            Some(reg) => {
+                matches!(
+                    reg.status,
+                    MemberStatus::Active | MemberStatus::Unbonding { .. }
+                ) && reg.stake > 0
+            }
+            None => false,
+        }
+    }
+
+    pub fn ensure_active_attester(&self, account: &Address) -> Result<(), RegistryError> {
+        if self.is_active_attester(account) {
+            Ok(())
+        } else {
+            Err(RegistryError::NotActive {
+                account: *account,
+                role: crate::registry::role::roles::ATTESTER,
+            })
+        }
+    }
+
+    pub fn is_active_master_verifier(&self, account: &Address) -> bool {
+        self.is_active(account, crate::registry::role::roles::MASTER_VERIFIER)
+    }
+
+    pub fn is_active_lubot_operator(&self, account: &Address) -> bool {
+        match self.get(account, crate::registry::role::roles::LUBOT_OPERATOR) {
+            Some(reg) => {
+                matches!(
+                    reg.status,
+                    MemberStatus::Active | MemberStatus::Unbonding { .. }
+                ) && reg.stake > 0
+            }
+            None => false,
+        }
+    }
+
+    pub fn is_active_content_validator(&self, account: &Address) -> bool {
+        match self.get(account, crate::registry::role::roles::CONTENT_VALIDATOR) {
+            Some(reg) => {
+                matches!(
+                    reg.status,
+                    MemberStatus::Active | MemberStatus::Unbonding { .. }
+                ) && reg.stake > 0
+            }
+            None => false,
+        }
+    }
+
+    pub fn is_active_ai_verifier(&self, account: &Address) -> bool {
+        match self.get(account, crate::registry::role::roles::AI_VERIFIER) {
+            Some(reg) => {
+                matches!(
+                    reg.status,
+                    MemberStatus::Active | MemberStatus::Unbonding { .. }
+                ) && reg.stake > 0
+            }
+            None => false,
+        }
+    }
+
     pub fn is_active_prover(&self, account: &Address) -> bool {
         match self.get(account, crate::registry::role::roles::PROVER) {
             Some(reg) => {
@@ -679,7 +719,6 @@ impl PermissionlessRegistry {
         }
     }
 
-    /// Total stake bonded to a role (active registrations only).
     pub fn total_stake(&self, role: RoleId) -> u64 {
         self.registrations
             .values()
@@ -696,8 +735,6 @@ impl PermissionlessRegistry {
         self.registrations.is_empty()
     }
 
-    /// Return all registrations as a flat `Vec<Registration>`.
-    /// Useful for test introspection and audit queries.
     pub fn registrations_as_seq(&self) -> Vec<&Registration> {
         self.registrations.values().collect()
     }
@@ -715,7 +752,6 @@ mod tests {
     #[test]
     fn anyone_can_register_by_staking_no_whitelist() {
         let mut reg = PermissionlessRegistry::new();
-        // A fresh, never-approved account joins purely by staking.
         reg.register_validator(addr(1), MIN_REGISTRATION_STAKE, 0)
             .unwrap();
         assert!(reg.is_active(&addr(1), roles::VALIDATOR));
@@ -746,11 +782,9 @@ mod tests {
         reg.register_validator(addr(4), 5_000, 10).unwrap();
         let release = reg.begin_unbonding(addr(4), roles::VALIDATOR, 10).unwrap();
         assert_eq!(release, 10 + UNBONDING_EPOCHS);
-        // Too early.
         assert!(reg
             .withdraw(addr(4), roles::VALIDATOR, release - 1)
             .is_err());
-        // After unbonding.
         let released = reg.withdraw(addr(4), roles::VALIDATOR, release).unwrap();
         assert_eq!(released, 5_000);
         assert!(reg.get(&addr(4), roles::VALIDATOR).is_none());
@@ -760,7 +794,6 @@ mod tests {
     fn slashing_reduces_stake_and_jails() {
         let mut reg = PermissionlessRegistry::new();
         reg.register_validator(addr(5), 10_000, 0).unwrap();
-        // 50% slash.
         let outcome = reg
             .slash(
                 addr(5),
@@ -795,7 +828,6 @@ mod tests {
         assert!(reg.is_active(&addr(7), roles::RELAYER));
     }
 
-    /// Phase 0.334 / A5: slashing one role jails the same address in other roles.
     #[test]
     fn tur117_cross_role_slash_jails_all_roles() {
         let mut reg = PermissionlessRegistry::new();
@@ -815,9 +847,62 @@ mod tests {
 
         assert!(!reg.is_active(&addr(77), roles::VALIDATOR));
         assert!(!reg.is_active(&addr(77), roles::RELAYER));
-        // Relayer stake also reduced by the same ratio.
         let relayer = reg.get(&addr(77), roles::RELAYER).unwrap();
         assert_eq!(relayer.stake, MIN_REGISTRATION_STAKE / 2);
         assert!(matches!(relayer.status, MemberStatus::Slashed));
+    }
+
+    // D4 new roles tests
+
+    #[test]
+    fn d4_master_verifier_alias_registers_and_is_active() {
+        let mut reg = PermissionlessRegistry::new();
+        reg.register_master_verifier(addr(10), MIN_REGISTRATION_STAKE, 0)
+            .unwrap();
+        assert!(reg.is_active_master_verifier(&addr(10)));
+        assert!(reg.is_active(&addr(10), roles::VERIFIER)); // alias
+    }
+
+    #[test]
+    fn d4_attester_lubot_content_validator_roles() {
+        let mut reg = PermissionlessRegistry::new();
+        reg.register_attester(addr(20), MIN_REGISTRATION_STAKE, 0)
+            .unwrap();
+        reg.register_lubot_operator(addr(21), MIN_REGISTRATION_STAKE, 0)
+            .unwrap();
+        reg.register_content_validator(addr(22), MIN_REGISTRATION_STAKE, 0)
+            .unwrap();
+
+        assert!(reg.is_active_attester(&addr(20)));
+        assert!(reg.is_active_lubot_operator(&addr(21)));
+        assert!(reg.is_active_content_validator(&addr(22)));
+
+        // Same account can hold all three new roles
+        reg.register_attester(addr(30), 5_000, 0).unwrap();
+        reg.register_lubot_operator(addr(30), 3_000, 0).unwrap();
+        reg.register_content_validator(addr(30), 2_000, 0).unwrap();
+        assert!(reg.is_active_attester(&addr(30)));
+        assert!(reg.is_active_lubot_operator(&addr(30)));
+        assert!(reg.is_active_content_validator(&addr(30)));
+    }
+
+    #[test]
+    fn d4_cross_role_slash_jails_attester_and_content_validator() {
+        let mut reg = PermissionlessRegistry::new();
+        reg.register_validator(addr(77), 10_000, 0).unwrap();
+        reg.register_attester(addr(77), MIN_REGISTRATION_STAKE, 0)
+            .unwrap();
+        reg.register_content_validator(addr(77), 2_000, 0).unwrap();
+
+        reg.slash(
+            addr(77),
+            roles::VALIDATOR,
+            SlashingCondition::DoubleSign,
+            FIXED_POINT_SCALE / 2,
+        )
+        .unwrap();
+
+        assert!(!reg.is_active_attester(&addr(77)));
+        assert!(!reg.is_active_content_validator(&addr(77)));
     }
 }

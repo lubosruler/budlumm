@@ -36,11 +36,14 @@ impl std::fmt::Display for RoleId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
             roles::VALIDATOR => write!(f, "validator"),
-            roles::VERIFIER => write!(f, "verifier"),
+            roles::VERIFIER | roles::MASTER_VERIFIER => write!(f, "master_verifier"),
             roles::RELAYER => write!(f, "relayer"),
             roles::PROVER => write!(f, "prover"),
             roles::STORAGE_OPERATOR => write!(f, "storage_operator"),
             roles::AI_VERIFIER => write!(f, "ai_verifier"),
+            roles::ATTESTER => write!(f, "attester"),
+            roles::LUBOT_OPERATOR => write!(f, "lubot_operator"),
+            roles::CONTENT_VALIDATOR => write!(f, "content_validator"),
             RoleId(id) => write!(f, "role#{id}"),
         }
     }
@@ -48,14 +51,22 @@ impl std::fmt::Display for RoleId {
 
 /// Well-known protocol-level roles. These are *conveniences*, not an exhaustive
 /// list — the registry never checks membership against this set.
+///
+/// D4 (2026-07-22): Unified stake-based registry for v1 — master verifiers (DeEd),
+/// SocialFi content validator, relayer, supply-chain attester all share the
+/// same primitive. RoleIds 1-8 are pinned from budzero/verifier-registry crate
+/// for consistency; 9 is new for SocialFi content validator.
 pub mod roles {
     use super::RoleId;
 
     /// Consensus block-producing validator (PoW/PoS/BFT domains).
     pub const VALIDATOR: RoleId = RoleId(1);
-    /// Settlement / proof verifier.
+    /// Settlement / proof verifier (generic).
     pub const VERIFIER: RoleId = RoleId(2);
-    /// Cross-domain message relayer.
+    /// DeEd master verifier — alias to VERIFIER (RoleId 2), same primitive,
+    /// distinct semantic label for D4 matrix. Preserves LUBOT_OPERATOR=8.
+    pub const MASTER_VERIFIER: RoleId = RoleId(2);
+    /// Cross-domain message relayer (D1 permissionless).
     pub const RELAYER: RoleId = RoleId(3);
     /// ZK proof producer (BudZKVM prover). Registration is OPTIONAL — proof
     /// submission is fully permissionless (STARK proofs are self-verifying);
@@ -87,6 +98,19 @@ pub mod roles {
     /// Active `AI_VERIFIER` nodes perform off-chain model execution and submit
     /// attestation results for consensus agreement thresholds.
     pub const AI_VERIFIER: RoleId = RoleId(6);
+
+    /// Supply-chain attester — submits finality / checkpoint attestations
+    /// for Budlum Go supply-chain and StorageAttestation domains.
+    /// Unified under PermissionlessRegistry per D4.
+    pub const ATTESTER: RoleId = RoleId(7);
+
+    /// Lubot decentralized AI operator (compute-bond, PoS'tan bağımsız).
+    /// Must be preserved per D4 acceptance (RoleId 8).
+    pub const LUBOT_OPERATOR: RoleId = RoleId(8);
+
+    /// SocialFi content validator — validates D-Web content authenticity
+    /// for SocialFi NFT registry. New in D4 (RoleId 9).
+    pub const CONTENT_VALIDATOR: RoleId = RoleId(9);
 }
 
 #[cfg(test)]
@@ -95,7 +119,6 @@ mod tests {
 
     #[test]
     fn arbitrary_role_ids_are_allowed() {
-        // A caller-defined role that this module never enumerated still works.
         let custom = RoleId::new(9_999);
         assert_eq!(custom.value(), 9_999);
         assert_eq!(format!("{custom}"), "role#9999");
@@ -104,22 +127,51 @@ mod tests {
     #[test]
     fn well_known_roles_render_names() {
         assert_eq!(format!("{}", roles::VALIDATOR), "validator");
-        assert_eq!(format!("{}", roles::VERIFIER), "verifier");
+        assert_eq!(format!("{}", roles::MASTER_VERIFIER), "master_verifier");
         assert_eq!(format!("{}", roles::RELAYER), "relayer");
         assert_eq!(format!("{}", roles::PROVER), "prover");
         assert_eq!(format!("{}", roles::STORAGE_OPERATOR), "storage_operator");
         assert_eq!(format!("{}", roles::AI_VERIFIER), "ai_verifier");
+        assert_eq!(format!("{}", roles::ATTESTER), "attester");
+        assert_eq!(format!("{}", roles::LUBOT_OPERATOR), "lubot_operator");
+        assert_eq!(format!("{}", roles::CONTENT_VALIDATOR), "content_validator");
     }
 
     #[test]
     fn storage_operator_role_id_value_is_5() {
-        // Pin the protocol-level role id (5) so a future bump is a
-        // deliberate, audited change.
         assert_eq!(roles::STORAGE_OPERATOR.value(), 5);
     }
 
     #[test]
     fn ai_verifier_role_id_value_is_6() {
         assert_eq!(roles::AI_VERIFIER.value(), 6);
+    }
+
+    #[test]
+    fn attester_role_id_value_is_7() {
+        assert_eq!(roles::ATTESTER.value(), 7);
+    }
+
+    #[test]
+    fn lubot_operator_role_id_value_is_8() {
+        assert_eq!(roles::LUBOT_OPERATOR.value(), 8);
+    }
+
+    #[test]
+    fn master_verifier_and_verifier_share_role_id() {
+        assert_eq!(roles::MASTER_VERIFIER, roles::VERIFIER);
+        assert_eq!(roles::MASTER_VERIFIER.value(), 2);
+    }
+
+    #[test]
+    fn content_validator_role_id_value_is_9() {
+        assert_eq!(roles::CONTENT_VALIDATOR.value(), 9);
+    }
+
+    #[test]
+    fn role_id_ordering() {
+        assert!(RoleId::new(1) < RoleId::new(2));
+        assert!(roles::VALIDATOR < roles::RELAYER);
+        assert!(roles::ATTESTER < roles::LUBOT_OPERATOR);
     }
 }

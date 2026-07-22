@@ -38,6 +38,7 @@ impl std::fmt::Display for RoleId {
             roles::STORAGE_OPERATOR => write!(f, "storage_operator"),
             roles::AI_VERIFIER => write!(f, "ai_verifier"),
             roles::LUBOT_OPERATOR => write!(f, "lubot_operator"),
+            roles::CONTENT_VALIDATOR => write!(f, "content_validator"),
             RoleId(id) => write!(f, "role#{id}"),
         }
     }
@@ -76,6 +77,10 @@ pub mod roles {
 
     /// Lubot decentralized AI operator (compute-bond, PoS'tan bağımsız).
     pub const LUBOT_OPERATOR: RoleId = RoleId(8);
+
+    /// SocialFi content validator — validates D-Web content authenticity.
+    /// D4 unification: new role for SocialFi.
+    pub const CONTENT_VALIDATOR: RoleId = RoleId(9);
 }
 
 #[cfg(test)]
@@ -99,6 +104,7 @@ mod tests {
         assert_eq!(format!("{}", roles::STORAGE_OPERATOR), "storage_operator");
         assert_eq!(format!("{}", roles::AI_VERIFIER), "ai_verifier");
         assert_eq!(format!("{}", roles::LUBOT_OPERATOR), "lubot_operator");
+        assert_eq!(format!("{}", roles::CONTENT_VALIDATOR), "content_validator");
     }
 
     #[test]
@@ -112,8 +118,19 @@ mod tests {
     }
 
     #[test]
+    fn lubot_operator_role_id_value_is_8() {
+        assert_eq!(roles::LUBOT_OPERATOR.value(), 8);
+    }
+
+    #[test]
+    fn content_validator_role_id_value_is_9() {
+        assert_eq!(roles::CONTENT_VALIDATOR.value(), 9);
+    }
+
+    #[test]
     fn role_id_ordering() {
         assert!(RoleId::new(1) < RoleId::new(2));
         assert!(roles::VALIDATOR < roles::RELAYER);
+        assert!(roles::ATTESTER < roles::LUBOT_OPERATOR);
     }
 }

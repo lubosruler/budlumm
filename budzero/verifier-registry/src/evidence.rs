@@ -174,6 +174,60 @@ impl SlashingReport {
             ProofProvenance::Unverified => Err(EvidenceError::Unverified),
         }
     }
+
+    /// D4/D1: Relayer invalid proof — griefing/fronting/wrong-relay
+    pub fn consensus_invalid_relay_proof(
+        offender: Address,
+        reason: String,
+        reporter: Option<Address>,
+    ) -> Self {
+        Self::new(
+            offender,
+            crate::role::roles::RELAYER,
+            SlashingProof::Other {
+                tag: "relayer_invalid_proof".into(),
+                data: reason.into_bytes(),
+            },
+            ProofProvenance::ConsensusVerified,
+            reporter,
+        )
+    }
+
+    /// D4: Attester invalid attestation
+    pub fn consensus_invalid_attester_proof(
+        offender: Address,
+        reason: String,
+        reporter: Option<Address>,
+    ) -> Self {
+        Self::new(
+            offender,
+            crate::role::roles::ATTESTER,
+            SlashingProof::Other {
+                tag: "attester_invalid_attestation".into(),
+                data: reason.into_bytes(),
+            },
+            ProofProvenance::ConsensusVerified,
+            reporter,
+        )
+    }
+
+    /// D4: Content validator invalid validation
+    pub fn consensus_invalid_content_validation(
+        offender: Address,
+        reason: String,
+        reporter: Option<Address>,
+    ) -> Self {
+        Self::new(
+            offender,
+            crate::role::roles::CONTENT_VALIDATOR,
+            SlashingProof::Other {
+                tag: "content_validator_malicious".into(),
+                data: reason.into_bytes(),
+            },
+            ProofProvenance::ConsensusVerified,
+            reporter,
+        )
+    }
 }
 
 #[cfg(test)]
