@@ -160,6 +160,8 @@ impl Network {
                 rpc_auth_required: true,
                 persist_banned_peers: true,
                 mdns_enabled: false,
+                max_outbound_per_subnet: 4,
+                enable_circuit_relay: false,
             },
             Network::Testnet => SecurityConfig {
                 max_peers: 75,
@@ -169,6 +171,8 @@ impl Network {
                 rpc_auth_required: true,
                 persist_banned_peers: true,
                 mdns_enabled: false,
+                max_outbound_per_subnet: 4,
+                enable_circuit_relay: false,
             },
             Network::Devnet => SecurityConfig {
                 max_peers: 25,
@@ -178,6 +182,8 @@ impl Network {
                 rpc_auth_required: false,
                 persist_banned_peers: false,
                 mdns_enabled: true,
+                max_outbound_per_subnet: 0,
+                enable_circuit_relay: true,
             },
         }
     }
@@ -278,6 +284,14 @@ pub struct SecurityConfig {
     pub rpc_auth_required: bool,
     pub persist_banned_peers: bool,
     pub mdns_enabled: bool,
+    /// H5.2: Max outbound connections per /24 subnet (0 = no limit). Outbound
+    /// peer diversity — prevents eclipse via single-subnet outbound concentration.
+    #[serde(default)]
+    pub max_outbound_per_subnet: usize,
+    /// H5.7: Enable libp2p circuit relay for NAT traversal. Default false
+    /// (mainnet v1 follow-up; enable when relay nodes are deployed).
+    #[serde(default)]
+    pub enable_circuit_relay: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
