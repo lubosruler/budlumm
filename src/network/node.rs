@@ -893,10 +893,32 @@ impl Node {
                                 let _ = self.swarm.disconnect_peer_id(peer_id);
                                 continue;
                             }
+                            // H5.2 outbound diversity: outbound bağlantılar için ek /24 sınırı.
+                            if endpoint.is_dialer() {
+                                let ob_admit = self
+                                    .peer_manager
+                                    .lock()
+                                    .map(|pm| pm.can_admit_outbound_subnet(subnet))
+                                    .unwrap_or(true);
+                                if !ob_admit {
+                                    warn!(
+                                        "Outbound diversity: rejecting outbound {} from {:?}",
+                                        peer_id, subnet
+                                    );
+                                    let _ = self.swarm.disconnect_peer_id(peer_id);
+                                    continue;
+                                }
+                            }
                             let newly_connected = self
                                 .peer_manager
                                 .lock()
-                                .map(|mut pm| pm.note_connected(peer_id, subnet))
+                                .map(|mut pm| {
+                                    let c = pm.note_connected(peer_id, subnet);
+                                    if c && endpoint.is_dialer() {
+                                        let _ = pm.note_outbound_connected(peer_id, subnet);
+                                    }
+                                    c
+                                })
                                 .unwrap_or(true);
                             let count = if newly_connected {
                                 self.peer_count.fetch_add(1, Ordering::SeqCst) + 1
@@ -919,6 +941,7 @@ impl Node {
                                         .ok();
                                     if let Ok(mut pm) = self.peer_manager.lock() {
                                         pm.note_disconnected(&peer_id);
+                                        let _ = pm.note_outbound_disconnected(&peer_id);
                                     }
                                 }
                                 continue;
@@ -971,7 +994,11 @@ impl Node {
                             let was_connected = self
                                 .peer_manager
                                 .lock()
-                                .map(|mut pm| pm.note_disconnected(&peer_id))
+                                .map(|mut pm| {
+                                    let d = pm.note_disconnected(&peer_id);
+                                    let _ = pm.note_outbound_disconnected(&peer_id);
+                                    d
+                                })
                                 .unwrap_or(true);
                             if was_connected {
                                 self.peer_count
