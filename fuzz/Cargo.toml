@@ -21,6 +21,7 @@ budlum-core = { path = ".." }
 # Phase 11.2: zk_verifier target needs ProofEnvelope + DefaultAdapter.
 bud-proof = { path = "../budzero/bud-proof" }
 libfuzzer-sys = "0.4"
+libp2p = "0.56"
 
 [[bin]]
 name = "block_deserialize"
