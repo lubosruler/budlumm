@@ -66,15 +66,17 @@ Gizlilik opcode'ları YALNIZCA transfer ailesini kapsar. `NftRegistry`/`ContentI
 1. ✅ **Görev A:** 3 opcode (0x20-0x22) + decode + MainnetActivation gate (bud-isa). CI yeşil (`388f581`+).
 2. ✅ **Görev B:** Poseidon permutation ZATEN MEVCUT — `poseidon4_hash` (Goldilocks `2^64-2^32+1`, MDS 8x8, Plonky3 round sabitleri), opcode 0x19'a wired. Yeni opcode'lar bunu kullanabilir.
 3. ✅ **Görev C:** Note/UTXO registry (bud-state, paralel izole). CI yeşil (`574f79e`). PrivacyNote + NoteRegistry (insert/spend/is_spent, double-spend önleme).
-4. ⏳ **Görev D:** AIR constraint'ler (bud-proof, `plonky3_air.rs` 1519 satır). **Kriptografik tasarım gerekir:**
-   - PrivacyCommit: commitment = Poseidon(amount‖recipient‖blinding) eşitliği — mevcut Poseidon witness kolonlarını (COL_VM_MERKLE_CURRENT çevresi, 392+) genişlet.
-   - NullifierCheck: nullifier = Poseidon(secret) + nullifier set membership (spent-nullifier constraint).
-   - SumConservation: Σinput_commitments == Σoutput_commitments homomorfik (field addition constraint).
-   - **Risk:** sandbox proof-gen OOM → constraint soundness CI-iteratif doğrulanmalı, kör push yasak. Bu görev kriptografik review ister.
-5. ⏳ **Görev E:** TEE opt-in cüzdan toggle (Bölüm 10 #5) + view-key UX. Cüzdan katmanı.
-6. ⏳ **Görev F:** E2E gizli transfer testi (commit → nullifier → sum-conservation round-trip). Görev D sonrası.
+4. ✅ **Görev D:** AIR constraint'ler (ARENA2, 2026-07-22). Selector 370–372;
+   paylaşılan Poseidon gadget (PrivacyCommit = 3-absorb Poseidon3; NullifierCheck
+   = Poseidon(secret, DOMAIN_NULLIFIER) + equality; SumConservation = amount
+   equality witness — Poseidon homomorfik değil, commitment satırlarıyla bağ).
+   Prove/verify testleri yeşil (OOM yok, ~2–10s/test).
+5. ✅ **Görev E:** TEE opt-in + **note_privacy** toggle + **view-key** türetim/ibraz
+   (`WalletPrivacyConfig`, `ViewKeyDisclosure`) — wallet-core.
+6. ✅ **Görev F:** E2E `d2_proves_private_transfer_e2e` (commit→nullifier→sum).
 
-**Durum (2026-07-22):** Görev A/B/C tamam + CI yeşil. Görev D-F çok-oturumlu (Görev D kriptografik review, Görev E cüzdan, Görev F integrasyon).
+**Durum (2026-07-22 ARENA2):** Görev A–F tamam (lokal prove yeşil). Mainnet kapısı
+hâlâ default off. CI tek hakem.
 
 ---
 

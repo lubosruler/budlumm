@@ -98,6 +98,14 @@ pub const COL_POSEIDON_X4_BASE: usize = 322; // 322..353 — x^4 intermediates p
 // (cpu_active=1, is_halt=1).
 pub const COL_FINAL_ROOT_0: usize = 354; // 354..361 — final state root (8 × u32 limbs)
 pub const COL_INIT_ROOT_0: usize = 362; // 362..369 — initial state root (8 × u32 limbs)
+
+// D2 (2026-07-22) Görev D: privacy-layer opcode selectors.
+// Consumes 3 columns from the intentional reserved gap (was 370..378).
+// Remaining reserved gap: 373..378 (5 columns).
+pub const COL_IS_PRIVACY_COMMIT: usize = 370;
+pub const COL_IS_NULLIFIER_CHECK: usize = 371;
+pub const COL_IS_SUM_CONSERVATION: usize = 372;
+
 pub const COL_TRACE_LEN_CTR: usize = 378; // 1 column — running count of cpu_active=1 rows
 pub const COL_GAS_LIMIT: usize = 379; // 1 column — vm.gas_limit, first row
 pub const COL_EVENT_DIGEST_0: usize = 380; // 380..387 — event_digest accumulator (8 × u32 limbs, additive)
@@ -214,6 +222,9 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
         let is_poseidon: AB::Expr = cur[COL_IS_POSEIDON].into();
         let is_syscall: AB::Expr = cur[COL_IS_SYSCALL].into();
         let is_verify_merkle: AB::Expr = cur[COL_IS_VERIFY_MERKLE].into();
+        let is_privacy_commit: AB::Expr = cur[COL_IS_PRIVACY_COMMIT].into();
+        let is_nullifier_check: AB::Expr = cur[COL_IS_NULLIFIER_CHECK].into();
+        let is_sum_conservation: AB::Expr = cur[COL_IS_SUM_CONSERVATION].into();
         let is_halt: AB::Expr = cur[COL_IS_HALT].into();
         let nxt_is_halt: AB::Expr = nxt[COL_IS_HALT].into();
         let nxt_clk: AB::Expr = nxt[COL_CLK].into();
@@ -252,7 +263,10 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
             + is_swrite.clone()
             + is_poseidon.clone()
             + is_syscall.clone()
-            + is_verify_merkle.clone();
+            + is_verify_merkle.clone()
+            + is_privacy_commit.clone()
+            + is_nullifier_check.clone()
+            + is_sum_conservation.clone();
 
         let is_cpu = is_real_op.clone() + is_halt.clone();
 
@@ -287,6 +301,9 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
         builder.assert_bool(is_poseidon.clone());
         builder.assert_bool(is_syscall.clone());
         builder.assert_bool(is_verify_merkle.clone());
+        builder.assert_bool(is_privacy_commit.clone());
+        builder.assert_bool(is_nullifier_check.clone());
+        builder.assert_bool(is_sum_conservation.clone());
         builder.assert_bool(is_halt.clone());
 
         // 2. Selector Exclusivity
@@ -782,6 +799,10 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
             + is_poseidon.clone() * ten.clone()
             // Task 0.36: expansion rows reuse opcode 0x1E but must not re-charge gas.
             + is_verify_merkle.clone() * (one.clone() - is_expand.clone()) * ten.clone()
+            // D2: privacy opcodes share Poseidon gas cost (10).
+            + is_privacy_commit.clone() * ten.clone()
+            + is_nullifier_check.clone() * ten.clone()
+            + is_sum_conservation.clone() * ten.clone()
             + is_call.clone() * two.clone()
             + is_ret.clone() * two.clone()
             + is_push.clone() * two.clone()
@@ -794,6 +815,9 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
                 - is_swrite.clone()
                 - is_poseidon.clone()
                 - is_verify_merkle.clone()
+                - is_privacy_commit.clone()
+                - is_nullifier_check.clone()
+                - is_sum_conservation.clone()
                 - is_call.clone()
                 - is_ret.clone()
                 - is_push.clone()
@@ -1404,18 +1428,61 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
             .when(is_gte)
             .assert_eq(rd_val_new.clone(), one.clone() - cmp_lt_raw.clone());
 
-        // --- Poseidon hash (4 rounds, alpha=7) ---
-        // Verify all 4 rounds including S-boxes, MDS mixing, and result.
+        // --- Poseidon hash gadget (4 rounds, alpha=7) ---
+        // Shared by:
+        //   * Poseidon opcode (0x19): state=[rs1, rs2, 0..] ; rd = out
+        //   * PrivacyCommit (0x20):   state=[rs1, rs2, imm, 0..] ; rd = out
+        //   * NullifierCheck (0x21):  state=[rs2, DOMAIN_NULLIFIER, 0..] ;
+        //                            rd = 1 iff out == rs1 (claimed nullifier)
+        // Witness columns COL_POSEIDON_* are reused; at most one of the three
+        // selectors is 1 (selector exclusivity via is_cpu == 1).
         {
-            let p: AB::Expr = cur[COL_IS_POSEIDON].into();
-            // Initial state
+            let p_poseidon: AB::Expr = is_poseidon.clone();
+            let p_commit: AB::Expr = is_privacy_commit.clone();
+            let p_null: AB::Expr = is_nullifier_check.clone();
+            // Any row that needs the Poseidon gadget.
+            let p: AB::Expr = p_poseidon.clone() + p_commit.clone() + p_null.clone();
+
+            // Opcode ↔ selector binding (malicious prover cannot flip selector).
+            let opcode_at: AB::Expr = cur[COL_OPCODE].into();
+            builder.assert_zero(
+                p_poseidon.clone() * (opcode_at.clone() - AB::Expr::from(AB::F::from_u64(0x19))),
+            );
+            builder.assert_zero(
+                p_commit.clone() * (opcode_at.clone() - AB::Expr::from(AB::F::from_u64(0x20))),
+            );
+            builder.assert_zero(
+                p_null.clone() * (opcode_at.clone() - AB::Expr::from(AB::F::from_u64(0x21))),
+            );
+            builder.assert_zero(
+                is_sum_conservation.clone()
+                    * (opcode_at.clone() - AB::Expr::from(AB::F::from_u64(0x22))),
+            );
+
+            // Initial state:
+            //   Poseidon:        s0=rs1, s1=rs2, s2..s7=0
+            //   PrivacyCommit:   s0=rs1(amount), s1=rs2(recipient), s2=imm(blinding), s3..s7=0
+            //   NullifierCheck:  s0=rs2(secret), s1=DOMAIN_NULLIFIER, s2..s7=0
+            // DOMAIN_NULLIFIER = 0x4e554c4c49464552 ("NULLIFER") — must match bud-vm.
+            let domain_nullifier = AB::Expr::from(AB::F::from_u64(0x4e554c4c49464552));
+            let expected_s0 = p_poseidon.clone() * rs1_val.clone()
+                + p_commit.clone() * rs1_val.clone()
+                + p_null.clone() * rs2_val.clone();
+            let expected_s1 = p_poseidon.clone() * rs2_val.clone()
+                + p_commit.clone() * rs2_val.clone()
+                + p_null.clone() * domain_nullifier;
+            let expected_s2 = p_commit.clone() * imm.clone(); // only PrivacyCommit uses s2
+
             builder
                 .when(p.clone())
-                .assert_eq(cur[COL_POSEIDON_STATE_BASE].into(), rs1_val.clone());
+                .assert_eq(cur[COL_POSEIDON_STATE_BASE].into(), expected_s0);
             builder
                 .when(p.clone())
-                .assert_eq(cur[COL_POSEIDON_STATE_BASE + 1].into(), rs2_val.clone());
-            for i in 2..8 {
+                .assert_eq(cur[COL_POSEIDON_STATE_BASE + 1].into(), expected_s1);
+            builder
+                .when(p.clone())
+                .assert_eq(cur[COL_POSEIDON_STATE_BASE + 2].into(), expected_s2);
+            for i in 3..8 {
                 builder
                     .when(p.clone())
                     .assert_zero(cur[COL_POSEIDON_STATE_BASE + i]);
@@ -1475,6 +1542,9 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
                 ],
             ];
 
+            // Running expression for the final Poseidon output (MDS row 0 of last round).
+            let mut poseidon_out: AB::Expr = AB::Expr::ZERO;
+
             for r in 0..4 {
                 let mut sbox_out = vec![AB::Expr::ZERO; 8];
 
@@ -1494,7 +1564,6 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
                     sbox_out[i] = x4 * x2 * s;
                 }
 
-                // Check MDS multiplication and next round state (or result for last round)
                 if r < 3 {
                     for i in 0..8 {
                         let mut sum: AB::Expr = AB::Expr::ZERO;
@@ -1506,14 +1575,57 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
                             .assert_eq(cur[COL_POSEIDON_STATE_BASE + (r + 1) * 8 + i].into(), sum);
                     }
                 } else {
-                    // Final round, output is the first element
                     let mut sum: AB::Expr = AB::Expr::ZERO;
                     for j in 0..8 {
                         sum += sbox_out[j].clone() * AB::Expr::from(AB::F::from_u64(MDS[0][j]));
                     }
-                    builder.when(p.clone()).assert_eq(rd_val_new.clone(), sum);
+                    poseidon_out = sum;
                 }
             }
+
+            // Poseidon opcode + PrivacyCommit: rd equals the Poseidon output.
+            builder
+                .when(p_poseidon.clone() + p_commit.clone())
+                .assert_eq(rd_val_new.clone(), poseidon_out.clone());
+
+            // NullifierCheck: rd is boolean equality of (poseidon_out == rs1/claimed).
+            // Reuse COL_EQ_DIFF_INV as inverse witness for (out - claimed).
+            {
+                let diff = poseidon_out.clone() - rs1_val.clone();
+                let diff_inv: AB::Expr = cur[COL_EQ_DIFF_INV].into();
+                let is_nonzero = diff.clone() * diff_inv.clone();
+                builder.when(p_null.clone()).assert_bool(is_nonzero.clone());
+                builder
+                    .when(p_null.clone())
+                    .assert_zero(diff * (one.clone() - is_nonzero.clone()));
+                // rd = 1 iff equal iff is_nonzero == 0
+                builder
+                    .when(p_null.clone())
+                    .assert_eq(rd_val_new.clone(), one.clone() - is_nonzero);
+                builder.when(p_null.clone()).assert_bool(rd_val_new.clone());
+            }
+        }
+
+        // --- SumConservation (0x22) ---
+        // Value conservation private witness: rd = 1 iff rs1 (Σin) == rs2 (Σout).
+        // Amounts are bound to commitments by PrivacyCommit on other rows.
+        // Poseidon commitments are NOT additively homomorphic; the soundness
+        // of a full private transfer requires the prover to also open the
+        // commitments inside the same STARK (PrivacyCommit rows). This
+        // opcode enforces the arithmetic equality gate.
+        {
+            let sc: AB::Expr = is_sum_conservation.clone();
+            let diff = rs1_val.clone() - rs2_val.clone();
+            let diff_inv: AB::Expr = cur[COL_EQ_DIFF_INV].into();
+            let is_nonzero = diff.clone() * diff_inv.clone();
+            builder.when(sc.clone()).assert_bool(is_nonzero.clone());
+            builder
+                .when(sc.clone())
+                .assert_zero(diff * (one.clone() - is_nonzero.clone()));
+            builder
+                .when(sc.clone())
+                .assert_eq(rd_val_new.clone(), one.clone() - is_nonzero);
+            builder.when(sc).assert_bool(rd_val_new.clone());
         }
     }
 }

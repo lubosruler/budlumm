@@ -23,6 +23,13 @@ required_tests=(
   task11_14_recovery_proposal_digest_binds_target_and_timelock
   task11_14_recovery_proposal_requires_quorum_and_timelock
   task11_14_recovery_proposal_rejects_same_owner_or_overflow
+  d2_privacy_config_defaults_off
+  d2_privacy_config_user_opt_in_client_first
+  d2_privacy_config_server_backend_fallback
+  d2_note_privacy_only_keeps_tee_off
+  d2_view_key_derive_export_roundtrip
+  d2_view_key_rotation_changes_key
+  d2_view_key_rejects_malformed_hex
 )
 
 fail() {

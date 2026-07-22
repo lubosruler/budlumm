@@ -4,6 +4,11 @@
 **Karar:** Q hsm_next = keep_real_only (sadece gerçek PKCS#11), mock yok. Vendor-native audit item.
 **Kaynak:** `src/crypto/pkcs11.rs`, `src/crypto/signer.rs`, `docs/operations/HSM_BLS_PQ_POLICY.md`
 
+> **Güncelleme (ARENA2, 2026-07-22):** `Pkcs11VendorCapabilities` +
+> `validate_vendor_mechanism_id` (CKM_VENDOR_DEFINED altı fail-closed) eklendi.
+> Vendor-native non-extractable keygen hâlâ donanım + harici audit ister;
+> yazılım fallback yolu açıkça advertize edilir (sahte-yeşil yok).
+
 ## Mevcut Durum
 - Ed25519: Gerçek PKCS#11 HSM via cryptoki CKM_EDDSA
 - BLS12-381: BUD_BLS_KEY data object + software sign

@@ -303,6 +303,88 @@ impl Pkcs11Signer {
     }
 }
 
+/// Vendor-native BLS/PQ capability snapshot (audit / mainnet advertisement).
+///
+/// PKCS#11 standard has no portable BLS/Dilithium mechanism. Vendors expose
+/// `CKM_VENDOR_DEFINED + offset` IDs. This struct records whether the operator
+/// configured those IDs and whether software fallback material is present —
+/// it does **not** claim non-extractable hardware keys without vendor audit.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Pkcs11VendorCapabilities {
+    /// Vendor BLS mechanism id configured (`with_vendor_mechanisms`).
+    pub bls_vendor_mechanism: Option<u64>,
+    /// Vendor PQ/Dilithium mechanism id configured.
+    pub pq_vendor_mechanism: Option<u64>,
+    /// Software BLS key material loaded from HSM data object (fallback path).
+    pub bls_software_fallback_present: bool,
+    /// Software PQ key material loaded from HSM data object (fallback path).
+    pub pq_software_fallback_present: bool,
+}
+
+impl Pkcs11VendorCapabilities {
+    /// True only when both vendor mechanism IDs are configured.
+    /// Still requires external audit before mainnet "non-extractable" claims.
+    #[must_use]
+    pub fn vendor_native_signing_configured(&self) -> bool {
+        self.bls_vendor_mechanism.is_some() && self.pq_vendor_mechanism.is_some()
+    }
+
+    /// True when BLS can be signed (vendor path OR software fallback material).
+    #[must_use]
+    pub fn bls_signing_available(&self) -> bool {
+        self.bls_vendor_mechanism.is_some() || self.bls_software_fallback_present
+    }
+
+    /// True when PQ can be signed (vendor path OR software fallback material).
+    #[must_use]
+    pub fn pq_signing_available(&self) -> bool {
+        self.pq_vendor_mechanism.is_some() || self.pq_software_fallback_present
+    }
+}
+
+impl Pkcs11Signer {
+    /// Report configured vendor-native + fallback capabilities.
+    #[must_use]
+    pub fn vendor_capabilities(&self) -> Pkcs11VendorCapabilities {
+        let bls_sw = self
+            .bls_key
+            .lock()
+            .ok()
+            .map(|g| g.is_some())
+            .unwrap_or(false);
+        let pq_sw = self
+            .pq_key
+            .lock()
+            .ok()
+            .map(|g| g.is_some())
+            .unwrap_or(false);
+        Pkcs11VendorCapabilities {
+            bls_vendor_mechanism: self.bls_mechanism,
+            pq_vendor_mechanism: self.pq_mechanism,
+            bls_software_fallback_present: bls_sw,
+            pq_software_fallback_present: pq_sw,
+        }
+    }
+
+    /// Parse + validate a vendor mechanism id string (hex `0x…` or decimal).
+    /// Rejects zero and values below the conventional CKM_VENDOR_DEFINED base
+    /// (`0x80000000`) so misconfigured low IDs fail closed before session use.
+    pub fn validate_vendor_mechanism_id(raw: &str) -> Result<u64, CryptoError> {
+        let id = Self::parse_mechanism(raw).ok_or_else(|| {
+            CryptoError::KeyGeneration(format!(
+                "invalid PKCS#11 vendor mechanism id '{raw}' (expected 0xHEX or decimal)"
+            ))
+        })?;
+        const CKM_VENDOR_DEFINED: u64 = 0x8000_0000;
+        if id < CKM_VENDOR_DEFINED {
+            return Err(CryptoError::KeyGeneration(format!(
+                "PKCS#11 vendor mechanism id 0x{id:08X} is below CKM_VENDOR_DEFINED (0x80000000)"
+            )));
+        }
+        Ok(id)
+    }
+}
+
 impl ConsensusSigner for Pkcs11Signer {
     fn public_key_bytes(&self) -> [u8; 32] {
         self.public_key_bytes
@@ -423,5 +505,52 @@ mod tests {
         assert_eq!(Pkcs11Signer::parse_mechanism("0Xabcd"), Some(0xABCD));
         assert_eq!(Pkcs11Signer::parse_mechanism("123456"), Some(123456));
         assert_eq!(Pkcs11Signer::parse_mechanism("invalid_mech"), None);
+    }
+
+    #[test]
+    fn test_vendor_mechanism_id_rejects_below_vendor_defined_base() {
+        assert!(Pkcs11Signer::validate_vendor_mechanism_id("0x1234").is_err());
+        assert!(Pkcs11Signer::validate_vendor_mechanism_id("42").is_err());
+        assert!(Pkcs11Signer::validate_vendor_mechanism_id("not-a-number").is_err());
+    }
+
+    #[test]
+    fn test_vendor_mechanism_id_accepts_vendor_defined_range() {
+        let id = Pkcs11Signer::validate_vendor_mechanism_id("0x80000001").unwrap();
+        assert_eq!(id, 0x8000_0001);
+        let id2 = Pkcs11Signer::validate_vendor_mechanism_id("2147483649").unwrap(); // 0x80000001
+        assert_eq!(id2, 0x8000_0001);
+    }
+
+    #[test]
+    fn test_vendor_capabilities_flags() {
+        let caps = Pkcs11VendorCapabilities {
+            bls_vendor_mechanism: Some(0x8000_0001),
+            pq_vendor_mechanism: Some(0x8000_0002),
+            bls_software_fallback_present: false,
+            pq_software_fallback_present: false,
+        };
+        assert!(caps.vendor_native_signing_configured());
+        assert!(caps.bls_signing_available());
+        assert!(caps.pq_signing_available());
+
+        let fallback_only = Pkcs11VendorCapabilities {
+            bls_vendor_mechanism: None,
+            pq_vendor_mechanism: None,
+            bls_software_fallback_present: true,
+            pq_software_fallback_present: true,
+        };
+        assert!(!fallback_only.vendor_native_signing_configured());
+        assert!(fallback_only.bls_signing_available());
+        assert!(fallback_only.pq_signing_available());
+
+        let empty = Pkcs11VendorCapabilities {
+            bls_vendor_mechanism: None,
+            pq_vendor_mechanism: None,
+            bls_software_fallback_present: false,
+            pq_software_fallback_present: false,
+        };
+        assert!(!empty.bls_signing_available());
+        assert!(!empty.pq_signing_available());
     }
 }

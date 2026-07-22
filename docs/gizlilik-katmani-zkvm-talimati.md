@@ -2,7 +2,7 @@
 
 *Budlum / BudZKVM (Plonky3) — Arena'ya yönelik mimari talimat*
 
-- **Durum:** Vizyon / mimari karar dokümanı. Kod yok, opcode yazımı başlamadı.
+- **Durum:** Kararlar çözüldü + D2 Görev A–F kodlandı (ARENA2 2026-07-22). Mainnet gate default off.
 - **Bağımlılık:** BudZKVM (Plonky3 STARK), PoA/kurumsal domain (BDDK/KYC katılım bankacılığı pilotu).
 - **Tarih:** 22 Temmuz 2026.
 
@@ -77,7 +77,8 @@ Mevcut BudZKVM/Lubot doğrulama tasarımı **bütünlük (integrity)** kanıtlı
 
 ## 11. Sonraki Adım
 
-Bu doküman koda dökülmeden önce: (a) hash primitive seçimi, (b) note-model tasarımı, (c) view-key mekanizması netleşmeli. Bunlar netleşmeden Arena'ya bu kapsamda görev verilmeyecek.
+(a)(b)(c) çözüldü ve kodlandı. Kalan operasyonel: MainnetActivation ceremony flip,
+TEE enklav entegrasyonu (SGX/Nitro), regülatör view-key ibraz runbook'u.
 
 ---
 

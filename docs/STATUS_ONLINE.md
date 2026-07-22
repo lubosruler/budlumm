@@ -6273,6 +6273,52 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 
 ---
 
+### [2026-07-22 21:20 UTC+03:00] ARENA2 — ONLINE: KALAN_ISLER + gizlilik katmanı (D2 Görev D/F)
+
+**Kim:** ARENA2 (ARENA1 ile STATUS_ONLINE koordinasyonu; ARENA3 devre dışı).
+**Zemin:** main `8f032fd`. Kullanıcı talimatı: `docs/KALAN_ISLER.md` tüm işler + `gizlilik-katmani-zkvm-talimati.md` + cüzdan TEE opt-in planı.
+**Kapsam (sırayla):**
+1. **Gizlilik AIR (D2 Görev D)** — PrivacyCommit/NullifierCheck/SumConservation constraint + selector (reserved_gap 370+) + VM gerçek semantik + prover fill. En kritik yarım iş.
+2. **E2E gizli transfer (D2 Görev F)** — commit → nullifier → sum-conservation (check_constraints + VM round-trip; prove bellek elverirse).
+3. **View-key + TEE cüzdan** — kullanıcı view-key üretimi/ibrazı + mevcut TEE toggle ile birleşik privacy surface.
+4. **Z-B VerifyMerkle 64-depth** — ignored test kök neden analizi + mümkün fix.
+5. **BLS/PQ HSM vendor-native** — mevcut PKCS#11 vendor path sertleştirme + test kanıtı.
+6. **AI execution layer** — araştırma/iskelet (on-chain execution hâlâ R&D; kör production iddiası yok).
+
+**Plan notu (kullanıcı):** gizlilik ağ için *seçenek*; cüzdan TEE katmanı kullanıcı opt-in (Bölüm 10 #5 zaten kararlı).
+**Budlumdevnet:** dokunulmayacak.
+**Engel riski:** sandbox 1.9Gi RAM — tam STARK prove OOM olabilir; önce `check_constraints` soundness, prove CI'da doğrulanır.
+**Ne bekliyor:** implementasyon → push → CI SLEEP.
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+---
+
+### [2026-07-22 22:40 UTC+03:00] ARENA2 — KALAN_ISLER push hazır: D2 AIR/E2E + Z-B teyit + view-key + HSM caps + AI research
+
+**Kim:** ARENA2
+**Zemin:** branch `arena2/kalan-isler-gizlilik-air` ← main `8f032fd`
+
+**Kapanan teknik işler:**
+1. **D2 Görev D (AIR)** ✅ — selector 370–372, paylaşılan Poseidon gadget (PrivacyCommit 3-absorb, NullifierCheck DOMAIN_NULLIFIER, SumConservation equality). VM gerçek semantik + gas=10.
+2. **D2 Görev F (E2E)** ✅ — `d2_proves_private_transfer_e2e` + 4 tekil prove testi yeşil (~2–10s, OOM yok).
+3. **D2 Görev E genişletme** ✅ — `note_privacy_enabled` + `ViewKeyDisclosure` (kullanıcı üretir/ibraz) + wallet gate script.
+4. **Z-B 64-depth** ✅ teyit — `proves_verify_merkle_valid_64_depth` zaten yeşil (ignore yok); docs/KALAN_ISLER + budzero README güncellendi. Mainnet kapısı `MainnetActivation` default off kalır.
+5. **HSM vendor-native** 🔧 kısmi — `Pkcs11VendorCapabilities` + `validate_vendor_mechanism_id` (CKM_VENDOR_DEFINED altı fail-closed). Gerçek non-extractable keygen donanım/audit ister.
+6. **AI execution** 📋 araştırma iskeleti — `docs/AI_ONCHAIN_EXECUTION_RESEARCH.md` (kod iddiası yok).
+
+**Lokal doğrulama:**
+- `cargo test -p bud-vm -p bud-state --lib` ✅
+- `cargo test -p bud-proof --lib d2_proves` ✅ (5/5)
+- `cargo test -p bud-proof --lib trace_layout` ✅
+- `cargo clippy -p bud-vm -p bud-proof -p bud-state -- -D warnings` ✅
+- wallet-core `d2_*` 7 test ✅ + fmt/clippy ✅
+- Kök `budlum-core` full test bu sandbox'ta 1.9Gi RAM ile link OOM riski — **CI tek hakem**.
+
+**Budlumdevnet:** dokunulmadı.
+**Ne bekliyor:** Push + CI SLEEP (BudZero / BudZKVM + Budlum Core + wallet-core gate).
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>
 ### [2026-07-22 22:15 UTC+03:00] ARENA2 — CI YEŞİL — PR #123 KALAN_ISLER (D2 AIR/E2E + Z-B + view-key)
 
 **Sonuç:** Tüm PR check'leri **SUCCESS** (fail=0).
@@ -6296,4 +6342,3 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Sıradaki (otomatik):** merge sonrası main CI teyidi; HSM donanım ve AI execution ayrı hatlar.
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
-

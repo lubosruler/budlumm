@@ -19,11 +19,44 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
 /// Bir gizli transfer notu. `commitment` amount+recipient+blinding'i bağlar
-/// (Poseidon); `nullifier` tek-kullanımlık harcama işaretidir (Poseidon(secret)).
+/// (Poseidon); `nullifier` tek-kullanımlık harcama işaretidir
+/// (Poseidon(secret, DOMAIN_NULLIFIER)).
+///
+/// VM/AIR tarafı Goldilocks field element (u64) üretir; registry 32-byte Hash
+/// saklar. `hash_from_field` / `field_from_hash` köprüsü little-endian packing
+/// kullanır (üst 24 byte sıfır — domain'ler arası çakışma riski yok çünkü
+/// note subtree izole).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PrivacyNote {
     pub commitment: Hash,
     pub nullifier: Hash,
+}
+
+/// Pack a Goldilocks field element (VM/AIR commitment or nullifier) into Hash.
+#[must_use]
+pub fn hash_from_field(fe: u64) -> Hash {
+    let mut h = [0u8; 32];
+    h[..8].copy_from_slice(&fe.to_le_bytes());
+    h
+}
+
+/// Extract the field element from a Hash produced by `hash_from_field`.
+/// Non-canonical (non-zero high bytes) hashes return the low 8 bytes only —
+/// callers that need strictness should compare full Hash equality instead.
+#[must_use]
+pub fn field_from_hash(h: &Hash) -> u64 {
+    u64::from_le_bytes(h[..8].try_into().expect("hash is 32 bytes"))
+}
+
+impl PrivacyNote {
+    /// Construct from VM/AIR field elements (Poseidon outputs).
+    #[must_use]
+    pub fn from_field_elements(commitment_fe: u64, nullifier_fe: u64) -> Self {
+        Self {
+            commitment: hash_from_field(commitment_fe),
+            nullifier: hash_from_field(nullifier_fe),
+        }
+    }
 }
 
 /// İzole note registry: account model'e paralel, NFT/B.U.D./Pollen ile state
@@ -172,5 +205,21 @@ mod tests {
         let mut r = NoteRegistry::new();
         let err = r.spend(h(2), h(99)).unwrap_err();
         assert!(err.contains("not found"));
+    }
+
+    #[test]
+    fn field_element_packing_roundtrip_and_registry() {
+        let commitment_fe = 0xC0FFEEu64;
+        let nullifier_fe = 0xBEEFu64;
+        let note = PrivacyNote::from_field_elements(commitment_fe, nullifier_fe);
+        assert_eq!(field_from_hash(&note.commitment), commitment_fe);
+        assert_eq!(field_from_hash(&note.nullifier), nullifier_fe);
+        // High bytes must be zero (domain isolation).
+        assert!(note.commitment[8..].iter().all(|&b| b == 0));
+        let mut r = NoteRegistry::new();
+        r.insert(&note).unwrap();
+        assert!(r.contains(note.commitment));
+        r.spend(note.nullifier, note.commitment).unwrap();
+        assert!(r.is_spent(note.nullifier));
     }
 }

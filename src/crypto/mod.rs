@@ -6,3 +6,5 @@ pub mod signer;
 pub use mainnet_policy::{
     check_mainnet_validator_key_policy, MainnetKeyPolicyViolation, MainnetValidatorKeyConfig,
 };
+
+pub use pkcs11::{Pkcs11Signer, Pkcs11VendorCapabilities};

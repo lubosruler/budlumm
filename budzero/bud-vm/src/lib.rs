@@ -619,16 +619,47 @@ impl Vm {
                 self.pc += 1;
                 (result, cur_pc + 1)
             }
-            // D2 (2026-07-22): privacy-layer opcodes (PrivacyCommit /
-            // NullifierCheck / SumConservation). Execution semantics are
-            // Görev B+ (Poseidon commitment / nullifier / sum-conservation) —
-            // not yet wired. Until then, no-op returning 0 (not verified),
-            // decode/execute shape preserved. MainnetActivation blocks these
-            // on mainnet by default; this is the execution stub.
-            Opcode::PrivacyCommit | Opcode::NullifierCheck | Opcode::SumConservation => {
-                let _ = (src1_val, src2_val, inst.imm);
-                let result = 0u64;
-                let dst_idx = inst.rd;
+            // D2 (2026-07-22) Görev D: privacy-layer opcodes — real semantics.
+            //
+            // PrivacyCommit (0x20):
+            //   commitment = Poseidon3(amount=rs1, recipient=rs2, blinding=imm)
+            //   Zincire yalnızca commitment yazılır (note registry).
+            //
+            // NullifierCheck (0x21):
+            //   claimed_nullifier = rs1, secret = rs2
+            //   rd = 1 iff Poseidon2(secret, DOMAIN_NULLIFIER) == claimed_nullifier
+            //   (Spent-set membership NoteRegistry tarafında; VM sahiplik bağını kanıtlar.)
+            //
+            // SumConservation (0x22):
+            //   Poseidon commitment homomorfik değil → value conservation private
+            //   witness üzerinden: rd = 1 iff rs1 (Σ in amounts) == rs2 (Σ out amounts).
+            //   Amount'lar PrivacyCommit ile commitment'a bağlanır (ayrı satırlar).
+            Opcode::PrivacyCommit => {
+                let amount = src1_val;
+                let recipient = src2_val;
+                let blinding = inst.imm as u32 as u64;
+                let result = poseidon4_hash3(amount, recipient, blinding);
+                if dst_idx as usize > 0 {
+                    self.registers[dst_idx as usize] = result;
+                }
+                self.pc += 1;
+                (result, cur_pc + 1)
+            }
+            Opcode::NullifierCheck => {
+                let claimed = src1_val;
+                let secret = src2_val;
+                let derived = poseidon4_hash(secret, DOMAIN_NULLIFIER);
+                let result = if derived == claimed { 1 } else { 0 };
+                if dst_idx as usize > 0 {
+                    self.registers[dst_idx as usize] = result;
+                }
+                self.pc += 1;
+                (result, cur_pc + 1)
+            }
+            Opcode::SumConservation => {
+                let sum_in = src1_val;
+                let sum_out = src2_val;
+                let result = if sum_in == sum_out { 1 } else { 0 };
                 if dst_idx as usize > 0 {
                     self.registers[dst_idx as usize] = result;
                 }
@@ -954,7 +985,12 @@ impl Vm {
             // (persist / state-root impact); price them above Load/Store.
             Opcode::SRead => 8,
             Opcode::SWrite => 12,
-            Opcode::Poseidon | Opcode::VerifyMerkle | Opcode::VerifyInference => 10,
+            Opcode::Poseidon
+            | Opcode::VerifyMerkle
+            | Opcode::VerifyInference
+            | Opcode::PrivacyCommit
+            | Opcode::NullifierCheck
+            | Opcode::SumConservation => 10,
             Opcode::Call | Opcode::Ret | Opcode::Push | Opcode::Pop => 2,
             Opcode::Syscall => 5,
             _ => 1,
@@ -983,11 +1019,17 @@ pub fn merkle_poseidon_round(a: u64, b: u64) -> u64 {
 /// Used for both VM execution and prover trace generation.
 ///
 /// MDS circulant matrix first row: [7, 1, 3, 8, 8, 3, 4, 9]
-/// Round constants: first 4 rounds from Plonky3 Poseidon1 Goldilocks width-8
-pub fn poseidon4_hash(a: u64, b: u64) -> u64 {
-    const P: u64 = 18446744069414584321;
+/// Domain separator for nullifier derivation (D2).
+/// ASCII-ish constant "NULLIFER" as a field element — domain-separates
+/// nullifier hashes from plain Poseidon(a,b) and PrivacyCommit.
+pub const DOMAIN_NULLIFIER: u64 = 0x4e55_4c4c_4946_4552; // "NULLIFER"
 
-    // MDS circulant matrix (8x8) from first row [7,1,3,8,8,3,4,9]
+/// 4-round Poseidon over Goldilocks with an arbitrary 8-element initial state
+/// (alpha=7, width=8, full rounds only). Shared by `poseidon4_hash`,
+/// `poseidon4_hash3` and the AIR Poseidon gadget.
+pub fn poseidon4_hash_state(mut s: [u64; 8]) -> u64 {
+    const P: u64 = 18446744069414584321;
+    // MDS matrix (circulant) — must match BudAir / plonky3_prover.
     const MDS: [[u64; 8]; 8] = [
         [7, 1, 3, 8, 8, 3, 4, 9],
         [9, 7, 1, 3, 8, 8, 3, 4],
@@ -998,8 +1040,7 @@ pub fn poseidon4_hash(a: u64, b: u64) -> u64 {
         [3, 8, 8, 3, 4, 9, 7, 1],
         [1, 3, 8, 8, 3, 4, 9, 7],
     ];
-
-    // Round constants (first 4 from Plonky3 Poseidon1 Goldilocks width-8)
+    // Round constants: first 4 rounds from Plonky3 Poseidon1 Goldilocks width-8
     const RC: [[u64; 8]; 4] = [
         [
             0xdd5743e7f2a5a5d9,
@@ -1043,14 +1084,10 @@ pub fn poseidon4_hash(a: u64, b: u64) -> u64 {
         ],
     ];
 
-    let mut s: [u64; 8] = [a, b, 0, 0, 0, 0, 0, 0];
-
     for round_rc in RC.iter() {
-        // Add round constants
         for i in 0..8 {
             s[i] = ((s[i] as u128 + round_rc[i] as u128) % P as u128) as u64;
         }
-        // S-box: x^7 via x2=x^2, x4=x2^2, x7=x4*x2*x mod P
         let mut sbox: [u64; 8] = [0; 8];
         for i in 0..8 {
             let x = s[i];
@@ -1058,7 +1095,6 @@ pub fn poseidon4_hash(a: u64, b: u64) -> u64 {
             let x4 = ((x2 as u128 * x2 as u128) % P as u128) as u64;
             sbox[i] = (((x4 as u128 * x2 as u128) % P as u128 * x as u128) % P as u128) as u64;
         }
-        // MDS linear layer
         let mut next: [u64; 8] = [0; 8];
         for i in 0..8 {
             let mut sum: u128 = 0;
@@ -1069,8 +1105,23 @@ pub fn poseidon4_hash(a: u64, b: u64) -> u64 {
         }
         s = next;
     }
-
     s[0]
+}
+
+/// 4-round Poseidon over Goldilocks with 3 absorbed field elements
+/// (state = [a, b, c, 0, 0, 0, 0, 0]). Used by `PrivacyCommit`.
+pub fn poseidon4_hash3(a: u64, b: u64, c: u64) -> u64 {
+    poseidon4_hash_state([a, b, c, 0, 0, 0, 0, 0])
+}
+
+/// 4-round Poseidon hash over Goldilocks field (alpha=7, width=8, full rounds only).
+///
+/// Rate-2 absorption: state = [a, b, 0, 0, 0, 0, 0, 0]. Used by the Poseidon
+/// opcode and NullifierCheck (with DOMAIN_NULLIFIER as second input).
+///
+/// Round constants: first 4 rounds from Plonky3 Poseidon1 Goldilocks width-8
+pub fn poseidon4_hash(a: u64, b: u64) -> u64 {
+    poseidon4_hash_state([a, b, 0, 0, 0, 0, 0, 0])
 }
 
 #[cfg(test)]
@@ -1124,25 +1175,71 @@ mod tests {
     }
 
     #[test]
-    fn d2_privacy_opcode_stubs_execute_without_panic() {
-        // D2 (2026-07-22): the three privacy opcodes are execution stubs (Görev A).
-        // They decode, execute as no-op returning 0 to rd, and advance pc — must
-        // not panic. Real Poseidon commitment / nullifier / sum-conservation
-        // semantics are Görev B+. MainnetActivation gates these on mainnet; in the
-        // Testing profile used here they decode and execute.
+    fn d2_privacy_opcodes_execute_real_semantics() {
+        // D2 Görev D: real Poseidon3 commitment / nullifier ownership /
+        // sum-conservation equality. MainnetActivation still gates mainnet;
+        // Testing profile decodes and executes.
+        let amount = 100u64;
+        let recipient = 7u64;
+        let blinding = 99u32 as u64;
+        let commitment = poseidon4_hash3(amount, recipient, blinding);
+        let secret = 0xA11CEu64;
+        let nullifier = poseidon4_hash(secret, DOMAIN_NULLIFIER);
+
         let program = vec![
-            inst(Opcode::PrivacyCommit, 1, 2, 3, 0),
-            inst(Opcode::NullifierCheck, 1, 2, 3, 0),
-            inst(Opcode::SumConservation, 1, 2, 3, 0),
+            // r1 = PrivacyCommit(r2=amount, r3=recipient, imm=blinding)
+            inst(Opcode::PrivacyCommit, 1, 2, 3, blinding as i32),
+            // r4 = NullifierCheck(r5=claimed_nullifier, r6=secret)
+            inst(Opcode::NullifierCheck, 4, 5, 6, 0),
+            // r7 = SumConservation(r8=sum_in, r9=sum_out) — equal
+            inst(Opcode::SumConservation, 7, 8, 9, 0),
+            // r10 = SumConservation unequal
+            inst(Opcode::SumConservation, 10, 8, 2, 0),
             inst(Opcode::Halt, 0, 0, 0, 0),
         ];
         let mut vm = Vm::new(64);
+        vm.registers[2] = amount;
+        vm.registers[3] = recipient;
+        vm.registers[5] = nullifier;
+        vm.registers[6] = secret;
+        vm.registers[8] = 50;
+        vm.registers[9] = 50;
         let receipt = vm.run_receipt(&program);
-        assert!(receipt.success, "D2 stubs must execute without error");
-        assert_eq!(
-            vm.registers[1], 0,
-            "D2 stubs return 0 (not verified / not yet implemented)"
+        assert!(
+            receipt.success,
+            "D2 privacy opcodes must execute: {:?}",
+            receipt.error
         );
+        assert_eq!(
+            vm.registers[1], commitment,
+            "PrivacyCommit Poseidon3 binding"
+        );
+        assert_eq!(vm.registers[4], 1, "NullifierCheck accepts matching secret");
+        assert_eq!(vm.registers[7], 1, "SumConservation accepts equal sums");
+        assert_eq!(vm.registers[10], 0, "SumConservation rejects unequal sums");
+    }
+
+    #[test]
+    fn d2_nullifier_check_rejects_wrong_secret() {
+        let secret = 0xBEEFu64;
+        let nullifier = poseidon4_hash(secret, DOMAIN_NULLIFIER);
+        let program = vec![
+            inst(Opcode::NullifierCheck, 1, 2, 3, 0),
+            inst(Opcode::Halt, 0, 0, 0, 0),
+        ];
+        let mut vm = Vm::new(64);
+        vm.registers[2] = nullifier;
+        vm.registers[3] = secret ^ 1; // wrong secret
+        let receipt = vm.run_receipt(&program);
+        assert!(receipt.success);
+        assert_eq!(vm.registers[1], 0);
+    }
+
+    #[test]
+    fn d2_privacy_gas_matches_poseidon() {
+        assert_eq!(Vm::gas_cost(Opcode::PrivacyCommit), 10);
+        assert_eq!(Vm::gas_cost(Opcode::NullifierCheck), 10);
+        assert_eq!(Vm::gas_cost(Opcode::SumConservation), 10);
     }
 
     #[test]

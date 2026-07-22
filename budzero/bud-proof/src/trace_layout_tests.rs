@@ -99,10 +99,16 @@ fn all_ranges() -> Vec<ColRange> {
             start: 362,
             end: 370,
         },
-        // Intentional reserved gap (see BUDZKVM_TRACE_LAYOUT.md)
+        // D2 privacy opcode selectors (consumed from former reserved gap)
+        ColRange {
+            name: "privacy_selectors",
+            start: 370,
+            end: 373,
+        },
+        // Remaining intentional reserved gap (see BUDZKVM_TRACE_LAYOUT.md)
         ColRange {
             name: "reserved_gap",
-            start: 370,
+            start: 373,
             end: 378,
         },
         ColRange {
@@ -205,14 +211,18 @@ fn trace_layout_no_overlap_and_within_bounds() {
 
 #[test]
 fn trace_layout_reserved_gap_is_documented() {
-    // The 8-column gap at 370..378 is intentional and reserved for future
-    // public-input / expansion columns. This test ensures it is not silently
-    // consumed by an undocumented range.
+    // D2 consumed 370..373 for privacy selectors; remaining gap is 373..378.
     let ranges = all_ranges();
+    let privacy = ranges
+        .iter()
+        .find(|r| r.name == "privacy_selectors")
+        .expect("privacy_selectors range must be documented");
+    assert_eq!(privacy.start, 370);
+    assert_eq!(privacy.end, 373);
     let gap = ranges
         .iter()
         .find(|r| r.name == "reserved_gap")
         .expect("reserved_gap range must be documented");
-    assert_eq!(gap.start, 370, "reserved_gap must start at 370");
+    assert_eq!(gap.start, 373, "reserved_gap must start at 373 after D2");
     assert_eq!(gap.end, 378, "reserved_gap must end at 378");
 }

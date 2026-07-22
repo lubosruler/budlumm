@@ -365,35 +365,46 @@ pub struct Wallet {
 /// `core::address::Address` deseni ile uyumlu.
 pub type BudlumAddress = [u8; 32];
 
-/// D2 (2026-07-22) Görev E — cüzdan içi TEE opt-in privacy toggle (Bölüm 10 #5).
+/// D2 (2026-07-22) Görev E — cüzdan içi gizlilik yüzeyi.
 ///
-/// Kullanıcı kararı (ask_user, 2026-07-22): *"Bu cüzdanın işlemleri TEE
-/// katmanıyla gizli kılınsın mı? → Evet (işlemleriniz biraz yavaşlar)."*
+/// İki bağımsız opt-in katmanı (kullanıcı planı + MAINNET_KARARLAR D2):
+/// 1. **Note privacy (ağ seçeneği):** gizli transfer opcode ailesi
+///    (PrivacyCommit/NullifierCheck/SumConservation). Kullanıcı cüzdanında
+///    "gizli işlem kullan" tercihi; varsayılan kapalı.
+/// 2. **TEE execution-time confidentiality (Bölüm 10 #5):** işlem üretimi
+///    TEE enklavı üzerinden — operatör düz-metin görmez. UX prompt:
+///    "Bu cüzdanın işlemleri TEE katmanıyla gizli kılınsın mı?
+///    Evet (işlemleriniz biraz yavaşlar)." Varsayılan kapalı.
 ///
-/// Varsayılan **kapalı** (opt-in). Açıldığında işlem üretimi bir TEE enklavı
-/// üzerinden geçer; operatör düz-metin veriyi görmez (execution-time
-/// confidentiality). Backend: client-side TEE (kullanıcı cihazı / laptop SGX)
-/// öncelikli, zayıf cihazda server-side (AWS Nitro) fallback. STARK yine
-/// bütünlüğü bağımsız korur (defense-in-depth).
+/// View-key (Bölüm 10 #3, Zcash deseni): kullanıcı üretir/saklar; BDDK gibi
+/// yetkiliye manuel ibraz. Kamuya kapalı, yetkiliye açık selective disclosure.
 ///
-/// Gerçek TEE entegrasyonu (SGX/Nitro prover) ayrı bir araştırma hattı; bu
-/// struct toggle durumunu + backend tercihini tutar (opcode stub'ları gibi).
+/// Gerçek TEE enklavı (SGX/Nitro) ayrı entegrasyon hattı; bu struct tercih +
+/// view-key materyalini tutar.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WalletPrivacyConfig {
+    /// Ağ-seviyesi gizli transfer (note/UTXO opcode ailesi) kullanılsın mı.
+    /// Varsayılan `false` — kullanıcı cüzdan ayarından açar (ağ için seçenek).
+    pub note_privacy_enabled: bool,
     /// TEE gizlilik toggle'ı. `false` = varsayılan (mevcut akış, operatör veriyi
     /// görür, sadece STARK integrity). `true` = işlemler TEE ile gizli (yavaşlar).
     pub tee_enabled: bool,
     /// Client-side TEE öncelikli mi. `true` = önce kullanıcı cihazı (laptop SGX),
     /// başarısızsa server-side (AWS Nitro) fallback. `false` = doğrudan server-side.
     pub prefer_client_side_tee: bool,
+    /// Kullanıcı-üretimi view-key (32 byte). `None` = henüz üretilmedi.
+    /// Selective disclosure için yetkiliye manuel paylaşılır; asla zincire yazılmaz.
+    pub view_key: Option<[u8; 32]>,
 }
 
 impl Default for WalletPrivacyConfig {
     fn default() -> Self {
-        // Bölüm 10 #5: varsayılan KAPALI (opt-in). Kullanıcı cüzdan içinde açar.
+        // Bölüm 10 #5 + kullanıcı planı: varsayılan KAPALI (opt-in).
         Self {
+            note_privacy_enabled: false,
             tee_enabled: false,
             prefer_client_side_tee: true,
+            view_key: None,
         }
     }
 }
@@ -404,8 +415,21 @@ impl WalletPrivacyConfig {
     #[must_use]
     pub fn from_user_opt_in(enable: bool) -> Self {
         Self {
+            note_privacy_enabled: enable,
             tee_enabled: enable,
             prefer_client_side_tee: true,
+            view_key: None,
+        }
+    }
+
+    /// Yalnızca ağ-seviyesi note privacy (TEE kapalı) — daha hafif seçenek.
+    #[must_use]
+    pub fn note_privacy_only(enable: bool) -> Self {
+        Self {
+            note_privacy_enabled: enable,
+            tee_enabled: false,
+            prefer_client_side_tee: true,
+            view_key: None,
         }
     }
 
@@ -413,6 +437,12 @@ impl WalletPrivacyConfig {
     #[must_use]
     pub fn is_privacy_active(&self) -> bool {
         self.tee_enabled
+    }
+
+    /// Note privacy (gizli transfer opcode'ları) aktif mi.
+    #[must_use]
+    pub fn is_note_privacy_active(&self) -> bool {
+        self.note_privacy_enabled
     }
 
     /// Kullanılacak TEE backend'i (client-side öncelikli karar mantığı).
@@ -427,6 +457,95 @@ impl WalletPrivacyConfig {
             "server"
         }
     }
+
+    /// View-key üret (Bölüm 10 #3). Deterministik türetim: wallet seed'den
+    /// domain-separated SHA3-256("BUDLUM_VIEW_KEY_V1" || seed).
+    /// Mevcut view-key varsa değiştirmez (idempotent); zorla yenilemek için
+    /// `rotate_view_key`.
+    pub fn ensure_view_key(&mut self, wallet_seed: &[u8; 32]) -> [u8; 32] {
+        if let Some(vk) = self.view_key {
+            return vk;
+        }
+        let vk = derive_view_key(wallet_seed);
+        self.view_key = Some(vk);
+        vk
+    }
+
+    /// View-key'i yeniden üret (eski anahtar yetkiliye verildiyse rotasyon).
+    pub fn rotate_view_key(&mut self, wallet_seed: &[u8; 32], rotation_counter: u64) -> [u8; 32] {
+        let vk = derive_view_key_rotated(wallet_seed, rotation_counter);
+        self.view_key = Some(vk);
+        vk
+    }
+
+    /// View-key ibraz paketi (yetkiliye manuel paylaşım). Zincire yazılmaz.
+    /// `None` eğer view-key henüz üretilmediyse.
+    #[must_use]
+    pub fn export_view_key_for_disclosure(&self) -> Option<ViewKeyDisclosure> {
+        self.view_key.map(|key| ViewKeyDisclosure {
+            version: VIEW_KEY_VERSION,
+            view_key: key,
+        })
+    }
+}
+
+/// View-key format sürümü (selective disclosure protokolü).
+pub const VIEW_KEY_VERSION: u32 = 1;
+
+/// Yetkiliye ibraz edilen view-key paketi (Bölüm 10 #3).
+/// Kamuya kapalı; kullanıcı cüzdanından yetkiliye (BDDK vb.) manuel iletilir.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewKeyDisclosure {
+    pub version: u32,
+    pub view_key: [u8; 32],
+}
+
+impl ViewKeyDisclosure {
+    /// Hex export (kullanıcı kopyala-yapıştır / QR için).
+    #[must_use]
+    pub fn to_hex(&self) -> String {
+        format!("vk1:{}:{}", self.version, hex::encode(self.view_key))
+    }
+
+    /// Hex import; bozuk format → None.
+    #[must_use]
+    pub fn from_hex(s: &str) -> Option<Self> {
+        let rest = s.strip_prefix("vk1:")?;
+        let (ver, key_hex) = rest.split_once(':')?;
+        let version: u32 = ver.parse().ok()?;
+        if version != VIEW_KEY_VERSION {
+            return None;
+        }
+        let bytes = hex::decode(key_hex).ok()?;
+        if bytes.len() != 32 {
+            return None;
+        }
+        let mut view_key = [0u8; 32];
+        view_key.copy_from_slice(&bytes);
+        Some(Self { version, view_key })
+    }
+}
+
+/// Domain-separated view-key derivation from wallet seed.
+fn derive_view_key(seed: &[u8; 32]) -> [u8; 32] {
+    let mut hasher = Sha3_256::new();
+    hasher.update(b"BUDLUM_VIEW_KEY_V1");
+    hasher.update(seed);
+    let out = hasher.finalize();
+    let mut vk = [0u8; 32];
+    vk.copy_from_slice(&out);
+    vk
+}
+
+fn derive_view_key_rotated(seed: &[u8; 32], rotation_counter: u64) -> [u8; 32] {
+    let mut hasher = Sha3_256::new();
+    hasher.update(b"BUDLUM_VIEW_KEY_V1_ROT");
+    hasher.update(seed);
+    hasher.update(rotation_counter.to_le_bytes());
+    let out = hasher.finalize();
+    let mut vk = [0u8; 32];
+    vk.copy_from_slice(&out);
+    vk
 }
 
 /// Task 11.14 mobile/browser binding ABI marker.
@@ -1300,7 +1419,7 @@ mod tests {
         .is_err());
     }
 
-    // ===== D2 Görev E — WalletPrivacyConfig (Bölüm 10 #5) =====
+    // ===== D2 Görev E — WalletPrivacyConfig (Bölüm 10 #5 + view-key) =====
 
     #[test]
     fn d2_privacy_config_defaults_off() {
@@ -1309,13 +1428,17 @@ mod tests {
             !cfg.is_privacy_active(),
             "Bölüm 10 #5: varsayılan KAPALI (opt-in)"
         );
+        assert!(!cfg.is_note_privacy_active());
         assert_eq!(cfg.effective_backend(), "none");
+        assert!(cfg.view_key.is_none());
+        assert!(cfg.export_view_key_for_disclosure().is_none());
     }
 
     #[test]
     fn d2_privacy_config_user_opt_in_client_first() {
         let cfg = WalletPrivacyConfig::from_user_opt_in(true);
         assert!(cfg.is_privacy_active());
+        assert!(cfg.is_note_privacy_active());
         // Client-side TEE öncelikli (kullanıcı cihazı/laptop SGX).
         assert_eq!(cfg.effective_backend(), "client");
     }
@@ -1325,5 +1448,49 @@ mod tests {
         let mut cfg = WalletPrivacyConfig::from_user_opt_in(true);
         cfg.prefer_client_side_tee = false; // zayıf cihaz → server-side
         assert_eq!(cfg.effective_backend(), "server");
+    }
+
+    #[test]
+    fn d2_note_privacy_only_keeps_tee_off() {
+        let cfg = WalletPrivacyConfig::note_privacy_only(true);
+        assert!(cfg.is_note_privacy_active());
+        assert!(!cfg.is_privacy_active());
+        assert_eq!(cfg.effective_backend(), "none");
+    }
+
+    #[test]
+    fn d2_view_key_derive_export_roundtrip() {
+        let seed = [0x42u8; 32];
+        let mut cfg = WalletPrivacyConfig::default();
+        let vk1 = cfg.ensure_view_key(&seed);
+        let vk2 = cfg.ensure_view_key(&seed); // idempotent
+        assert_eq!(vk1, vk2);
+        let disclosure = cfg.export_view_key_for_disclosure().expect("view-key set");
+        assert_eq!(disclosure.version, VIEW_KEY_VERSION);
+        assert_eq!(disclosure.view_key, vk1);
+        let hex = disclosure.to_hex();
+        assert!(hex.starts_with("vk1:1:"));
+        let parsed = ViewKeyDisclosure::from_hex(&hex).expect("parse");
+        assert_eq!(parsed, disclosure);
+    }
+
+    #[test]
+    fn d2_view_key_rotation_changes_key() {
+        let seed = [0x7u8; 32];
+        let mut cfg = WalletPrivacyConfig::default();
+        let vk0 = cfg.ensure_view_key(&seed);
+        let vk1 = cfg.rotate_view_key(&seed, 1);
+        assert_ne!(vk0, vk1);
+        // Different seeds → different keys
+        let mut other = WalletPrivacyConfig::default();
+        let vk_other = other.ensure_view_key(&[0x8u8; 32]);
+        assert_ne!(vk0, vk_other);
+    }
+
+    #[test]
+    fn d2_view_key_rejects_malformed_hex() {
+        assert!(ViewKeyDisclosure::from_hex("not-a-key").is_none());
+        assert!(ViewKeyDisclosure::from_hex("vk1:2:00").is_none()); // bad version
+        assert!(ViewKeyDisclosure::from_hex("vk1:1:abcd").is_none()); // short
     }
 }

@@ -30,7 +30,8 @@ boş bırakılan yerleri açıklar.
 | 322 – 353 | 32 | Poseidon x^4 ara değerleri |
 | 354 – 361 | 8 | Public-input: final state root |
 | 362 – 369 | 8 | Public-input: initial state root |
-| 370 – 377 | 8 | **Bilinçli boşluk** — gelecek genişleme için ayrıldı |
+| 370 – 372 | 3 | D2 privacy selectors: PrivacyCommit / NullifierCheck / SumConservation |
+| 373 – 377 | 5 | **Bilinçli boşluk** — kalan rezerv (eskiden 370–377) |
 | 378 | 1 | Public-input: trace_len sayacı |
 | 379 | 1 | Public-input: gas_limit |
 | 380 – 387 | 8 | Public-input: event digest accumulator |
@@ -55,10 +56,9 @@ boş bırakılan yerleri açıklar.
    `COL_MERKLE_POSEIDON_*` aynı round-constant/MDS matrisini kullanır.
    Tekilleştirme planı için `docs/BUDZKVM_POSEIDON_REFACTOR.md` (Paket C)
    takip edilecektir.
-4. **Bilinçli boşluk (370–377):** Şu an hiçbir kısıt tarafından
-   kullanılmıyor. Yeni public-input veya genişleme ihtiyacı olduğunda
-   önce bu aralık doldurulmalı; yetersiz kalırsa `TRACE_WIDTH`
-   artırılmalı.
+4. **Bilinçli boşluk (373–377):** D2 gizlilik selektörleri 370–372'yi
+   kullandı; kalan 5 sütun rezerv. Yeni public-input/genişleme önce bu
+   aralığa; yetersizse `TRACE_WIDTH` artırılmalı.
 5. **TRACE_WIDTH sınırı:** Son atanmış sütun `COL_MERKLE_FINAL_FLAG = 413`.
    `TRACE_WIDTH = 414` olmak zorundadır.
 

@@ -66,20 +66,23 @@ cargo test --workspace
 
 ## Soundness work (honest status)
 
-Aligned with [budlum-xyz/BudZero](https://github.com/budlum-xyz/BudZero) tasks 0–12. Org README claims “all 31 opcodes production”; **this fork keeps `VerifyMerkle` experimental** until the 64-depth positive proof is green.
+Aligned with [budlum-xyz/BudZero](https://github.com/budlum-xyz/BudZero) tasks 0–12. **Z-B:** `proves_verify_merkle_valid_64_depth` is green (ARENA2 2026-07-22). VerifyMerkle remains **mainnet-gated** (`MainnetActivation`, default off) for staged rollout — not the same as the old experimental-ISA lock.
 
 | Item | Status |
 | --- | --- |
 | Public inputs (Z-A) | Bound (incl. event_digest Log fix Task 0.358) |
-| `VerifyMerkle` path AIR (Z-B) | Expansion + Poseidon round checks; **Task 0.36 partial**: pre-round currents, single-round path hash, original-only root check, expand gas |
-| Valid 64-depth prove | **`#[ignore]`** — still `InvalidProof` (Commit 3.5 remaining) |
-| Production gate | `VerifyMerkle` **experimental** — off in Production decode |
+| `VerifyMerkle` path AIR (Z-B) | Expansion + Poseidon round checks; pre-round currents, single-round path hash, original-only root check, expand gas |
+| Valid 64-depth prove | ✅ `proves_verify_merkle_valid_64_depth` green (matrix chain + full prove/verify) |
+| Production gate | `MainnetActivation` default **off** (staged ceremony rollout); ISA `is_experimental()==false` |
 | Termination / halt (Z-C/D) | Landed Task 0.30.zk |
 | Storage gas (SRead/SWrite) | Higher than Load/Store; AIR aligned |
 | Task 10 performance benches | Planned Tur **13.5** |
 | Task 11 external audit | Checklist Tur **13.9** (not claimed done) |
 
-Until Z-B Commit 3.5 lands, do **not** treat Merkle membership inside STARK proofs as production-safe. **B.U.D.** proof-of-storage (org storage vision) is **Task 0.38**, not this repo’s L1 host work.
+Z-B 64-depth soundness proof is green. Merkle membership inside STARK proofs is
+cryptographically constrained; mainnet still requires `MainnetActivation` flip
+post-ceremony. **B.U.D.** proof-of-storage productization remains a separate
+integration task on top of this L1 primitive.
 
 ---
 

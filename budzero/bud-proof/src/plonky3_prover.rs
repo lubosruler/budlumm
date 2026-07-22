@@ -333,6 +333,17 @@ fn trace_matrix(
             values[row_start + COL_EQ_DIFF_INV] = Goldilocks::new(inv);
         }
 
+        // D2: SumConservation equality witness (rs1 - rs2).
+        if opcode == bud_isa::Opcode::SumConservation {
+            let diff = step.src1_val.wrapping_sub(step.src2_val);
+            let inv = if diff != 0 {
+                bud_vm::field_inverse_goldilocks(diff)
+            } else {
+                0
+            };
+            values[row_start + COL_EQ_DIFF_INV] = Goldilocks::new(inv);
+        }
+
         if opcode == bud_isa::Opcode::Jnz {
             let cond = step.src1_val;
             let inv = if cond != 0 {
@@ -381,6 +392,9 @@ fn trace_matrix(
             0x1C => values[row_start + COL_IS_SWRITE] = Goldilocks::new(1),
             0x1D => values[row_start + COL_IS_SYSCALL] = Goldilocks::new(1),
             0x1E => values[row_start + COL_IS_VERIFY_MERKLE] = Goldilocks::new(1),
+            0x20 => values[row_start + COL_IS_PRIVACY_COMMIT] = Goldilocks::new(1),
+            0x21 => values[row_start + COL_IS_NULLIFIER_CHECK] = Goldilocks::new(1),
+            0x22 => values[row_start + COL_IS_SUM_CONSERVATION] = Goldilocks::new(1),
             0x00 => values[row_start + COL_IS_HALT] = Goldilocks::new(1),
             _ => {}
         }
@@ -440,12 +454,23 @@ fn trace_matrix(
         }
 
         // Poseidon witness: fill 4-round state + S-box intermediates
-        if opcode == bud_isa::Opcode::Poseidon {
-            let a = step.src1_val;
-            let b = step.src2_val;
+        // D2 + Poseidon: fill Poseidon witness columns for any opcode that
+        // uses the shared 4-round gadget (Poseidon / PrivacyCommit / NullifierCheck).
+        let poseidon_init: Option<[u64; 8]> = match opcode {
+            bud_isa::Opcode::Poseidon => Some([step.src1_val, step.src2_val, 0, 0, 0, 0, 0, 0]),
+            bud_isa::Opcode::PrivacyCommit => {
+                let blinding = step.instruction.imm as u32 as u64;
+                Some([step.src1_val, step.src2_val, blinding, 0, 0, 0, 0, 0])
+            }
+            bud_isa::Opcode::NullifierCheck => {
+                // state = [secret=rs2, DOMAIN_NULLIFIER, 0..]
+                Some([step.src2_val, bud_vm::DOMAIN_NULLIFIER, 0, 0, 0, 0, 0, 0])
+            }
+            _ => None,
+        };
 
+        if let Some(init_state) = poseidon_init {
             const P: u64 = 18446744069414584321;
-
             let mds: [[u64; 8]; 8] = [
                 [7, 1, 3, 8, 8, 3, 4, 9],
                 [9, 7, 1, 3, 8, 8, 3, 4],
@@ -456,7 +481,6 @@ fn trace_matrix(
                 [3, 8, 8, 3, 4, 9, 7, 1],
                 [1, 3, 8, 8, 3, 4, 9, 7],
             ];
-
             let rc: [[u64; 8]; 4] = [
                 [
                     0xdd5743e7f2a5a5d9,
@@ -500,15 +524,14 @@ fn trace_matrix(
                 ],
             ];
 
-            let mut s: [u64; 8] = [a, b, 0, 0, 0, 0, 0, 0];
+            let mut s: [u64; 8] = init_state;
+            let mut poseidon_out = 0u64;
 
             for r in 0..4 {
-                // Store entry state
                 for i in 0..8 {
                     values[row_start + COL_POSEIDON_STATE_BASE + r * 8 + i] = Goldilocks::new(s[i]);
                 }
 
-                // S-box
                 let mut sbox: [u64; 8] = [0; 8];
                 for i in 0..8 {
                     let s_rc = ((s[i] as u128 + rc[r][i] as u128) % P as u128) as u64;
@@ -520,7 +543,6 @@ fn trace_matrix(
                         (((x4 as u128 * x2 as u128) % P as u128 * s_rc as u128) % P as u128) as u64;
                 }
 
-                // MDS layer
                 if r < 3 {
                     let mut next: [u64; 8] = [0; 8];
                     for i in 0..8 {
@@ -532,8 +554,25 @@ fn trace_matrix(
                     }
                     s = next;
                 } else {
-                    // Round 3: output verified by AIR constraints
+                    // Final round output = MDS row 0 · sbox (matches AIR / poseidon4_hash_state).
+                    let mut sum: u128 = 0;
+                    for j in 0..8 {
+                        sum = (sum + mds[0][j] as u128 * sbox[j] as u128) % P as u128;
+                    }
+                    poseidon_out = sum as u64;
                 }
+            }
+
+            // NullifierCheck: equality witness for (poseidon_out - claimed_nullifier).
+            if opcode == bud_isa::Opcode::NullifierCheck {
+                let claimed = step.src1_val;
+                let diff = poseidon_out.wrapping_sub(claimed);
+                let inv = if diff != 0 {
+                    bud_vm::field_inverse_goldilocks(diff)
+                } else {
+                    0
+                };
+                values[row_start + COL_EQ_DIFF_INV] = Goldilocks::new(inv);
             }
         }
 
@@ -834,6 +873,9 @@ fn aux_trace_generator(
             let is_poseidon = row[COL_IS_POSEIDON];
             let is_syscall = row[COL_IS_SYSCALL];
             let is_verify_merkle = row[COL_IS_VERIFY_MERKLE];
+            let is_privacy_commit = row[COL_IS_PRIVACY_COMMIT];
+            let is_nullifier_check = row[COL_IS_NULLIFIER_CHECK];
+            let is_sum_conservation = row[COL_IS_SUM_CONSERVATION];
 
             // ARENA2 Task 4: expansion rows keep is_verify_merkle=1 but must not
             // contribute to the register bus (operands are zeroed synthetics).
@@ -867,6 +909,9 @@ fn aux_trace_generator(
                 + is_swrite
                 + is_poseidon
                 + is_syscall
+                + is_privacy_commit
+                + is_nullifier_check
+                + is_sum_conservation
                 + is_verify_merkle * (Goldilocks::ONE - is_expand_aux);
 
             let clk = row[COL_CLK];
@@ -1703,6 +1748,100 @@ mod tests {
         prove_and_verify(program, |vm| {
             vm.registers[2] = 42;
             vm.registers[3] = 7;
+        });
+    }
+
+    /// D2 Görev D/F: PrivacyCommit Poseidon3 binding proves + verifies.
+    #[test]
+    fn d2_proves_privacy_commit() {
+        let amount = 100u64;
+        let recipient = 7u64;
+        let blinding: i32 = 99;
+        let program = vec![
+            inst(Opcode::PrivacyCommit, 1, 2, 3, blinding),
+            inst(Opcode::Halt, 0, 0, 0, 0),
+        ];
+        prove_and_verify(program, |vm| {
+            vm.registers[2] = amount;
+            vm.registers[3] = recipient;
+        });
+    }
+
+    /// D2: NullifierCheck accepts matching secret under AIR constraints.
+    #[test]
+    fn d2_proves_nullifier_check_valid() {
+        let secret = 0xA11CEu64;
+        let nullifier = bud_vm::poseidon4_hash(secret, bud_vm::DOMAIN_NULLIFIER);
+        let program = vec![
+            inst(Opcode::NullifierCheck, 1, 2, 3, 0),
+            inst(Opcode::Halt, 0, 0, 0, 0),
+        ];
+        prove_and_verify(program, |vm| {
+            vm.registers[2] = nullifier;
+            vm.registers[3] = secret;
+        });
+    }
+
+    /// D2: NullifierCheck rejects wrong secret (rd=0) and still proves.
+    #[test]
+    fn d2_proves_nullifier_check_invalid_secret() {
+        let secret = 0xA11CEu64;
+        let nullifier = bud_vm::poseidon4_hash(secret, bud_vm::DOMAIN_NULLIFIER);
+        let program = vec![
+            inst(Opcode::NullifierCheck, 1, 2, 3, 0),
+            inst(Opcode::Halt, 0, 0, 0, 0),
+        ];
+        prove_and_verify(program, |vm| {
+            vm.registers[2] = nullifier;
+            vm.registers[3] = secret ^ 1;
+        });
+    }
+
+    /// D2: SumConservation equal / unequal.
+    #[test]
+    fn d2_proves_sum_conservation() {
+        let program = vec![
+            inst(Opcode::SumConservation, 1, 2, 3, 0), // equal
+            inst(Opcode::SumConservation, 4, 2, 5, 0), // unequal
+            inst(Opcode::Halt, 0, 0, 0, 0),
+        ];
+        prove_and_verify(program, |vm| {
+            vm.registers[2] = 50;
+            vm.registers[3] = 50;
+            vm.registers[5] = 49;
+        });
+    }
+
+    /// D2 Görev F: E2E private-transfer skeleton —
+    /// commit inputs/outputs + nullifier ownership + sum conservation.
+    #[test]
+    fn d2_proves_private_transfer_e2e() {
+        let amount_in = 100u64;
+        let amount_out = 100u64;
+        let recipient = 0xB0Bu64;
+        let blinding_in: i32 = 11;
+        let blinding_out: i32 = 22;
+        let secret = 0x5EC2EFu64;
+        let nullifier = bud_vm::poseidon4_hash(secret, bud_vm::DOMAIN_NULLIFIER);
+
+        let program = vec![
+            // r1 = commit(in)
+            inst(Opcode::PrivacyCommit, 1, 2, 3, blinding_in),
+            // r4 = commit(out)
+            inst(Opcode::PrivacyCommit, 4, 5, 6, blinding_out),
+            // r7 = nullifier check
+            inst(Opcode::NullifierCheck, 7, 8, 9, 0),
+            // r10 = sum conservation (amount_in == amount_out)
+            inst(Opcode::SumConservation, 10, 2, 5, 0),
+            inst(Opcode::Halt, 0, 0, 0, 0),
+        ];
+        prove_and_verify(program, |vm| {
+            vm.registers[2] = amount_in;
+            vm.registers[3] = 0xA11Cu64; // old owner tag (private)
+            vm.registers[5] = amount_out;
+            vm.registers[6] = recipient;
+            vm.registers[8] = nullifier;
+            vm.registers[9] = secret;
         });
     }
 

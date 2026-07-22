@@ -33,8 +33,8 @@ budlum/
 | EVM Chain adapter | ✅ relayer proof + verify (cross_domain) |
 | Verifier Registry | ✅ permissionless, stake + slashing, rol-bazlı (RoleId) |
 | Relayer | ✅ permissionless (D1), stake + slashing |
-| BudZKVM (budZero) | ✅ opcode seti (0x00–0x22), Poseidon (Goldilocks), STARK AIR |
-| Gizlilik katmanı | 🔧 opcode iskeleti (PrivacyCommit/NullifierCheck/SumConservation) + note registry; AIR constraints bekliyor |
+| BudZKVM (budZero) | ✅ opcode seti (0x00–0x22), Poseidon (Goldilocks), STARK AIR; Z-B 64-depth prove yeşil |
+| Gizlilik katmanı | ✅ opcode + note registry + AIR/prove (D2 A–F) + cüzdan TEE/note/view-key opt-in; mainnet gate default off |
 | B.U.D. storage/Pollen/BNS/SocialFi | 🔧 budlumCore'da entegre; B.U.D. crate'ine trait inversion ile ayrılıyor |
 | Cüzdan (wallet-core) | ✅ BIP39, ed25519, TEE opt-in toggle |
 | Mainnet hazırlığı | G1 CI-stabilite, G2 audit, G3 HSM, G4 runbook — operasyonel (Ayaz + zaman/donanım) |
