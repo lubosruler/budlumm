@@ -254,74 +254,14 @@ impl DomainFinalityAdapter for PoWFinalityAdapter {
         commitment: &DomainCommitment,
         proof: &FinalityProof,
     ) -> Result<FinalityStatus, FinalityError> {
-        let min_depth = domain.min_confirmations.max(self.default_min_confirmations);
-        match proof {
-            FinalityProof::PoW {
-                confirmations,
-                total_work_hint,
-                declared_head_hash,
-                declared_cumulative_work,
-            } => {
-                // (1) Bind the proof to THIS commitment (Phase 0.10: previously the
-                // commitment was ignored, so any commitment could borrow any
-                // depth claim).
-                if *declared_head_hash != commitment.domain_block_hash {
-                    return Ok(FinalityStatus::Rejected(
-                        "PoW declared head hash does not match commitment block hash".into(),
-                    ));
-                }
-
-                // (2) Cumulative work must be positive (supersedes the old
-                // symbolic `total_work_hint > 0`).
-                if *declared_cumulative_work == 0 {
-                    return Ok(FinalityStatus::Rejected(
-                        "PoW declared cumulative work is zero".into(),
-                    ));
-                }
-
-                // (3) Internal consistency: the declared cumulative work must be
-                // at least `confirmations * min_work_per_confirmation`. This stops
-                // a submitter from claiming a huge confirmation depth backed by a
-                // tiny amount of work (the core weakness the audit flagged).
-                let required_work =
-                    (*confirmations as u128).saturating_mul(self.min_work_per_confirmation);
-                if *declared_cumulative_work < required_work {
-                    return Ok(FinalityStatus::Rejected(format!(
-                        "PoW declared work {} inconsistent with {} confirmations (need >= {})",
-                        declared_cumulative_work, confirmations, required_work
-                    )));
-                }
-
-                // (4) `total_work_hint` must not contradict the declared work.
-                if *total_work_hint > *declared_cumulative_work {
-                    return Ok(FinalityStatus::Rejected(
-                        "PoW total_work_hint exceeds declared cumulative work".into(),
-                    ));
-                }
-
-                // (5) Phase 0.34 / BUG #9: the committed domain block hash must
-                // itself exhibit proof-of-work (leading zero bits). Self-declared
-                // confirmations alone are not enough for Finalized status.
-                let min_bits = pow_min_difficulty_bits(domain);
-                let observed_bits = leading_zero_bits(declared_head_hash);
-                if observed_bits < min_bits {
-                    return Ok(FinalityStatus::Rejected(format!(
-                        "PoW domain block hash has only {observed_bits} leading zero bits, need >= {min_bits}"
-                    )));
-                }
-
-                // (6) Depth threshold.
-                if *confirmations >= min_depth {
-                    Ok(FinalityStatus::Finalized)
-                } else {
-                    Ok(FinalityStatus::Pending {
-                        required_depth: min_depth,
-                        observed_depth: *confirmations,
-                    })
-                }
-            }
-            _ => Err(FinalityError("Expected PoW finality proof".into())),
-        }
+        let _ = (domain, commitment, proof);
+        // D3 (2026-07-22): legacy self-declared PoW finality retired.
+        // Bridge mint was already gated to pow-header-chain-v1 (blockchain.rs).
+        // This adapter now NEVER finalizes. New PoW domains must use
+        // POW_HEADER_CHAIN_ADAPTER. Variant kept for bincode stability.
+        Ok(FinalityStatus::Rejected(
+            "legacy self-declared PoW finality retired (D3); use pow-header-chain-v1".into(),
+        ))
     }
 }
 
@@ -1081,9 +1021,8 @@ mod tests {
     }
 
     #[test]
-    fn pow_finality_requires_confirmation_depth_work_and_pow_hash() {
+    fn pow_finality_legacy_adapter_always_rejects_after_d3() {
         let mut domain = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 80);
-        // Default difficulty floor = 8 bits (config_hash first u32 == 0).
         domain.config_hash = [0u8; 32];
         let pow_hash = pow_looking_hash();
         let mut commitment = commitment(ConsensusKind::PoW);
@@ -1091,92 +1030,34 @@ mod tests {
         let adapter = PoWFinalityAdapter::default();
         let min_work = adapter.min_work_per_confirmation;
 
-        // Depth short + sufficient work + valid PoW hash → Pending.
-        assert_eq!(
-            adapter
-                .verify_finality(
-                    &domain,
-                    &commitment,
-                    &FinalityProof::PoW {
-                        confirmations: 79,
-                        total_work_hint: 79 * min_work,
+        // D3 (2026-07-22): legacy self-declared PoW adapter NEVER finalizes.
+        // Previously-valid proofs (sufficient depth + work + PoW hash) now Rejected.
+        for confirmations in [79u64, 80] {
+            assert!(
+                matches!(
+                    adapter.verify_finality(&domain, &commitment, &FinalityProof::PoW {
+                        confirmations,
+                        total_work_hint: confirmations as u128 * min_work,
                         declared_head_hash: pow_hash,
-                        declared_cumulative_work: 79 * min_work,
-                    },
-                )
-                .unwrap(),
-            FinalityStatus::Pending {
-                required_depth: 80,
-                observed_depth: 79,
-            }
-        );
+                        declared_cumulative_work: confirmations as u128 * min_work,
+                    }).unwrap(),
+                    FinalityStatus::Rejected(_)
+                ),
+                "D3: legacy adapter must reject even valid-looking self-declared proofs"
+            );
+        }
 
-        // Depth met + work met + PoW hash → Finalized.
-        assert_eq!(
-            adapter
-                .verify_finality(
-                    &domain,
-                    &commitment,
-                    &FinalityProof::PoW {
-                        confirmations: 80,
-                        total_work_hint: 80 * min_work,
-                        declared_head_hash: pow_hash,
-                        declared_cumulative_work: 80 * min_work,
-                    },
-                )
-                .unwrap(),
-            FinalityStatus::Finalized
-        );
-
-        // Self-declared depth with non-PoW hash → Rejected (Phase 0.34 / #9).
-        let junk = [0xABu8; 32];
-        let mut junk_commit = commitment.clone();
-        junk_commit.domain_block_hash = junk;
+        // Non-PoW proof also returns Ok(Rejected) (no longer Err).
         assert!(matches!(
-            adapter
-                .verify_finality(
-                    &domain,
-                    &junk_commit,
-                    &FinalityProof::PoW {
-                        confirmations: 80,
-                        total_work_hint: 80 * min_work,
-                        declared_head_hash: junk,
-                        declared_cumulative_work: 80 * min_work,
-                    },
-                )
-                .unwrap(),
+            adapter.verify_finality(&domain, &commitment, &FinalityProof::PoA {
+                authorities: vec![],
+                signatures: vec![],
+            }).unwrap(),
             FinalityStatus::Rejected(_)
         ));
-
-        // Work inconsistent with depth → Rejected.
-        assert!(matches!(
-            adapter
-                .verify_finality(
-                    &domain,
-                    &commitment,
-                    &FinalityProof::PoW {
-                        confirmations: 80,
-                        total_work_hint: 1,
-                        declared_head_hash: pow_hash,
-                        declared_cumulative_work: 1,
-                    },
-                )
-                .unwrap(),
-            FinalityStatus::Rejected(_)
-        ));
-
-        assert!(adapter
-            .verify_finality(
-                &domain,
-                &commitment,
-                &FinalityProof::PoA {
-                    authorities: vec![],
-                    signatures: vec![],
-                },
-            )
-            .is_err());
     }
 
+    
     #[test]
     fn tur12_leading_zero_bits_counts_prefix() {
         assert_eq!(leading_zero_bits(&[0u8; 32]), 256);
