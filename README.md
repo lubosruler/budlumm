@@ -10,6 +10,9 @@
 > ve hesaplama egemenliği katılımcılarda kalır — asla merkezî bir operatörde değil.
 
 [![CI](https://github.com/budlum-xyz/budlum/actions/workflows/ci.yml/badge.svg)](https://github.com/budlum-xyz/budlum/actions)
+[![Rust](https://img.shields.io/badge/rust-1.94%2B-orange)](https://www.rust-lang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Security](https://img.shields.io/badge/security-report%20privately-blue)](SECURITY.md)
 
 ---
 
