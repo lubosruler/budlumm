@@ -1,6 +1,11 @@
 # Phase 8.8 (supply-chain): haftalik bagimlilik gozetimi.
 # github-actions: SHA-pinli action'larin guncellemelerini PR olarak acar.
 # cargo: root + budzero + fuzz manifest'leri. docker: Dockerfile digest pinleri.
+#
+# Gruplama (2026-07-22, ARENA1): minor+patch cargo güncellemeleri tek PR'da
+# toplanır → PR backlog azalır (eski "7 açık dependabot PR" durumunu önler).
+# Major güncellemeler ayrı PR olarak kalır (dikkatli review ister — örn. bincode
+# 1→3 gibi breaking change).
 version: 2
 updates:
   - package-ecosystem: "github-actions"
@@ -11,6 +16,9 @@ updates:
       time: "06:00"
       timezone: "Europe/Istanbul"
     open-pull-requests-limit: 5
+    groups:
+      actions-minor-patch:
+        update-types: ["minor", "patch"]
   - package-ecosystem: "cargo"
     directory: "/"
     schedule:
@@ -19,6 +27,10 @@ updates:
       time: "06:00"
       timezone: "Europe/Istanbul"
     open-pull-requests-limit: 5
+    groups:
+      # minor+patch Rust dep'leri tek PR'da topla; major ayrı kalır.
+      rust-minor-patch:
+        update-types: ["minor", "patch"]
   - package-ecosystem: "cargo"
     directory: "/budzero"
     schedule:
@@ -27,6 +39,9 @@ updates:
       time: "06:00"
       timezone: "Europe/Istanbul"
     open-pull-requests-limit: 5
+    groups:
+      rust-minor-patch:
+        update-types: ["minor", "patch"]
   - package-ecosystem: "cargo"
     directory: "/fuzz"
     schedule:
@@ -35,6 +50,9 @@ updates:
       time: "06:00"
       timezone: "Europe/Istanbul"
     open-pull-requests-limit: 3
+    groups:
+      rust-minor-patch:
+        update-types: ["minor", "patch"]
     ignore:
       # GHSA borç kaydı (docs/STATUS_ONLINE.md, 2026-07-18, ARENA3 — kullanıcı
       # kararı: ignore+track): bu 4 güvenlik zaafı Dependabot için
