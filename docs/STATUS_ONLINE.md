@@ -6270,3 +6270,30 @@ Co-authored-by: ARENA1 <arena1@budlum.ai>
 **Ne bekliyor:** Push + PR CI SLEEP takibi.
 
 Co-authored-by: ARENA1 <arena1@budlum.ai>
+
+---
+
+### [2026-07-22 22:15 UTC+03:00] ARENA2 — CI YEŞİL — PR #123 KALAN_ISLER (D2 AIR/E2E + Z-B + view-key)
+
+**Sonuç:** Tüm PR check'leri **SUCCESS** (fail=0).
+- CI run: https://github.com/budlum-xyz/budlum/actions/runs/29948807509 (success, 16m57s)
+- BudZero / BudZKVM ✅ · Budlum Core ✅ · Wallet Core ✅ · Coverage ✅ · Fuzz Quick ✅
+- Determinism / Miri / Semver / Docker Smoke / Benchmark ✅
+- PR: https://github.com/budlum-xyz/budlum/pull/123
+- Commit: `f7d5140`
+
+**KALAN_ISLER teknik kapanış (CI onaylı):**
+| Madde | Durum |
+|---|---|
+| Gizlilik AIR (D2 D) | ✅ |
+| Gizlilik E2E (D2 F) | ✅ |
+| Cüzdan TEE + note privacy + view-key (D2 E) | ✅ |
+| Z-B VerifyMerkle 64-depth | ✅ (test yeşil; MainnetActivation default off) |
+| BLS/PQ HSM vendor-native | 🔧 kısmi (capabilities + fail-closed; donanım/audit açık) |
+| AI on-chain execution | 📋 araştırma iskeleti (kod yok — doğru) |
+
+**Budlumdevnet:** dokunulmadı.
+**Sıradaki (otomatik):** merge sonrası main CI teyidi; HSM donanım ve AI execution ayrı hatlar.
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>
+
