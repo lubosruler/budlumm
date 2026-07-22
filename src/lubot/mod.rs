@@ -14,6 +14,7 @@
 use crate::ai::AiRegistry;
 use crate::core::address::Address;
 use crate::pollen::data_rights::{AccessGrant, AccessGrantStatus};
+use crate::pollen::AssetId;
 
 pub mod executor;
 pub mod inference;
@@ -261,4 +262,37 @@ mod tests {
             "tx must be AiInferenceRequest"
         );
     }
+}
+
+// ============================================================
+// Faz A: Pollen grant runtime construction (kapalı-devre tam)
+// ============================================================
+
+/// Bir Lubot çıkarımı için kapalı-devre Pollen AccessGrant inşa et.
+///
+/// Veri sahibi, Lubot operator'üne (grantee) sınırlı okuma yetkisi verir.
+/// `owner_signature` SENTINEL'dır (gerçek imza imzalama adımı ayrı).
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn build_lubot_inference_grant(
+    asset_id: crate::pollen::AssetId,
+    owner: Address,
+    grantee: Address,
+    price_paid: u64,
+    issued_at_block: u64,
+    expires_at_block: u64,
+    max_reads: u32,
+    purpose_hash: [u8; 32],
+) -> AccessGrant {
+    AccessGrant::new_unsigned(
+        asset_id,
+        owner,
+        grantee,
+        grantee, // payer = grantee (operator öder)
+        price_paid,
+        issued_at_block,
+        expires_at_block,
+        max_reads,
+        purpose_hash,
+    )
 }
