@@ -178,3 +178,229 @@ flowchart LR
   Smoke --> CI[CI verdict]
   Fuzz[Fuzz quick + nightly campaigns] -. ongoing evidence .-> CI
 ```
+
+## 13. Privacy layer — note lifecycle (D2)
+
+```mermaid
+flowchart LR
+  Seed[Wallet seed] --> Derive[derive_spend_secret + derive_blinding]
+  Derive --> Note[PrivateNoteInput / PrivateNoteOutput]
+  Note --> Commit[PrivacyCommit opcode → Poseidon3]
+  Commit --> Reg[L1NoteRegistry live_commitments]
+  Note --> Null[NullifierCheck opcode → Poseidon2]
+  Null --> Spent[spent_nullifiers set]
+  Reg --> Transfer[PrivateTransferSubmit tx]
+  Transfer --> Verify[SumConservation opcode]
+  Transfer --> Apply[apply_transfer: remove commitment + insert nullifier]
+  ViewKey[View key disclosure] -. selective .-> Audit[Auditor / authority]
+  TEE[TEE opt-in] -. encrypt .-> Note
+```
+
+## 14. Wallet-core architecture
+
+```mermaid
+flowchart TD
+  Entropy[CSPRNG entropy] --> BIP39[BIP39 mnemonic 12/24 words]
+  BIP39 --> Seed[PBKDF2 → 32-byte seed]
+  Seed --> SLIP10[SLIP-10 Ed25519 HD derivation]
+  SLIP10 --> KeyPair[SigningKey + VerifyingKey]
+  KeyPair --> Address[SHA3-256 → BudlumAddress]
+  KeyPair --> Sign[V4 canonical signing]
+  Seed --> Privacy[derive_spend_secret / derive_blinding]
+  Seed --> ViewKey[derive_view_key]
+  TEE[TeeRuntime opt-in] -. seal .-> Sign
+  Zeroize[Zeroize on drop] -. cleanup .-> Seed
+  Zeroize -. cleanup .-> BIP39
+  Recovery[Social recovery guardians] -. restore .-> Seed
+```
+
+## 15. Governance lifecycle
+
+```mermaid
+flowchart LR
+  Propose[Proposal submitted] --> Active[Active voting period]
+  Active --> Vote[Stake-weighted votes for/against]
+  Active --> Timelock[activation_epoch timelock]
+  Vote --> Finalize[Epoch advance → finalize]
+  Finalize -->|quorum met + majority| Passed[Passed]
+  Finalize -->|quorum not met| Rejected[Rejected]
+  Passed --> Execute[Execute governance action]
+  Timelock --> Execute
+  Execute --> Params[Update chain parameters]
+  Execute --> BlockReward[Change block reward]
+  Execute --> Constitution[Update constitution guardrails]
+  Cancel[Proposal cancellation] -. owner only .-> Active
+```
+
+## 16. Tokenomics flow
+
+```mermaid
+flowchart TD
+  Genesis[100M BUD genesis] --> Community[Community 10M]
+  Genesis --> Liquidity[Liquidity 10M]
+  Genesis --> Ecosystem[Ecosystem 20M]
+  Genesis --> Team[Team 20M vesting cliff+linear]
+  Genesis --> BurnReserve[Burn reserve 40M]
+  BurnReserve --> TimedBurn[process_timed_burn epoch-triggered]
+  TxnFee[Tx fee] --> FeeBurn[tx_fee_burn_ratio metabolic burn]
+  TxnFee --> Proposer[Proposer tip]
+  TxnFee --> Treasury[Treasury share]
+  BlockReward[block_reward mint] --> Proposer2[Block producer]
+  TimedBurn --> Sink[Burn sink — supply decreases]
+  FeeBurn --> Sink
+```
+
+## 17. P2P network topology
+
+```mermaid
+flowchart TB
+  Node[Budlum node] --> Gossip[Gossipsub topics]
+  Gossip --> Blocks[Block announcements]
+  Gossip --> Txs[Transaction relay]
+  Gossip --> Finality[Finality certificates]
+  Node --> Peers[PeerManager]
+  Peers --> MaxPeers[MAX_PEERS = 50]
+  Peers --> Subnet[max_peers_per_subnet /24 = 4]
+  Peers --> Score[Reputation scoring]
+  Score --> Ban[Ban threshold ≤ -100]
+  Node --> Snap[Snapshot sync]
+  Snap --> Chunks[MAX_SNAPSHOT_CHUNKS = 4096]
+  Snap --> Concurrent[MAX_CONCURRENT_SNAPSHOTS = 10]
+  Node --> Identity[Ed25519 identity key]
+  Identity --> Auth[Peer authentication]
+```
+
+## 18. Permissionless registry architecture
+
+```mermaid
+flowchart LR
+  Stake[Stake tx] --> Reg[PermissionlessRegistry]
+  Reg --> Roles[RoleId: VALIDATOR · VERIFIER · RELAYER · PROVER · STORAGE_OPERATOR · AI_VERIFIER · ATTESTER · LUBOT_OPERATOR · CONTENT_VALIDATOR]
+  Reg --> Slash[SlashingReport → slash]
+  Slash --> DoubleSign[DoubleSign → 100%]
+  Slash --> Liveness[LivenessFault → configurable]
+  Slash --> Malicious[MaliciousBehaviour → 100%]
+  Reg --> Unbond[Unbond tx → unbonding_queue]
+  Unbond --> Epoch[Epoch advance → release]
+  CrossRole[Cross-role slashing] -. slash one .-> AllRoles[All roles jailed]
+```
+
+## 19. PoA domain lifecycle
+
+```mermaid
+flowchart LR
+  KYC[KYC / identity verification] --> Membership[PoaMembershipRegistry]
+  Membership --> Admin[Admin approval]
+  Admin --> Active[Active PoA member]
+  Active --> Sign[Ed25519 finality signatures]
+  Active --> Compliance[PoaComplianceRegistry]
+  Compliance --> Screen[Address screening]
+  Compliance --> Freeze[Asset freeze]
+  Compliance --> TravelRule[Travel rule metadata hash]
+  Compliance --> Audit[Append-only audit log]
+  Isolation[PoA isolated from permissionless domains] -. no shared registry .-> Permissionless
+```
+
+## 20. Validator lifecycle
+
+```mermaid
+flowchart TD
+  Genesis[Genesis config] --> Val[Validator created with keys]
+  Stake[Stake tx] --> Active[Active validator]
+  Active --> Propose[Block proposal via VRF]
+  Active --> Finality[BLS finality signing]
+  Active --> Slash[Slashing evidence]
+  Slash --> Jailed[Jailed until epoch N]
+  Jailed --> Release[Jail release]
+  Release --> Active
+  Unstake[Unstake tx] --> Unbonding[Unbonding queue]
+  Unbonding --> Epoch[Epoch advance → release stake]
+  Liveness[Missed epochs > threshold] --> LivenessSlash[Liveness report → slash]
+```
+
+## 21. Pollen data rights lifecycle
+
+```mermaid
+flowchart LR
+  Asset[DataAsset registered] --> Grant[AccessGrant issued]
+  Grant --> Grantee[Grantee address + scope + expiry]
+  Asset --> Sale[SaleAuthorization]
+  Sale --> Buyer[Buyer purchases access]
+  Buyer --> Purchase[PollenPurchaseReceipt]
+  Grant --> AI[AI inference request]
+  AI --> Gate[Pollen data gate: valid grant required]
+  Gate -->|grant valid| Allow[Allow data read]
+  Gate -->|no grant| Deny[Deny — strict default-deny]
+  Encrypt[EncryptionPolicy DAO-managed] -. parameters .-> Asset
+  Revoke[Revoke grant/asset] -. owner only .-> Grant
+```
+
+## 22. Relayer policy layer
+
+```mermaid
+flowchart LR
+  User[User intent] --> Intent[UserIntent signed]
+  Intent --> Pool[Intent pool]
+  Pool --> Solver[Solver bids]
+  Solver --> Best[Best bid selection]
+  Best --> Settle[IntentSettlement]
+  Settle --> Execute[Execute settlement]
+  Policy[PolicyEnvelope] --> FeeCap[Fee cap enforcement]
+  Policy --> Deadline[Deadline validation]
+  Policy --> Domain[Domain allowlist]
+  Policy --> Replay[Replay nonce check]
+  Slashing[Relayer slashing] --> Griefing[Griefing → 100%]
+  Slashing --> FrontRunning[Front-running → 100%]
+  Slashing --> WrongRelay[Wrong-relay → 100%]
+```
+
+## 23. Fee market (EIP-1559)
+
+```mermaid
+flowchart LR
+  Block[Block N-1 base_fee] --> Calc[next_base_fee calculation]
+  Calc --> Adjustment[±12.5% adjustment based on gas usage]
+  Adjustment --> BaseFee[Block N base_fee]
+  Tx[Transaction] --> Bid[FeeBid: max_fee + max_priority_fee]
+  Bid --> Effective[effective_fee = min(max_fee, base_fee + priority)]
+  Effective --> Check[effective_fee ≥ base_fee?]
+  Check -->|yes| Accept[Accepted]
+  Check -->|no| Reject[Rejected — underpriced]
+  Accept --> Burn[base_fee burned]
+  Accept --> Tip[priority_fee → proposer]
+```
+
+## 24. AI execution proof pipeline
+
+```mermaid
+flowchart TD
+  Model[FixedPointMlpSpec] --> Host[Host eval_fixed_point_mlp i32 MAC]
+  Host --> Output[Output limbs]
+  Model --> Guest[build_matmul_guest_program BudZKVM instructions]
+  Guest --> ProgramHash[program_hash_from_words]
+  Model --> Weights[weights_digest SHA3-256]
+  Weights --> Bytecode[Guest bytecode: Load + Mul + Add + ReLU + Poseidon + Halt]
+  Bytecode --> Prove[prove_bytecode → STARK proof]
+  Prove --> Envelope[ProofEnvelope postcard]
+  Envelope --> Attach[AiAttachExecutionProof tx]
+  Attach --> Verify[Structural verify + program_hash bind]
+  Verify --> STARK[STARK verify via DefaultAdapter]
+  STARK --> Finalize[try_finalize_with_proofs]
+```
+
+## 25. DeEd content manifest architecture
+
+```mermaid
+flowchart LR
+  Content[Raw content bytes] --> Hash[ContentId = SHA3-256 domain-tagged]
+  Content --> Shards[Off-chain sharding]
+  Shards --> ShardRef[ShardRef: shard_id + size]
+  Hash --> Manifest[ContentManifest: shards + metadata + owner]
+  Manifest --> ManifestId[ManifestId = deterministic hash]
+  ManifestId --> Chain[On-chain registration]
+  Chain --> Deal[Storage deal per shard]
+  Deal --> Operator[Storage operator bonds]
+  Deal --> Challenge[Retrieval challenge]
+  Challenge --> Proof[VerifyMerkle 64-depth proof]
+  Roles[Permissionless roles: STORAGE_OPERATOR · ATTESTER] -. no whitelist .-> Deal
+```
