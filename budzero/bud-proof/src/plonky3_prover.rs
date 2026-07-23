@@ -300,7 +300,8 @@ fn trace_matrix(
         // ARENA2 Task 4: expansion rows reuse Opcode::VerifyMerkle but must
         // not re-charge gas (matches BudAir gas_cost = is_verify_merkle *
         // (1 - is_expand) * 10). VM only charges once for the original step.
-        if !step.merkle_is_expand {
+        // ARENA2 (2026-07-23): same for VerifyInference expansion rows.
+        if !step.merkle_is_expand && !step.inference_is_expand {
             running_gas = running_gas.saturating_add(Vm::gas_cost(opcode));
         }
 
@@ -392,6 +393,7 @@ fn trace_matrix(
             0x1C => values[row_start + COL_IS_SWRITE] = Goldilocks::new(1),
             0x1D => values[row_start + COL_IS_SYSCALL] = Goldilocks::new(1),
             0x1E => values[row_start + COL_IS_VERIFY_MERKLE] = Goldilocks::new(1),
+            0x1F => values[row_start + COL_IS_VERIFY_INFERENCE] = Goldilocks::new(1),
             0x20 => values[row_start + COL_IS_PRIVACY_COMMIT] = Goldilocks::new(1),
             0x21 => values[row_start + COL_IS_NULLIFIER_CHECK] = Goldilocks::new(1),
             0x22 => values[row_start + COL_IS_SUM_CONSERVATION] = Goldilocks::new(1),
@@ -718,6 +720,35 @@ fn trace_matrix(
             // as expansion will be caught by the AIR.
             values[row_start + COL_VM_MERKLE_IS_EXPAND] = Goldilocks::new(0);
         }
+
+        // ARENA2 (2026-07-23): VerifyInference expansion column population.
+        // Map Step's inference_* fields to AIR columns.
+        if step.inference_is_expand {
+            // Expansion row: carry commitment chain witnesses.
+            values[row_start + COL_INFERENCE_IS_EXPAND] = Goldilocks::new(1);
+            values[row_start + COL_INFERENCE_MODEL_COMMIT] =
+                Goldilocks::new(step.inference_model_commitment.unwrap_or(0));
+            values[row_start + COL_INFERENCE_INPUT_COMMIT] =
+                Goldilocks::new(step.inference_input_commitment.unwrap_or(0));
+            values[row_start + COL_INFERENCE_OUTPUT_COMMIT] =
+                Goldilocks::new(step.inference_output_commitment.unwrap_or(0));
+        } else if step.inference_model_commitment.is_some() {
+            // Original VerifyInference step (not expansion): carry model
+            // commitment but is_expand=0.
+            values[row_start + COL_INFERENCE_IS_EXPAND] = Goldilocks::new(0);
+            values[row_start + COL_INFERENCE_MODEL_COMMIT] =
+                Goldilocks::new(step.inference_model_commitment.unwrap_or(0));
+            values[row_start + COL_INFERENCE_INPUT_COMMIT] =
+                Goldilocks::new(step.inference_input_commitment.unwrap_or(0));
+            values[row_start + COL_INFERENCE_OUTPUT_COMMIT] =
+                Goldilocks::new(step.inference_output_commitment.unwrap_or(0));
+        } else {
+            // Non-inference row: zero out inference columns.
+            values[row_start + COL_INFERENCE_IS_EXPAND] = Goldilocks::new(0);
+            values[row_start + COL_INFERENCE_MODEL_COMMIT] = Goldilocks::new(0);
+            values[row_start + COL_INFERENCE_INPUT_COMMIT] = Goldilocks::new(0);
+            values[row_start + COL_INFERENCE_OUTPUT_COMMIT] = Goldilocks::new(0);
+        }
     }
 
     for i in n_cpu..num_rows {
@@ -876,6 +907,7 @@ fn aux_trace_generator(
             let is_privacy_commit = row[COL_IS_PRIVACY_COMMIT];
             let is_nullifier_check = row[COL_IS_NULLIFIER_CHECK];
             let is_sum_conservation = row[COL_IS_SUM_CONSERVATION];
+            let is_verify_inference = row[COL_IS_VERIFY_INFERENCE];
 
             // ARENA2 Task 4: expansion rows keep is_verify_merkle=1 but must not
             // contribute to the register bus (operands are zeroed synthetics).
@@ -912,7 +944,8 @@ fn aux_trace_generator(
                 + is_privacy_commit
                 + is_nullifier_check
                 + is_sum_conservation
-                + is_verify_merkle * (Goldilocks::ONE - is_expand_aux);
+                + is_verify_merkle * (Goldilocks::ONE - is_expand_aux)
+                + is_verify_inference * (Goldilocks::ONE - row[COL_INFERENCE_IS_EXPAND]);
 
             let clk = row[COL_CLK];
             let pc = row[COL_PC];
@@ -3115,5 +3148,124 @@ mod tests {
         // CORRECTLY COMPUTES '0' when the root doesn't match.
         let envelope = Plonky3Adapter::prove(&vm.trace, &pi, &program).unwrap();
         assert!(Plonky3Adapter::verify(&envelope, &pi, &program).is_ok());
+    }
+
+    /// ARENA2 (2026-07-23): VerifyInference AIR binding soundness test.
+    /// Build a trace containing a VerifyInference row and verify that
+    /// the AIR rejects a tampered trace where the `is_verify_inference`
+    /// selector is zeroed out while COL_OPCODE remains 0x1F.
+    #[test]
+    fn rejects_verify_inference_row_with_zero_selector() {
+        // Program: load some values, run VerifyInference (always returns 0
+        // on mainnet V110), then Halt.
+        let program = vec![
+            inst(Opcode::Load, 2, 0, 0, 42),
+            inst(Opcode::Load, 3, 0, 0, 99),
+            inst(Opcode::VerifyInference, 1, 2, 3, 0),
+            inst(Opcode::Halt, 0, 0, 0, 0),
+        ];
+        let mut vm = Vm::new(1024);
+        let receipt = vm.run_receipt(&program);
+        assert!(receipt.success);
+
+        // VerifyInference should always return 0 (V110 disabled)
+        // Find the VerifyInference step and check rd_val = 0
+        let vi_step = vm
+            .trace
+            .iter()
+            .find(|s| s.instruction.opcode == Opcode::VerifyInference && !s.inference_is_expand);
+        assert!(
+            vi_step.is_some(),
+            "trace should contain a VerifyInference step"
+        );
+        assert_eq!(
+            vi_step.unwrap().dst_val,
+            0,
+            "V110: VerifyInference must return 0"
+        );
+
+        let program_bytes: Vec<u8> = program
+            .iter()
+            .flat_map(|&inst| inst.to_le_bytes().to_vec())
+            .collect();
+        let mut hasher = Keccak::v256();
+        hasher.update(&program_bytes);
+        let mut program_hash = [0u8; 32];
+        hasher.finalize(&mut program_hash);
+
+        let pi = ExecutionPublicInputs {
+            chain_id: 1,
+            program_hash,
+            initial_state_root: [0u8; 32],
+            final_state_root: [0u8; 32],
+            sender: 0,
+            nonce: 0,
+            block_height: 0,
+            gas_limit: vm.gas_limit,
+            gas_used: vm.gas_used,
+            exit_code: 0,
+            trace_len: vm.trace.len() as u64,
+            event_digest: [0u8; 32],
+        };
+
+        // Build the matrix, then zero out the VerifyInference row's
+        // `is_verify_inference` column.
+        let (mut matrix, n_cpu) = trace_matrix(&vm.trace, &program, &pi);
+        let mut vi_row = None;
+        for i in 0..n_cpu {
+            let row_start = i * TRACE_WIDTH;
+            let op_val = matrix.values[row_start + COL_OPCODE].as_canonical_u64();
+            if op_val == 0x1F
+                && matrix.values[row_start + COL_INFERENCE_IS_EXPAND] == Goldilocks::ZERO
+            {
+                vi_row = Some(i);
+                break;
+            }
+        }
+        let vi_row = vi_row.expect("trace should contain a VerifyInference original row");
+
+        // Zero out the is_verify_inference column on that row.
+        let row_start = vi_row * TRACE_WIDTH;
+        matrix.values[row_start + COL_IS_VERIFY_INFERENCE] = Goldilocks::new(0);
+        let matrix = RowMajorMatrix::new(matrix.values, TRACE_WIDTH);
+
+        let air = BudAir {
+            num_steps: vm.trace.len(),
+            program: program.clone(),
+        };
+        let config = build_config();
+        let public_values = to_public_values(&pi);
+        let degree_bits = p3_util::log2_strict_usize(matrix.height());
+        let preprocessed = setup_preprocessed(&config, &air, degree_bits);
+        let preprocessed_ref = preprocessed.as_ref().map(|(p, _)| p);
+
+        let p3_proof = prove_with_preprocessed(
+            &config,
+            &air,
+            matrix.clone(),
+            Some(crate::plonky3_prover::aux_trace_generator(
+                matrix.clone(),
+                n_cpu,
+                program.clone(),
+            )),
+            &public_values,
+            preprocessed_ref,
+        );
+        let proof_bytes = postcard::to_allocvec(&p3_proof).unwrap();
+        let envelope = ProofEnvelope {
+            proof_format_version: 1,
+            backend: "Plonky3-Keccak-Goldilocks".to_string(),
+            p3_version: "0.5.2".to_string(),
+            fri_params_id: "test_fri_params".to_string(),
+            public_inputs_hash: pi.hash(),
+            proof_bytes,
+            degree_bits: degree_bits as u32,
+        };
+
+        let res = Plonky3Adapter::verify(&envelope, &pi, &program);
+        assert!(
+            res.is_err(),
+            "Expected verification to FAIL when is_verify_inference is zeroed on a 0x1F row, but it succeeded!"
+        );
     }
 }

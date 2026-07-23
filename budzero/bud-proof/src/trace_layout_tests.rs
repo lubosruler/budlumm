@@ -105,9 +105,10 @@ fn all_ranges() -> Vec<ColRange> {
             start: 370,
             end: 373,
         },
-        // Remaining intentional reserved gap (see BUDZKVM_TRACE_LAYOUT.md)
+        // ARENA2 (2026-07-23): VerifyInference AIR binding columns
+        // (consumed remaining reserved gap 373..378)
         ColRange {
-            name: "reserved_gap",
+            name: "verify_inference",
             start: 373,
             end: 378,
         },
@@ -211,7 +212,8 @@ fn trace_layout_no_overlap_and_within_bounds() {
 
 #[test]
 fn trace_layout_reserved_gap_is_documented() {
-    // D2 consumed 370..373 for privacy selectors; remaining gap is 373..378.
+    // D2 consumed 370..373 for privacy selectors; ARENA2 consumed 373..378
+    // for VerifyInference AIR binding. No reserved gap remains.
     let ranges = all_ranges();
     let privacy = ranges
         .iter()
@@ -219,10 +221,10 @@ fn trace_layout_reserved_gap_is_documented() {
         .expect("privacy_selectors range must be documented");
     assert_eq!(privacy.start, 370);
     assert_eq!(privacy.end, 373);
-    let gap = ranges
+    let vi = ranges
         .iter()
-        .find(|r| r.name == "reserved_gap")
-        .expect("reserved_gap range must be documented");
-    assert_eq!(gap.start, 373, "reserved_gap must start at 373 after D2");
-    assert_eq!(gap.end, 378, "reserved_gap must end at 378");
+        .find(|r| r.name == "verify_inference")
+        .expect("verify_inference range must be documented");
+    assert_eq!(vi.start, 373, "verify_inference must start at 373 after D2");
+    assert_eq!(vi.end, 378, "verify_inference must end at 378");
 }

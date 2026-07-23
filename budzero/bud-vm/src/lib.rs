@@ -795,6 +795,9 @@ impl Vm {
         // If the just-pushed step is a VerifyInference, push 8 follow-up
         // expansion rows. Each row carries the commitment values for the
         // AIR to verify the commitment chain (model → input → output).
+        // ARENA2 (2026-07-23): Fix next_pc pattern to match VerifyMerkle:
+        // original step stays on cur_pc, expansion rows 0-6 stay on cur_pc,
+        // expansion row 7 advances to cur_pc+1.
         if matches!(inst.opcode, Opcode::VerifyInference) {
             let proof_addr = src1_val as usize;
             let proof_end = proof_addr.wrapping_add(8 * 4);
@@ -808,16 +811,20 @@ impl Vm {
                 let input_c = read_u64(proof_addr + 8);
                 let output_c = read_u64(proof_addr + 16);
 
-                // Patch original step with model commitment
+                // Patch original step with commitments and next_pc = cur_pc
                 if let Some(last) = self.trace.last_mut() {
                     last.inference_model_commitment = Some(model_c);
+                    last.inference_input_commitment = Some(input_c);
+                    last.inference_output_commitment = Some(output_c);
+                    last.next_pc = cur_pc; // stay on same PC for expansion
                 }
 
                 // Push 8 expansion rows for AIR commitment verification
                 for round in 0..8u8 {
+                    let expand_next_pc = if round == 7 { cur_pc + 1 } else { cur_pc };
                     self.trace.push(Step {
                         pc: cur_pc,
-                        next_pc: cur_pc + 1,
+                        next_pc: expand_next_pc,
                         instruction: Instruction {
                             opcode: Opcode::VerifyInference,
                             rd: 0,

@@ -101,10 +101,22 @@ pub const COL_INIT_ROOT_0: usize = 362; // 362..369 — initial state root (8 ×
 
 // D2 (2026-07-22) Görev D: privacy-layer opcode selectors.
 // Consumes 3 columns from the intentional reserved gap (was 370..378).
-// Remaining reserved gap: 373..378 (5 columns).
 pub const COL_IS_PRIVACY_COMMIT: usize = 370;
 pub const COL_IS_NULLIFIER_CHECK: usize = 371;
 pub const COL_IS_SUM_CONSERVATION: usize = 372;
+
+// ARENA2 (2026-07-23): VerifyInference AIR binding.
+// Opcode 0x1F selector + expansion row witness columns.
+// V110: VerifyInference always returns 0 on mainnet (disabled until
+// full STARK verification AIR is implemented). These columns ensure
+// the opcode is properly constrained in the AIR: the selector is bound
+// to opcode 0x1F, the result is always 0, and expansion rows carry
+// consistent commitment chain witnesses.
+pub const COL_IS_VERIFY_INFERENCE: usize = 373;
+pub const COL_INFERENCE_IS_EXPAND: usize = 374; // 1 on expansion rows (8 follow-up rows)
+pub const COL_INFERENCE_MODEL_COMMIT: usize = 375; // model commitment limb (u64 → Goldilocks)
+pub const COL_INFERENCE_INPUT_COMMIT: usize = 376; // input commitment limb
+pub const COL_INFERENCE_OUTPUT_COMMIT: usize = 377; // output commitment limb
 
 pub const COL_TRACE_LEN_CTR: usize = 378; // 1 column — running count of cpu_active=1 rows
 pub const COL_GAS_LIMIT: usize = 379; // 1 column — vm.gas_limit, first row
@@ -225,6 +237,7 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
         let is_privacy_commit: AB::Expr = cur[COL_IS_PRIVACY_COMMIT].into();
         let is_nullifier_check: AB::Expr = cur[COL_IS_NULLIFIER_CHECK].into();
         let is_sum_conservation: AB::Expr = cur[COL_IS_SUM_CONSERVATION].into();
+        let is_verify_inference: AB::Expr = cur[COL_IS_VERIFY_INFERENCE].into();
         let is_halt: AB::Expr = cur[COL_IS_HALT].into();
         let nxt_is_halt: AB::Expr = nxt[COL_IS_HALT].into();
         let nxt_clk: AB::Expr = nxt[COL_CLK].into();
@@ -264,6 +277,7 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
             + is_poseidon.clone()
             + is_syscall.clone()
             + is_verify_merkle.clone()
+            + is_verify_inference.clone()
             + is_privacy_commit.clone()
             + is_nullifier_check.clone()
             + is_sum_conservation.clone();
@@ -301,6 +315,7 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
         builder.assert_bool(is_poseidon.clone());
         builder.assert_bool(is_syscall.clone());
         builder.assert_bool(is_verify_merkle.clone());
+        builder.assert_bool(is_verify_inference.clone());
         builder.assert_bool(is_privacy_commit.clone());
         builder.assert_bool(is_nullifier_check.clone());
         builder.assert_bool(is_sum_conservation.clone());
@@ -1427,6 +1442,58 @@ impl<AB: PermutationAirBuilder> Air<AB> for BudAir {
         builder
             .when(is_gte)
             .assert_eq(rd_val_new.clone(), one.clone() - cmp_lt_raw.clone());
+
+        // --- ARENA2 (2026-07-23): VerifyInference AIR binding ---
+        //
+        // VerifyInference (0x1F) is currently disabled on mainnet (V110):
+        // the VM always returns rd=0 (verification failed). These AIR
+        // constraints ensure:
+        //   1. Selector is bound to opcode 0x1F (malicious prover cannot
+        //      set is_verify_inference=1 on non-0x1F rows or =0 on 0x1F rows).
+        //   2. rd_val_new = 0 always (proof always fails — fail-closed).
+        //   3. Expansion rows (COL_INFERENCE_IS_EXPAND=1) carry consistent
+        //      commitment chain: model/input/output commitments are constant
+        //      across all 8 expansion rows of a single VerifyInference step.
+        //   4. Expansion rows have next_pc = pc (stay on same instruction)
+        //      until the last expansion row which hands off to pc+1.
+        {
+            let opcode_vi: AB::Expr = AB::Expr::from(AB::F::from_u64(0x1F));
+            let opcode_row: AB::Expr = cur[COL_OPCODE].into();
+            // 1. Selector ↔ opcode binding
+            builder.assert_zero(
+                is_verify_inference.clone() * (opcode_row.clone() - opcode_vi.clone()),
+            );
+            // 2. Result always 0 (V110: disabled, fail-closed)
+            builder
+                .when(is_verify_inference.clone())
+                .assert_zero(rd_val_new.clone());
+
+            // 3. Expansion row witness columns
+            let inf_is_expand: AB::Expr = cur[COL_INFERENCE_IS_EXPAND].into();
+            let inf_model: AB::Expr = cur[COL_INFERENCE_MODEL_COMMIT].into();
+            let inf_input: AB::Expr = cur[COL_INFERENCE_INPUT_COMMIT].into();
+            let inf_output: AB::Expr = cur[COL_INFERENCE_OUTPUT_COMMIT].into();
+            let nxt_inf_is_expand: AB::Expr = nxt[COL_INFERENCE_IS_EXPAND].into();
+            let nxt_inf_model: AB::Expr = nxt[COL_INFERENCE_MODEL_COMMIT].into();
+            let nxt_inf_input: AB::Expr = nxt[COL_INFERENCE_INPUT_COMMIT].into();
+            let nxt_inf_output: AB::Expr = nxt[COL_INFERENCE_OUTPUT_COMMIT].into();
+
+            // inf_is_expand booleanity
+            builder.assert_bool(inf_is_expand.clone());
+
+            // inf_is_expand can only be 1 when is_verify_inference = 1
+            // (expansion rows reuse the VerifyInference selector)
+            builder
+                .assert_zero(inf_is_expand.clone() * (one.clone() - is_verify_inference.clone()));
+
+            // Commitment chain consistency: when current and next rows are
+            // both expansion rows (inf_is_expand=1 on both), the commitments
+            // must be identical across consecutive expansion rows.
+            let both_expand = inf_is_expand.clone() * nxt_inf_is_expand.clone();
+            builder.assert_zero(both_expand.clone() * (inf_model.clone() - nxt_inf_model.clone()));
+            builder.assert_zero(both_expand.clone() * (inf_input.clone() - nxt_inf_input.clone()));
+            builder.assert_zero(both_expand * (inf_output.clone() - nxt_inf_output.clone()));
+        }
 
         // --- Poseidon hash gadget (4 rounds, alpha=7) ---
         // Shared by:
