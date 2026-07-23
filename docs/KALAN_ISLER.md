@@ -12,9 +12,21 @@
 
 ✅ **Dense matmul host bit-exact:** `eval_fixed_point_mlp` i32 MAC host'ta; guest sadece Poseidon commitment bind.
 
+✅ **Full matmul-in-guest AIR (ARENA2 2026-07-23):** `build_matmul_guest_program()` — MLP forward pass BudZKVM instruction'larında (Load/Mul/Add/Sub/Lt/Jnz/Poseidon/Halt). Register allocation, ReLU conditional, MAX_GUEST_OPS guard. 7 test.
+
+✅ **Production gas metering (ARENA2 2026-07-23):** `estimate_structural_gas`, `estimate_full_gas`, `validate_gas_budget`. Executor `AiAttachExecutionProof` path'inde proof size vs execution class limit kontrolü.
+
 📋 **LLM / float:** mainnet v1 scope dışı — `docs/AI_ONCHAIN_EXECUTION_RESEARCH.md`.
 
-⏳ Full matmul-in-guest AIR (MLP forward pass tamamen BudZKVM instruction'larında); production gas metering calibration.
+## CI güvenlik
+
+✅ **CodeQL workflow** (ARENA2 2026-07-23): `.github/workflows/codeql.yml` — Rust CodeQL, security-extended, weekly schedule.
+
+✅ **cargo-vet config** (ARENA2 2026-07-23): `supply-chain/` — kademeli benimseme, FFI/unsafe crate hedef.
+
+✅ **actionlint + zizmor**: zaten mevcut (Repo Lint job).
+
+✅ **Dockerfile devnet default** (ARENA2 2026-07-23).
 
 ## Intent → zincir (private transfer)
 
