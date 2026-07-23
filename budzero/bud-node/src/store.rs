@@ -28,7 +28,7 @@ impl ContentId {
     /// SHA-256 as `budlum-core` (`BDLM_CONTENT_V1` tag).
     pub fn of(chunk: &[u8]) -> Self {
         use sha2::{Digest, Sha256};
-        let mut hasher = Sha256::new();
+        let mut hasher = Sha256::default();
         hasher.update(b"BDLM_CONTENT_V1");
         hasher.update(chunk);
         let result = hasher.finalize();

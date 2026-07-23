@@ -601,7 +601,7 @@ impl VerifierRegistry {
         if self.is_empty() {
             return [0u8; 32];
         }
-        let mut hasher = Sha256::new();
+        let mut hasher = Sha256::default();
         hasher.update(b"BDLM_VERIFIER_REGISTRY_V1");
         for (key, reg) in &self.registrations {
             hasher.update(key.0.as_bytes());
