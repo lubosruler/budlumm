@@ -13,9 +13,14 @@ mod settlement_prod_tests {
     use crate::cross_domain::{
         CrossDomainMessage, DomainEvent, DomainEventKind, DomainEventTree, MessageKind,
     };
-    use crate::domain::finality_adapter::{hash_finality_proof, FinalityProof};
+    use crate::domain::finality_adapter::{
+        hash_finality_proof, hash_pow_header, leading_zero_bits, FinalityProof, PoWHeader,
+    };
     use crate::domain::plugin::default_domain;
-    use crate::domain::{ConsensusKind, DomainCommitment, DomainStatus};
+    use crate::domain::{
+        ConsensusKind, DomainCommitment, DomainStatus, PoWDomainParameters,
+        POW_HEADER_CHAIN_ADAPTER,
+    };
     use crate::storage::db::Storage;
     use std::sync::Arc;
 
@@ -25,7 +30,7 @@ mod settlement_prod_tests {
 
     fn domain(id: u32, kind: ConsensusKind) -> crate::domain::ConsensusDomain {
         let adapter = match kind {
-            ConsensusKind::PoW => "pow-confirmation-depth",
+            ConsensusKind::PoW => "pow-header-chain-v1",
             ConsensusKind::PoS => "pos-qc-finality",
             ConsensusKind::PoA => "poa-authority-quorum",
             _ => "custom",
@@ -64,14 +69,20 @@ mod settlement_prod_tests {
         .unwrap()
     }
 
-    // Task 0.10: build a PoW proof bound to a specific commitment (declared head
-    // hash + internally-consistent cumulative work).
-    fn pow_proof_for(commitment: &DomainCommitment, confirmations: u64) -> FinalityProof {
-        FinalityProof::PoW {
-            confirmations,
-            total_work_hint: confirmations as u128,
-            declared_head_hash: commitment.domain_block_hash,
-            declared_cumulative_work: confirmations as u128,
+    // D3 (2026-07-22): the legacy self-declared `FinalityProof::PoW` variant was
+    // removed from the production ISA. PoW domains finalize only via the bounded
+    // `PoWHeaderChain`. This helper mines a single PoW header whose hash meets the
+    // domain's difficulty floor, mirroring `pow_light_client.rs`'s `mine_header`.
+    fn mine_pow_header(
+        domain: &crate::domain::ConsensusDomain,
+        mut header: PoWHeader,
+    ) -> (PoWHeader, [u8; 32]) {
+        loop {
+            let hash = hash_pow_header(domain, &header).expect("supported PoW hash scheme");
+            if leading_zero_bits(&hash) >= header.difficulty_bits {
+                return (header, hash);
+            }
+            header.nonce = header.nonce.checked_add(1).expect("test nonce space");
         }
     }
 
@@ -320,7 +331,7 @@ mod settlement_prod_tests {
                 .unwrap();
 
             let mut malformed = domain(2, ConsensusKind::PoS);
-            malformed.finality_adapter = "pow-confirmation-depth".into();
+            malformed.finality_adapter = "pow-header-chain-v1".into();
             storage.save_consensus_domain(&malformed).unwrap();
         }
 
@@ -401,32 +412,73 @@ mod settlement_prod_tests {
     #[test]
     fn verified_pow_commitment_requires_finalized_depth_and_matching_proof_hash() {
         let mut blockchain = test_chain();
-        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 4);
+        let mut pow = default_domain(1, ConsensusKind::PoW, 1337, POW_HEADER_CHAIN_ADAPTER, 2);
+        pow.pow_parameters = Some(PoWDomainParameters {
+            min_difficulty_bits: 4,
+            max_difficulty_bits: 8,
+            min_cumulative_work: 2 * (1u128 << 4),
+            max_headers: 8,
+        });
         blockchain.register_consensus_domain(pow.clone()).unwrap();
 
-        // Below-depth (pending) proof, correctly bound to its commitment.
-        let base = commitment_for(&pow, 10, 0, 1);
-        let pending_proof = pow_proof_for(&base, 3);
-        let pending_commitment =
-            commitment_with_proof(&pow, 10, 0, 1, &pending_proof, Address::zero());
+        // Commitment whose block hash is bound to a real mined header.
+        let mut base = commitment_for(&pow, 10, 0, 1);
+        let (h0, h0_hash) = mine_pow_header(
+            &pow,
+            PoWHeader {
+                height: 10,
+                parent_hash: base.parent_domain_block_hash,
+                state_root: base.state_root,
+                tx_root: base.tx_root,
+                event_root: base.event_root,
+                timestamp_ms: base.timestamp_ms,
+                nonce: 0,
+                difficulty_bits: 4,
+            },
+        );
+        base.domain_block_hash = h0_hash;
+        let (h1, _h1_hash) = mine_pow_header(
+            &pow,
+            PoWHeader {
+                height: 11,
+                parent_hash: h0_hash,
+                state_root: [11u8; 32],
+                tx_root: [11u8; 32],
+                event_root: [11u8; 32],
+                timestamp_ms: base.timestamp_ms + 1,
+                nonce: 0,
+                difficulty_bits: 4,
+            },
+        );
+
+        // Below-depth (pending) proof: a single header (< min_confirmations 2).
+        let pending_proof = FinalityProof::PoWHeaderChain {
+            headers: vec![h0.clone()],
+        };
+        let mut pending_commitment = commitment_for(&pow, 10, 0, 1);
+        pending_commitment.domain_block_hash = h0_hash;
+        pending_commitment.finality_proof_hash = hash_finality_proof(&pending_proof);
         let err = blockchain
             .submit_verified_domain_commitment(pending_commitment, pending_proof)
             .unwrap_err();
         assert!(err.contains("not finalized"));
         assert!(blockchain.domain_commitment_registry.is_empty());
 
-        // Finalized-depth proof, bound to the same commitment.
-        let finalized_proof = pow_proof_for(&base, 64);
-        let mut bad_hash_commitment =
-            commitment_with_proof(&pow, 10, 0, 1, &finalized_proof, Address::zero());
+        // Finalized-depth proof (2 headers), correctly bound and hashed.
+        let finalized_proof = FinalityProof::PoWHeaderChain {
+            headers: vec![h0, h1],
+        };
+        let mut finalized_commitment = commitment_for(&pow, 10, 0, 1);
+        finalized_commitment.domain_block_hash = h0_hash;
+        finalized_commitment.finality_proof_hash = hash_finality_proof(&finalized_proof);
+        // Tampered proof hash must be rejected before finality is credited.
+        let mut bad_hash_commitment = finalized_commitment.clone();
         bad_hash_commitment.finality_proof_hash = [9u8; 32];
         let err = blockchain
             .submit_verified_domain_commitment(bad_hash_commitment, finalized_proof.clone())
             .unwrap_err();
         assert!(err.contains("proof hash mismatch"));
 
-        let finalized_commitment =
-            commitment_with_proof(&pow, 10, 0, 1, &finalized_proof, Address::zero());
         blockchain
             .submit_verified_domain_commitment(finalized_commitment, finalized_proof)
             .unwrap();
@@ -435,52 +487,82 @@ mod settlement_prod_tests {
 
     #[test]
     fn verified_pow_commitment_rejects_unbound_or_inconsistent_work() {
-        // Task 0.10 hardening: a PoW proof with inflated confirmations but no matching
-        // declared work / head hash must be rejected.
+        // D3 (2026-07-22): with the legacy self-declared proof retired, the only
+        // PoW finality path is the bounded PoWHeaderChain. These checks exercise the
+        // new adapter's rejection reasons rather than the old self-declared ones.
         let mut blockchain = test_chain();
-        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 4);
+        let mut pow = default_domain(1, ConsensusKind::PoW, 1337, POW_HEADER_CHAIN_ADAPTER, 4);
+        pow.pow_parameters = Some(PoWDomainParameters {
+            min_difficulty_bits: 4,
+            max_difficulty_bits: 8,
+            min_cumulative_work: 4 * (1u128 << 4),
+            max_headers: 8,
+        });
         blockchain.register_consensus_domain(pow.clone()).unwrap();
 
         let base = commitment_for(&pow, 10, 0, 1);
 
-        // (a) Wrong declared_head_hash (not bound to this commitment).
-        let unbound = FinalityProof::PoW {
-            confirmations: 64,
-            total_work_hint: 64,
-            declared_head_hash: [0xEE; 32],
-            declared_cumulative_work: 64,
-        };
-        let c = commitment_with_proof(&pow, 10, 0, 1, &unbound);
+        // (a) Empty header chain.
+        let empty = FinalityProof::PoWHeaderChain { headers: vec![] };
+        let mut c = commitment_for(&pow, 10, 0, 1);
+        c.finality_proof_hash = hash_finality_proof(&empty);
+        let err = blockchain
+            .submit_verified_domain_commitment(c, empty)
+            .unwrap_err();
+        assert!(err.contains("PoW header chain is empty"), "got: {err}");
+
+        // (b) Header present but not bound to this commitment (wrong state root).
+        let mut base2 = commitment_for(&pow, 10, 0, 1);
+        let (h0, h0_hash) = mine_pow_header(
+            &pow,
+            PoWHeader {
+                height: 10,
+                parent_hash: base2.parent_domain_block_hash,
+                state_root: base2.state_root,
+                tx_root: base2.tx_root,
+                event_root: base2.event_root,
+                timestamp_ms: base2.timestamp_ms,
+                nonce: 0,
+                difficulty_bits: 4,
+            },
+        );
+        let unbound = FinalityProof::PoWHeaderChain { headers: vec![h0] };
+        let mut c = commitment_for(&pow, 10, 0, 1);
+        c.state_root = [0xEEu8; 32];
+        c.domain_block_hash = h0_hash;
+        c.finality_proof_hash = hash_finality_proof(&unbound);
         let err = blockchain
             .submit_verified_domain_commitment(c, unbound)
             .unwrap_err();
-        assert!(err.contains("declared head hash"), "got: {err}");
+        assert!(err.contains("does not bind the commitment"), "got: {err}");
 
-        // (b) Inflated confirmations backed by tiny cumulative work.
-        let inconsistent = FinalityProof::PoW {
-            confirmations: 1_000_000,
-            total_work_hint: 1,
-            declared_head_hash: base.domain_block_hash,
-            declared_cumulative_work: 1,
+        // (c) Header binds but claims more difficulty than its PoW hash shows.
+        let mut base3 = commitment_for(&pow, 10, 0, 1);
+        let (h0b, h0b_hash) = mine_pow_header(
+            &pow,
+            PoWHeader {
+                height: 10,
+                parent_hash: base3.parent_domain_block_hash,
+                state_root: base3.state_root,
+                tx_root: base3.tx_root,
+                event_root: base3.event_root,
+                timestamp_ms: base3.timestamp_ms,
+                nonce: 0,
+                difficulty_bits: 4,
+            },
+        );
+        let mut bad_diff = h0b;
+        bad_diff.difficulty_bits = 8;
+        let insufficient = FinalityProof::PoWHeaderChain {
+            headers: vec![bad_diff],
         };
-        let c = commitment_with_proof(&pow, 10, 0, 1, &inconsistent);
+        let mut c = commitment_for(&pow, 10, 0, 1);
+        c.domain_block_hash = h0b_hash;
+        c.finality_proof_hash = hash_finality_proof(&insufficient);
         let err = blockchain
-            .submit_verified_domain_commitment(c, inconsistent)
+            .submit_verified_domain_commitment(c, insufficient)
             .unwrap_err();
-        assert!(err.contains("inconsistent"), "got: {err}");
-
-        // (c) Zero declared work.
-        let zero_work = FinalityProof::PoW {
-            confirmations: 64,
-            total_work_hint: 0,
-            declared_head_hash: base.domain_block_hash,
-            declared_cumulative_work: 0,
-        };
-        let c = commitment_with_proof(&pow, 10, 0, 1, &zero_work);
-        let err = blockchain
-            .submit_verified_domain_commitment(c, zero_work)
-            .unwrap_err();
-        assert!(err.contains("cumulative work is zero"), "got: {err}");
+        assert!(err.contains("leading zero bits"), "got: {err}");
 
         assert!(blockchain.domain_commitment_registry.is_empty());
     }
@@ -604,7 +686,7 @@ mod settlement_prod_tests {
     fn domain_registration_rejects_reserved_or_malformed_domains() {
         let mut blockchain = test_chain();
 
-        let zero_id = default_domain(0, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+        let zero_id = default_domain(0, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
         let err = blockchain.register_consensus_domain(zero_id).unwrap_err();
         assert!(err.contains("id 0"));
 
@@ -1212,12 +1294,7 @@ mod settlement_prod_tests {
         let dom = zk_domain(22);
         bc.register_consensus_domain(dom.clone()).unwrap();
 
-        let wrong_proof = FinalityProof::PoW {
-            confirmations: 100,
-            total_work_hint: 999,
-            declared_head_hash: [0u8; 32],
-            declared_cumulative_work: 999,
-        };
+        let wrong_proof = FinalityProof::PoWHeaderChain { headers: vec![] };
         let mut c = commitment_for(&dom, 1, 0, 22);
         c.consensus_kind = ConsensusKind::Zk;
         c.finality_proof_hash = hash_finality_proof(&wrong_proof, Address::zero());
@@ -1229,23 +1306,53 @@ mod settlement_prod_tests {
     #[test]
     fn attack_fake_finality_proof_hash_tampered() {
         let mut bc = test_chain();
-        let pow = domain(1, ConsensusKind::PoW);
+        let mut pow = default_domain(1, ConsensusKind::PoW, 1337, POW_HEADER_CHAIN_ADAPTER, 2);
+        pow.pow_parameters = Some(PoWDomainParameters {
+            min_difficulty_bits: 4,
+            max_difficulty_bits: 8,
+            min_cumulative_work: 2 * (1u128 << 4),
+            max_headers: 8,
+        });
         bc.register_consensus_domain(pow.clone()).unwrap();
 
-        let real_proof = FinalityProof::PoW {
-            confirmations: 3,
-            total_work_hint: 10,
-            declared_head_hash: [0u8; 32],
-            declared_cumulative_work: 10,
+        // A genuinely valid, finalized PoW header chain.
+        let mut base = commitment_for(&pow, 10, 0, 1);
+        let (h0, h0_hash) = mine_pow_header(
+            &pow,
+            PoWHeader {
+                height: 10,
+                parent_hash: base.parent_domain_block_hash,
+                state_root: base.state_root,
+                tx_root: base.tx_root,
+                event_root: base.event_root,
+                timestamp_ms: base.timestamp_ms,
+                nonce: 0,
+                difficulty_bits: 4,
+            },
+        );
+        base.domain_block_hash = h0_hash;
+        let (h1, _h1_hash) = mine_pow_header(
+            &pow,
+            PoWHeader {
+                height: 11,
+                parent_hash: h0_hash,
+                state_root: [11u8; 32],
+                tx_root: [11u8; 32],
+                event_root: [11u8; 32],
+                timestamp_ms: base.timestamp_ms + 1,
+                nonce: 0,
+                difficulty_bits: 4,
+            },
+        );
+        let real_proof = FinalityProof::PoWHeaderChain {
+            headers: vec![h0, h1],
         };
-        let fake_proof = FinalityProof::PoW {
-            confirmations: 999,
-            total_work_hint: 10,
-            declared_head_hash: [0u8; 32],
-            declared_cumulative_work: 10,
-        };
+
+        // Tamper the commitment's stored proof hash so it no longer matches the
+        // submitted (valid) proof.
         let mut c = commitment_for(&pow, 10, 0, 1);
-        c.finality_proof_hash = hash_finality_proof(&fake_proof, Address::zero());
+        c.domain_block_hash = h0_hash;
+        c.finality_proof_hash = [0xFFu8; 32];
         let err = bc
             .submit_verified_domain_commitment(c, real_proof)
             .unwrap_err();

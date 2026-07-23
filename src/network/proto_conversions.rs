@@ -2019,12 +2019,7 @@ mod tests {
             tx_root: [4u8; 32],
             event_root: [5u8; 32],
             finality_proof_hash: crate::domain::hash_finality_proof(
-                &crate::domain::FinalityProof::PoW {
-                    confirmations: 64,
-                    total_work_hint: 1000,
-                    declared_head_hash: [0u8; 32],
-                    declared_cumulative_work: 1000,
-                },
+                &crate::domain::FinalityProof::PoWHeaderChain { headers: vec![] },
             ),
             consensus_kind: crate::domain::ConsensusKind::PoW,
             validator_set_hash: [7u8; 32],
@@ -2035,12 +2030,7 @@ mod tests {
         };
         let payload = crate::domain::VerifiedDomainCommitment {
             commitment: commitment.clone(),
-            proof: crate::domain::FinalityProof::PoW {
-                confirmations: 64,
-                total_work_hint: 1000,
-                declared_head_hash: [0u8; 32],
-                declared_cumulative_work: 1000,
-            },
+            proof: crate::domain::FinalityProof::PoWHeaderChain { headers: vec![] },
         };
         let msg = NetworkMessage::VerifiedDomainCommitment(payload);
         let proto_msg = pb::ProtoNetworkMessage::from(&msg);
@@ -2051,13 +2041,8 @@ mod tests {
             NetworkMessage::VerifiedDomainCommitment(decoded) => {
                 assert_eq!(decoded.commitment, commitment);
                 match decoded.proof {
-                    crate::domain::FinalityProof::PoW {
-                        confirmations,
-                        total_work_hint,
-                        ..
-                    } => {
-                        assert_eq!(confirmations, 64);
-                        assert_eq!(total_work_hint, 1000);
+                    crate::domain::FinalityProof::PoWHeaderChain { headers } => {
+                        assert!(headers.is_empty());
                     }
                     _ => panic!("Expected PoW finality proof"),
                 }

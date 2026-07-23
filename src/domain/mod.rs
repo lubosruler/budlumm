@@ -12,8 +12,8 @@ pub mod types;
 pub use commitment_registry::DomainCommitmentRegistry;
 pub use finality_adapter::{
     hash_finality_proof, hash_pow_header, BftFinalityAdapter, DomainFinalityAdapter, FinalityError,
-    FinalityProof, FinalityStatus, PoAFinalityAdapter, PoSFinalityAdapter, PoWFinalityAdapter,
-    PoWHeader, PoWHeaderChainFinalityAdapter, StorageAttestationFinalityAdapter, ZkFinalityAdapter,
+    FinalityProof, FinalityStatus, PoAFinalityAdapter, PoSFinalityAdapter, PoWHeader,
+    PoWHeaderChainFinalityAdapter, StorageAttestationFinalityAdapter, ZkFinalityAdapter,
 };
 pub use fork_choice::{
     ConsensusDomainForkChoice, DomainFinalityStatus, DomainForkChoice, DomainLifecycleStatus,

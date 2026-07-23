@@ -22,7 +22,7 @@ pub struct BootstrapDomainConfig {
     pub id: u32,
     /// Consensus türü ("pow", "pos", "bft", "poa").
     pub kind: String,
-    /// Finality adapter adı (örn "pow-confirmation-depth", "pos-qc-finality").
+    /// Finality adapter adı (örn "pow-header-chain-v1", "pos-qc-finality").
     pub finality_adapter: String,
     /// Bridge enabled (köprü lifecycle'a katılım).
     pub bridge_enabled: bool,
@@ -41,7 +41,7 @@ impl BootstrapDomainConfig {
             Self {
                 id: 1,
                 kind: "pow".to_string(),
-                finality_adapter: "pow-confirmation-depth".to_string(),
+                finality_adapter: "pow-header-chain-v1".to_string(),
                 bridge_enabled: true,
                 min_confirmations: 6,
                 poa_authorities: vec![],

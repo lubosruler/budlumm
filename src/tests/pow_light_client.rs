@@ -53,7 +53,7 @@ fn tur13_5_pow_header_finality_authorizes_bridge_mint_but_legacy_does_not() {
 
     // The legacy domain remains usable for archival settlement, but its
     // self-declared confirmation proof must never authorize mint.
-    let mut legacy = default_domain(43, ConsensusKind::PoW, 43_001, "pow-confirmation-depth", 64);
+    let mut legacy = default_domain(43, ConsensusKind::PoW, 43_001, "pow-header-chain-v1", 64);
     legacy.operator = Some(address(43));
     legacy.bridge_enabled = true;
     chain

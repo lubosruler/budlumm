@@ -82,23 +82,6 @@ pub fn hash_pow_header(
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FinalityProof {
-    /// Legacy self-declared confirmation proof. It remains decodable for
-    /// historical domains, but bridge mint never accepts it.
-    PoW {
-        confirmations: u64,
-        total_work_hint: u128,
-        /// The domain block hash this PoW finality claim refers to. Must equal
-        /// `commitment.domain_block_hash` — binds the proof to THIS commitment
-        /// (Task 0.10 hardening; previously the proof was unbound).
-        #[serde(default)]
-        declared_head_hash: Hash32,
-        /// Declared cumulative proof-of-work up to `declared_head_hash`. Checked
-        /// for internal consistency against `confirmations` and against the
-        /// domain's minimum-work threshold. Not a full light client, but far
-        /// stronger than "write any positive number".
-        #[serde(default)]
-        declared_cumulative_work: u128,
-    },
     PoS {
         cert: FinalityCert,
         validator_snapshot: ValidatorSetSnapshot,
@@ -194,27 +177,6 @@ pub trait DomainFinalityAdapter: Send + Sync {
     ) -> Result<FinalityStatus, FinalityError>;
 }
 
-#[derive(Debug, Clone)]
-pub struct PoWFinalityAdapter {
-    pub default_min_confirmations: u64,
-    /// Minimum plausible proof-of-work attributed to a single confirmation.
-    /// Used to (a) reject cumulative-work claims that are inconsistent with the
-    /// declared confirmation depth and (b) enforce a minimum-work floor. This is
-    /// a config parameter, not a hard-coded constant (Task 0.10).
-    pub min_work_per_confirmation: u128,
-}
-
-impl Default for PoWFinalityAdapter {
-    fn default() -> Self {
-        Self {
-            default_min_confirmations: 64,
-            // Task 0.34 / BUG #9: non-trivial floor so depth claims must be
-            // backed by declared work (still not a full light-client).
-            min_work_per_confirmation: 1_000,
-        }
-    }
-}
-
 /// Count leading zero bits in a 32-byte block hash (big-endian byte order).
 /// Used as a minimal PoW difficulty check for declared domain heads.
 pub fn leading_zero_bits(hash: &crate::domain::Hash32) -> u32 {
@@ -241,28 +203,6 @@ pub fn pow_min_difficulty_bits(domain: &crate::domain::ConsensusDomain) -> u32 {
         return encoded.clamp(1, 128);
     }
     8
-}
-
-impl DomainFinalityAdapter for PoWFinalityAdapter {
-    fn adapter_name(&self) -> &'static str {
-        "pow-confirmation-depth"
-    }
-
-    fn verify_finality(
-        &self,
-        domain: &ConsensusDomain,
-        commitment: &DomainCommitment,
-        proof: &FinalityProof,
-    ) -> Result<FinalityStatus, FinalityError> {
-        let _ = (domain, commitment, proof);
-        // D3 (2026-07-22): legacy self-declared PoW finality retired.
-        // Bridge mint was already gated to pow-header-chain-v1 (blockchain.rs).
-        // This adapter now NEVER finalizes. New PoW domains must use
-        // POW_HEADER_CHAIN_ADAPTER. Variant kept for bincode stability.
-        Ok(FinalityStatus::Rejected(
-            "legacy self-declared PoW finality retired (D3); use pow-header-chain-v1".into(),
-        ))
-    }
 }
 
 /// Bounded, deterministic PoW light client used by bridge-enabled PoW domains.
@@ -1021,39 +961,41 @@ mod tests {
     }
 
     #[test]
-    fn pow_finality_legacy_adapter_always_rejects_after_d3() {
-        let mut domain = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 80);
+    fn pow_header_chain_rejects_empty_or_short_chain_d3() {
+        // D3 (2026-07-22): the ONLY PoW finality path left is the bounded
+        // PoWHeaderChain. The legacy self-declared `FinalityProof::PoW` variant
+        // was removed from the production ISA — a PoW domain finalizes solely
+        // via `PoWHeaderChainFinalityAdapter`.
+        let mut domain = default_domain(
+            1,
+            ConsensusKind::PoW,
+            1337,
+            crate::domain::types::POW_HEADER_CHAIN_ADAPTER,
+            80,
+        );
         domain.config_hash = [0u8; 32];
-        let pow_hash = pow_looking_hash();
-        let mut commitment = commitment(ConsensusKind::PoW);
-        commitment.domain_block_hash = pow_hash;
-        let adapter = PoWFinalityAdapter::default();
-        let min_work = adapter.min_work_per_confirmation;
+        domain.pow_parameters = Some(crate::domain::types::PoWDomainParameters {
+            min_difficulty_bits: 4,
+            max_difficulty_bits: 8,
+            min_cumulative_work: 1,
+            max_headers: 8,
+        });
+        let commitment = commitment(ConsensusKind::PoW);
+        let adapter = PoWHeaderChainFinalityAdapter;
 
-        // D3 (2026-07-22): legacy self-declared PoW adapter NEVER finalizes.
-        // Previously-valid proofs (sufficient depth + work + PoW hash) now Rejected.
-        for confirmations in [79u64, 80] {
-            assert!(
-                matches!(
-                    adapter
-                        .verify_finality(
-                            &domain,
-                            &commitment,
-                            &FinalityProof::PoW {
-                                confirmations,
-                                total_work_hint: confirmations as u128 * min_work,
-                                declared_head_hash: pow_hash,
-                                declared_cumulative_work: confirmations as u128 * min_work,
-                            }
-                        )
-                        .unwrap(),
-                    FinalityStatus::Rejected(_)
-                ),
-                "D3: legacy adapter must reject even valid-looking self-declared proofs"
-            );
-        }
+        // Empty header chain must be rejected (bounded, not self-declared).
+        assert!(matches!(
+            adapter
+                .verify_finality(
+                    &domain,
+                    &commitment,
+                    &FinalityProof::PoWHeaderChain { headers: vec![] }
+                )
+                .unwrap(),
+            FinalityStatus::Rejected(_)
+        ));
 
-        // Non-PoW proof also returns Ok(Rejected) (no longer Err).
+        // A non-PoW proof type is rejected by the PoW adapter.
         assert!(matches!(
             adapter
                 .verify_finality(

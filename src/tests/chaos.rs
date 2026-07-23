@@ -227,7 +227,7 @@ mod chaos_tests {
 
         let consensus = Arc::new(PoWEngine::new(0));
         let mut blockchain = Blockchain::new(consensus, None, 1337, None);
-        let domain = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+        let domain = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
 
         blockchain
             .register_consensus_domain(domain.clone())
@@ -273,7 +273,7 @@ mod chaos_tests {
             let storage = Storage::new(db_path).unwrap();
             let consensus = Arc::new(PoWEngine::new(0));
             let mut blockchain = Blockchain::new(consensus, Some(storage), 1337, None);
-            let domain = default_domain(7, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+            let domain = default_domain(7, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
             blockchain
                 .register_consensus_domain(domain.clone())
                 .unwrap();
@@ -306,7 +306,7 @@ mod chaos_tests {
 
         let consensus = Arc::new(PoWEngine::new(0));
         let mut blockchain = Blockchain::new(consensus, None, 1337, None);
-        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
         let pos = default_domain(2, ConsensusKind::PoS, 1338, "pos-qc-finality", 0);
         let poa = default_domain(3, ConsensusKind::PoA, 1339, "poa-authority-quorum", 0);
 
@@ -355,7 +355,7 @@ mod chaos_tests {
             let consensus = Arc::new(PoWEngine::new(0));
             let mut blockchain = Blockchain::new(consensus, None, 1337, None);
             let domains = [
-                default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0),
+                default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0),
                 default_domain(2, ConsensusKind::PoS, 1338, "pos-qc-finality", 0),
                 default_domain(3, ConsensusKind::PoA, 1339, "poa-authority-quorum", 0),
             ];
@@ -408,7 +408,7 @@ mod chaos_tests {
 
         let consensus = Arc::new(PoWEngine::new(0));
         let mut blockchain = Blockchain::new(consensus, None, 1337, None);
-        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
         blockchain.register_consensus_domain(pow.clone()).unwrap();
 
         let owner = Address::from([31u8; 32]);
@@ -473,7 +473,7 @@ mod chaos_tests {
 
         let consensus = Arc::new(PoWEngine::new(0));
         let mut blockchain = Blockchain::new(consensus, None, 1337, None);
-        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
         let poa = default_domain(2, ConsensusKind::PoA, 1338, "poa-authority-quorum", 0);
         blockchain.register_consensus_domain(pow.clone()).unwrap();
         blockchain.register_consensus_domain(poa.clone()).unwrap();
@@ -497,12 +497,7 @@ mod chaos_tests {
             .submit_verified_domain_commitment(make_commitment(&pow, &wrong_for_pow), wrong_for_pow)
             .is_err());
 
-        let wrong_for_poa = FinalityProof::PoW {
-            confirmations: 100,
-            total_work_hint: 1000,
-            declared_head_hash: [0u8; 32],
-            declared_cumulative_work: 1000,
-        };
+        let wrong_for_poa = FinalityProof::PoWHeaderChain { headers: vec![] };
         assert!(blockchain
             .submit_verified_domain_commitment(make_commitment(&poa, &wrong_for_poa), wrong_for_poa)
             .is_err());
@@ -550,7 +545,7 @@ mod chaos_tests {
         let consensus_settlement = Arc::new(PoWEngine::new(0));
         let mut settlement_node = Blockchain::new(consensus_settlement, None, 1337, None);
 
-        let pow_domain = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+        let pow_domain = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
         let pos_domain = default_domain(2, ConsensusKind::PoS, 1338, "pos-qc-finality", 0);
         let poa_domain = default_domain(3, ConsensusKind::PoA, 1339, "poa-authority-quorum", 0);
 
@@ -577,12 +572,7 @@ mod chaos_tests {
             let mut pow_com =
                 DomainCommitment::from_block(&pow_domain, &block_pow, [1u8; 32], [2u8; 32], i)
                     .unwrap();
-            let pow_proof = FinalityProof::PoW {
-                confirmations: 10,
-                total_work_hint: 1000 + (i as u128),
-                declared_head_hash: [0u8; 32],
-                declared_cumulative_work: 1000 + (i as u128),
-            };
+            let pow_proof = FinalityProof::PoWHeaderChain { headers: vec![] };
             pow_com.finality_proof_hash = hash_finality_proof(&pow_proof);
             commitments_to_submit.push((pow_com, pow_proof));
 

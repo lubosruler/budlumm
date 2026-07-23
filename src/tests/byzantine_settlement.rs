@@ -17,7 +17,7 @@ mod byzantine_settlement_tests {
             let consensus = Arc::new(PoWEngine::new(0));
             let mut node = Blockchain::new(consensus, None, 1337, None);
 
-            let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+            let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
             let pos = default_domain(2, ConsensusKind::PoS, 1338, "pos-qc-finality", 0);
             let poa = default_domain(3, ConsensusKind::PoA, 1339, "poa-authority-quorum", 0);
 
@@ -46,12 +46,7 @@ mod byzantine_settlement_tests {
             let mut com_pow =
                 DomainCommitment::from_block(&pow_domain, &b_pow, [i as u8; 32], [0u8; 32], i)
                     .unwrap();
-            let proof_pow = FinalityProof::PoW {
-                confirmations: 10,
-                total_work_hint: 1000 + i as u128,
-                declared_head_hash: [0u8; 32],
-                declared_cumulative_work: 1000 + i as u128,
-            };
+            let proof_pow = FinalityProof::PoWHeaderChain { headers: vec![] };
             com_pow.finality_proof_hash = hash_finality_proof(&proof_pow);
             pow_commitments.push((com_pow, proof_pow));
 
@@ -166,7 +161,7 @@ mod byzantine_settlement_tests {
         let consensus = Arc::new(PoWEngine::new(0));
         let mut node = Blockchain::new(consensus, None, 1337, None);
 
-        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
         let pos = default_domain(2, ConsensusKind::PoS, 1338, "pos-qc-finality", 0);
         node.register_consensus_domain(pow.clone()).unwrap();
         node.register_consensus_domain(pos.clone()).unwrap();
@@ -224,7 +219,7 @@ mod byzantine_settlement_tests {
         let make_node = || {
             let consensus = std::sync::Arc::new(crate::consensus::pow::PoWEngine::new(0));
             let mut node = Blockchain::new(consensus, None, 1337, None);
-            let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+            let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
             let pos = default_domain(2, ConsensusKind::PoS, 1338, "pos-qc-finality", 0);
             node.register_consensus_domain(pow.clone()).unwrap();
             node.register_consensus_domain(pos.clone()).unwrap();
@@ -275,7 +270,7 @@ mod byzantine_settlement_tests {
     async fn test_cross_domain_non_conflicting_updates_can_coexist() {
         let consensus = std::sync::Arc::new(crate::consensus::pow::PoWEngine::new(0));
         let mut node = Blockchain::new(consensus, None, 1337, None);
-        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
         let pos = default_domain(2, ConsensusKind::PoS, 1338, "pos-qc-finality", 0);
         node.register_consensus_domain(pow.clone()).unwrap();
         node.register_consensus_domain(pos.clone()).unwrap();
@@ -321,7 +316,7 @@ mod byzantine_settlement_tests {
                     i,
                     ConsensusKind::PoW,
                     1337 + i as u64,
-                    "pow-confirmation-depth",
+                    "pow-header-chain-v1",
                     0,
                 );
                 node.register_consensus_domain(pow).unwrap();
@@ -382,7 +377,7 @@ mod byzantine_settlement_tests {
     async fn test_concurrent_tokio_submission() {
         let consensus = Arc::new(crate::consensus::pow::PoWEngine::new(0));
         let node = Blockchain::new(consensus, None, 1337, None);
-        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
         let mut node = node;
         node.register_consensus_domain(pow.clone()).unwrap();
         let alice = Address::from([0xA1u8; 32]);
@@ -433,7 +428,7 @@ mod byzantine_settlement_tests {
         let path_str = path.to_str().unwrap();
 
         let alice = Address::from([0xA1u8; 32]);
-        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
 
         {
             let storage = crate::storage::db::Storage::new(path_str).unwrap();
@@ -468,7 +463,7 @@ mod byzantine_settlement_tests {
         let make_node = || {
             let consensus = Arc::new(crate::consensus::pow::PoWEngine::new(0));
             let mut node = Blockchain::new(consensus, None, 1337, None);
-            let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+            let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
             node.register_consensus_domain(pow.clone()).unwrap();
             (node, pow)
         };
@@ -497,7 +492,7 @@ mod byzantine_settlement_tests {
         let make_node = || {
             let consensus = Arc::new(crate::consensus::pow::PoWEngine::new(0));
             let mut node = Blockchain::new(consensus, None, 1337, None);
-            let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+            let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
             let pos = default_domain(2, ConsensusKind::PoS, 1338, "pos-qc-finality", 0);
             node.register_consensus_domain(pow.clone()).unwrap();
             node.register_consensus_domain(pos.clone()).unwrap();
@@ -548,7 +543,7 @@ mod byzantine_settlement_tests {
     async fn test_byzantine_domain_equivocation() {
         let consensus = Arc::new(crate::consensus::pow::PoWEngine::new(0));
         let mut node = Blockchain::new(consensus, None, 1337, None);
-        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-confirmation-depth", 0);
+        let pow = default_domain(1, ConsensusKind::PoW, 1337, "pow-header-chain-v1", 0);
         node.register_consensus_domain(pow.clone()).unwrap();
 
         let alice = Address::from([1u8; 32]);
@@ -830,10 +825,10 @@ mod byzantine_settlement_tests {
 
         for i in 1..=5 {
             let (kind, adapter) = match i {
-                1 => (ConsensusKind::PoW, "pow-confirmation-depth"),
+                1 => (ConsensusKind::PoW, "pow-header-chain-v1"),
                 2 => (ConsensusKind::PoS, "pos-qc-finality"),
                 3 => (ConsensusKind::PoA, "poa-authority-quorum"),
-                _ => (ConsensusKind::PoW, "pow-confirmation-depth"),
+                _ => (ConsensusKind::PoW, "pow-header-chain-v1"),
             };
 
             let domain = default_domain(i as u32, kind, 1337 + i as u64, adapter, 0);

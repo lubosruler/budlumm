@@ -4,7 +4,7 @@ use crate::core::block::Block;
 use crate::core::hash::hash_fields_bytes;
 use crate::domain::finality_adapter::{
     block_finality_proof_hash, empty_event_root, BftFinalityAdapter, DomainFinalityAdapter,
-    PoAFinalityAdapter, PoSFinalityAdapter, PoWFinalityAdapter, ZkFinalityAdapter,
+    PoAFinalityAdapter, PoSFinalityAdapter, PoWHeaderChainFinalityAdapter, ZkFinalityAdapter,
 };
 use crate::domain::types::{
     ConsensusDomain, ConsensusKind, DomainCommitment, DomainId, DomainStatus, Hash32, RootScheme,
@@ -76,14 +76,14 @@ pub trait ConsensusDomainPlugin: Send + Sync {
 
 pub struct PoWDomainPlugin {
     consensus: Arc<dyn ConsensusEngine>,
-    finality: PoWFinalityAdapter,
+    finality: PoWHeaderChainFinalityAdapter,
 }
 
 impl PoWDomainPlugin {
     pub fn new(consensus: Arc<dyn ConsensusEngine>) -> Self {
         Self {
             consensus,
-            finality: PoWFinalityAdapter::default(),
+            finality: PoWHeaderChainFinalityAdapter,
         }
     }
 }

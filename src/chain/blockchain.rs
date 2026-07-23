@@ -19,8 +19,7 @@ use crate::domain::{
     hash_finality_proof, BftFinalityAdapter, ConsensusDomain, ConsensusDomainRegistry,
     ConsensusKind, DomainCommitment, DomainCommitmentRegistry, DomainFinalityAdapter, DomainId,
     DomainPluginRegistry, DomainStatus, FinalityProof, FinalityStatus, PoAFinalityAdapter,
-    PoSFinalityAdapter, PoWFinalityAdapter, PoWHeaderChainFinalityAdapter, ZkFinalityAdapter,
-    POW_HEADER_CHAIN_ADAPTER,
+    PoSFinalityAdapter, PoWHeaderChainFinalityAdapter, ZkFinalityAdapter, POW_HEADER_CHAIN_ADAPTER,
 };
 use crate::execution::executor::Executor;
 use crate::mempool::pool::Mempool;
@@ -592,10 +591,7 @@ impl Blockchain {
         }
 
         let adapter_valid = match &domain.kind {
-            ConsensusKind::PoW => {
-                domain.finality_adapter == "pow-confirmation-depth"
-                    || domain.finality_adapter == POW_HEADER_CHAIN_ADAPTER
-            }
+            ConsensusKind::PoW => domain.finality_adapter == POW_HEADER_CHAIN_ADAPTER,
             ConsensusKind::PoS => domain.finality_adapter == "pos-qc-finality",
             ConsensusKind::PoA => domain.finality_adapter == "poa-authority-quorum",
             ConsensusKind::Bft => domain.finality_adapter == "bft-quorum-commit",
@@ -902,17 +898,9 @@ impl Blockchain {
 
         let status = match domain.kind {
             ConsensusKind::PoW => {
-                if domain.finality_adapter == POW_HEADER_CHAIN_ADAPTER {
-                    let adapter = PoWHeaderChainFinalityAdapter;
-                    self.ensure_adapter_name(domain, adapter.adapter_name())?;
-                    adapter.verify_finality(domain, commitment, proof)
-                } else {
-                    // Historical compatibility only. This adapter can archive
-                    // commitments but cannot authorize bridge mint.
-                    let adapter = PoWFinalityAdapter::default();
-                    self.ensure_adapter_name(domain, adapter.adapter_name())?;
-                    adapter.verify_finality(domain, commitment, proof)
-                }
+                let adapter = PoWHeaderChainFinalityAdapter;
+                self.ensure_adapter_name(domain, adapter.adapter_name())?;
+                adapter.verify_finality(domain, commitment, proof)
             }
             ConsensusKind::PoS => {
                 let adapter = PoSFinalityAdapter;

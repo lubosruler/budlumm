@@ -203,7 +203,7 @@ mod rpc_tests {
             1,
             crate::domain::ConsensusKind::PoW,
             1337,
-            "pow-confirmation-depth",
+            "pow-header-chain-v1",
             0,
         );
         chain
@@ -308,12 +308,7 @@ mod rpc_tests {
         pow_hash[1] = 0x0f;
         new_commitment.domain_block_hash = pow_hash;
         let min_work = 1_000u128;
-        let proof2 = crate::domain::FinalityProof::PoW {
-            confirmations: 64,
-            total_work_hint: 64 * min_work,
-            declared_head_hash: pow_hash,
-            declared_cumulative_work: 64 * min_work,
-        };
+        let proof2 = crate::domain::FinalityProof::PoWHeaderChain { headers: vec![] };
         new_commitment.finality_proof_hash = crate::domain::hash_finality_proof(&proof2);
         let result = server
             .submit_verified_domain_commitment(crate::domain::VerifiedDomainCommitment {
@@ -339,12 +334,7 @@ mod rpc_tests {
         pow_hash2[1] = 0x0f;
         verified_commitment.domain_block_hash = pow_hash2;
         let min_work = 1_000u128;
-        let proof = crate::domain::FinalityProof::PoW {
-            confirmations: 64,
-            total_work_hint: 64 * min_work,
-            declared_head_hash: pow_hash2,
-            declared_cumulative_work: 64 * min_work,
-        };
+        let proof = crate::domain::FinalityProof::PoWHeaderChain { headers: vec![] };
         verified_commitment.finality_proof_hash = crate::domain::hash_finality_proof(&proof);
         let verified_payload = crate::domain::VerifiedDomainCommitment {
             commitment: verified_commitment.clone(),
@@ -361,12 +351,7 @@ mod rpc_tests {
 
         let mut block4 = block.clone();
         block4.index = 4;
-        let weak_proof = crate::domain::FinalityProof::PoW {
-            confirmations: 1,
-            total_work_hint: 5001,
-            declared_head_hash: [0u8; 32],
-            declared_cumulative_work: 5001,
-        };
+        let weak_proof = crate::domain::FinalityProof::PoWHeaderChain { headers: vec![] };
         let mut weak_commitment =
             crate::domain::DomainCommitment::from_block(&domain, &block4, [8u8; 32], [9u8; 32], 3)
                 .unwrap();

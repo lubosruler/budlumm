@@ -681,7 +681,7 @@ async fn main() {
 
     let domain_id = 1u32;
     let (domain_kind, adapter_name, min_conf) = match consensus_type {
-        ConsensusType::PoW => (ConsensusKind::PoW, "pow-confirmation-depth", 64u64),
+        ConsensusType::PoW => (ConsensusKind::PoW, "pow-header-chain-v1", 64u64),
         ConsensusType::PoS => (ConsensusKind::PoS, "pos-qc-finality", 0u64),
         ConsensusType::PoA => (ConsensusKind::PoA, "poa-authority-quorum", 0u64),
     };
