@@ -47,6 +47,7 @@ pub use tee::{TeeBackendKind, TeeRuntime, TeeRuntimeStatus, UnavailableTeeRuntim
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use sha2::{Digest, Sha256};
 use sha3::Sha3_256;
+use zeroize::Zeroize;
 
 /// Wallet hatası.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -400,6 +401,16 @@ pub struct Wallet {
     signing_key: SigningKey,
     /// Per-wallet privacy preferences (note path + TEE toggle + view-key).
     privacy: WalletPrivacyConfig,
+}
+
+// W1 fix (pre-mortem audit): Zeroize sensitive material on drop.
+// Prevents seed/mnemonic lingering in memory after Wallet is dropped.
+// signing_key (ed25519_dalek::SigningKey) already implements Zeroize internally.
+impl Drop for Wallet {
+    fn drop(&mut self) {
+        self.mnemonic.zeroize();
+        self.seed.zeroize();
+    }
 }
 
 /// Budlum Address = Ed25519 pubkey'nin SHA3-256 hash'i (32 byte).
