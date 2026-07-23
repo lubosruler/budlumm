@@ -5,10 +5,11 @@ use crate::core::transaction::{Transaction, TransactionType};
 use crate::cross_domain::message_registry::CrossDomainMessageRegistry;
 use crate::cross_domain::BridgeState;
 use crate::domain::storage_deal::StorageRegistry;
+use crate::registry::role::{roles, RoleId};
 use crate::storage::db::Storage;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 pub const MIN_TX_FEE: u64 = 1;
 /// Task 0.334 / A8: protocol bounds for governance fee/reward proposals.
 pub const MAX_BASE_FEE: u64 = 1_000_000;
@@ -64,10 +65,20 @@ pub struct Validator {
     pub pop_signature: Vec<u8>,
     #[serde(default)]
     pub pq_public_key: Vec<u8>,
+    /// Multi-role architecture: tracks which roles this validator has bonded for.
+    /// A single validator can simultaneously serve as:
+    /// - VALIDATOR (RoleId 1): consensus block production + finality
+    /// - STORAGE_OPERATOR (RoleId 5): B.U.D. storage verification
+    /// - LUBOT_OPERATOR (RoleId 8): Lubot AI compute provider
+    /// Cross-role slashing: slashing any role jails ALL roles.
+    #[serde(default)]
+    pub roles: BTreeSet<RoleId>,
 }
 
 impl Validator {
     pub fn new(address: Address, stake: u64) -> Self {
+        let mut roles = BTreeSet::new();
+        roles.insert(roles::VALIDATOR); // Default: consensus validator role
         Validator {
             address,
             stake,
@@ -82,7 +93,55 @@ impl Validator {
             bls_public_key: Vec::new(),
             pop_signature: Vec::new(),
             pq_public_key: Vec::new(),
+            roles,
         }
+    }
+
+    /// Add a role to this validator (e.g. STORAGE_OPERATOR, LUBOT_OPERATOR).
+    /// Returns true if the role was newly added, false if already present.
+    pub fn add_role(&mut self, role: RoleId) -> bool {
+        self.roles.insert(role)
+    }
+
+    /// Remove a role from this validator.
+    /// Returns true if the role was present and removed.
+    pub fn remove_role(&mut self, role: &RoleId) -> bool {
+        self.roles.remove(role)
+    }
+
+    /// Check if this validator has a specific role.
+    pub fn has_role(&self, role: &RoleId) -> bool {
+        self.roles.contains(role)
+    }
+
+    /// Check if this validator is a consensus validator (has VALIDATOR role).
+    pub fn is_consensus_validator(&self) -> bool {
+        self.has_role(&roles::VALIDATOR)
+    }
+
+    /// Check if this validator is a B.U.D. storage operator.
+    pub fn is_storage_operator(&self) -> bool {
+        self.has_role(&roles::STORAGE_OPERATOR)
+    }
+
+    /// Check if this validator is a Lubot compute provider.
+    pub fn is_lubot_operator(&self) -> bool {
+        self.has_role(&roles::LUBOT_OPERATOR)
+    }
+
+    /// Cross-role slashing: when any role is slashed, ALL roles are jailed.
+    /// This ensures a validator cannot continue operating in other roles
+    /// after being caught misbehaving in one role.
+    pub fn slash_all_roles(&mut self, jail_until_epoch: u64) {
+        self.slashed = true;
+        self.jailed = true;
+        self.jail_until = jail_until_epoch;
+        tracing::warn!(
+            validator = %self.address,
+            roles = ?self.roles,
+            jail_until = jail_until_epoch,
+            "Cross-role slash: all roles jailed"
+        );
     }
 
     /// C3 fix (pre-mortem audit): Check if this validator has the minimum

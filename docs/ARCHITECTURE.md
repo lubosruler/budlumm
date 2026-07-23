@@ -1084,21 +1084,50 @@ flowchart LR
   Isolation[PoA isolated from permissionless domains] -. no shared registry .-> Permissionless
 ```
 
-## 33. Validator lifecycle
+## 33. Validator lifecycle — multi-role architecture
 
 ```mermaid
 flowchart TD
   Genesis[Genesis config] --> Val[Validator created with keys]
   Stake[Stake tx] --> Active[Active validator]
-  Active --> Propose[Block proposal via VRF]
-  Active --> Finality[BLS finality signing]
-  Active --> Slash[Slashing evidence]
-  Slash --> Jailed[Jailed until epoch N]
-  Jailed --> Release[Jail release]
-  Release --> Active
+
+  subgraph sg1[Role 1 - Consensus Validation]
+    Active --> Propose[Block proposal via VRF]
+    Active --> Finality[BLS finality signing]
+    Active --> Witness[Epoch witness + vote]
+    Propose --> ConsensusReward[Block reward + fee tip]
+    Finality --> FinalityReward[Finality signing reward]
+  end
+
+  subgraph sg2[Role 2 - Lubot CPU/System Provider]
+    Active --> LubotBond[LUBOT_OPERATOR role bond]
+    LubotBond --> LubotCompute[CPU/GPU compute for AI inference]
+    LubotCompute --> LubotServe[Serve Lubot inference requests]
+    LubotServe --> LubotReward[Inference service reward]
+    LubotServe --> LubotSlash[Compute fault -> slash]
+  end
+
+  subgraph sg3[Role 3 - B.U.D. Storage Verification]
+    Active --> StorageBond[STORAGE_OPERATOR role bond]
+    StorageBond --> StorageStore[Store content shards]
+    StorageStore --> StorageChallenge[Respond to retrieval challenges]
+    StorageChallenge --> StorageProof[VerifyMerkle 64-depth proof]
+    StorageProof --> StorageReward[Storage operator reward]
+    StorageChallenge --> StorageSlash[Challenge failure -> slash]
+  end
+
+  subgraph sg4[Cross-Role Slashing]
+    Slash[Slashing evidence] --> Jailed[Jailed until epoch N]
+    LubotSlash --> Jailed
+    StorageSlash --> Jailed
+    Jailed --> Release[Jail release]
+    Release --> Active
+    Liveness[Missed epochs > threshold] --> LivenessSlash[Liveness report -> slash all roles]
+    CrossRole[Slash one role -> jail ALL roles]
+  end
+
   Unstake[Unstake tx] --> Unbonding[Unbonding queue]
   Unbonding --> Epoch[Epoch advance -> release stake]
-  Liveness["Missed epochs > threshold"] --> LivenessSlash[Liveness report -> slash]
 ```
 
 ## 34. Pollen data rights lifecycle
