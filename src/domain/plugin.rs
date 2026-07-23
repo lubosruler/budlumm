@@ -254,6 +254,8 @@ pub fn default_domain(
         None
     };
 
+    // NOTE: PoW domains now carry pow_parameters + min_confirmations >= 1
+    // so they pass the registry.rs validation hardening on registration.
     ConsensusDomain {
         id,
         kind,
