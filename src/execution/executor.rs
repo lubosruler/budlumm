@@ -664,7 +664,9 @@ impl Executor {
                                         "Unlock amount exceeds maximum representable balance",
                                     ));
                                 }
-                                state.add_balance(&transfer.owner, final_amount as u64);
+                                // K3 fix (pre-mortem V3): use try_add_balance instead of add_balance
+                                state.try_add_balance(&transfer.owner, final_amount as u64)
+                                    .map_err(|e| BudlumError::validation("bridge_unlock_overflow", &e))?;
                                 // V134 fix (ARENAS): Credit relayer fee to tx.from on unlock too.
                                 if fee > 0 {
                                     state.add_balance(&tx.from, fee as u64);
@@ -747,6 +749,14 @@ impl Executor {
                     state.epoch_index,
                 );
                 let sender = state.get_or_create(&tx.from);
+                // K1 fix (pre-mortem V3): balance check before deduction
+                let hub_total = tx.fee.saturating_add(crate::hub::HUB_REGISTER_MIN_FEE);
+                if sender.balance < hub_total {
+                    return Err(BudlumError::validation(
+                        "insufficient_funds",
+                        &format!("Hub registration requires {}, balance: {}", hub_total, sender.balance),
+                    ));
+                }
                 sender.balance = sender
                     .balance
                     .saturating_sub(tx.fee)
@@ -797,6 +807,14 @@ impl Executor {
                         .map_err(|e| BudlumError::validation("ai_data_access_denied", e))?;
                 }
                 let sender = state.get_or_create(&tx.from);
+                // K2 fix (pre-mortem V3): balance check before deduction
+                let ai_total = tx.fee.saturating_add(req.max_fee);
+                if sender.balance < ai_total {
+                    return Err(BudlumError::validation(
+                        "insufficient_funds",
+                        &format!("AI inference requires {}, balance: {}", ai_total, sender.balance),
+                    ));
+                }
                 sender.balance = sender
                     .balance
                     .saturating_sub(tx.fee)
