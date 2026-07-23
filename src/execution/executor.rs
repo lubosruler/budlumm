@@ -419,6 +419,13 @@ impl Executor {
             }
             TransactionType::NftBoost { nft_id, amount } => {
                 let amount = *amount;
+                // H1 fix (pre-mortem V3): prevent saturating_mul overflow
+                if amount > u64::MAX / 100 {
+                    return Err(BudlumError::validation(
+                        "boost_amount_too_large",
+                        &format!("Boost amount {} exceeds safe maximum {}", amount, u64::MAX / 100),
+                    ));
+                }
                 let bud_share = amount.saturating_mul(4) / 100;
                 let creator_share = amount.saturating_mul(16) / 100;
                 let protocol_share = amount

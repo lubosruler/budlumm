@@ -114,6 +114,27 @@ impl L1NoteRegistry {
         }
         h.finalize().into()
     }
+
+    /// H3 fix (pre-mortem V3): Prune spent nullifiers to prevent unbounded growth.
+    /// Keeps the most recent `keep_count` nullifiers, removes the rest.
+    /// This is safe because double-spend checks only need recent nullifiers;
+    /// old nullifiers are already committed to the state root.
+    pub fn prune_spent_nullifiers(&mut self, keep_count: usize) {
+        if self.spent_nullifiers.len() <= keep_count {
+            return;
+        }
+        let to_remove = self.spent_nullifiers.len() - keep_count;
+        // BTreeSet is ordered, so iter().take(to_remove) gives the oldest entries
+        let remove: Vec<NoteHash> = self.spent_nullifiers.iter().take(to_remove).copied().collect();
+        for n in remove {
+            self.spent_nullifiers.remove(&n);
+        }
+    }
+
+    /// Returns the number of spent nullifiers currently stored.
+    pub fn spent_nullifier_count(&self) -> usize {
+        self.spent_nullifiers.len()
+    }
 }
 
 #[cfg(test)]

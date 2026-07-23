@@ -1492,4 +1492,17 @@ mod tests {
         assert!(Vm::gas_cost(Opcode::SWrite) > Vm::gas_cost(Opcode::Store));
         assert!(Vm::gas_cost(Opcode::SWrite) > Vm::gas_cost(Opcode::SRead));
     }
+
+    /// H5 fix (pre-mortem V3): Lock Poseidon MDS and RC constants.
+    /// If someone changes these in bud-vm, this test fails.
+    /// wallet-core has its own lock test — both must match.
+    #[test]
+    fn poseidon_mds_rc_lock() {
+        // MDS circulant matrix first row must be [7,1,3,8,8,3,4,9]
+        assert_eq!(MDS[0], [7, 1, 3, 8, 8, 3, 4, 9], "MDS row 0 mismatch");
+        assert_eq!(MDS[7], [1, 3, 8, 8, 3, 4, 9, 7], "MDS row 7 mismatch");
+        // RC round 0 first two elements must match Plonky3 Poseidon1 Goldilocks
+        assert_eq!(RC[0][0], 0xdd5743e7f2a5a5d9, "RC[0][0] mismatch");
+        assert_eq!(RC[0][1], 0xcb3a864e58ada44b, "RC[0][1] mismatch");
+    }
 }

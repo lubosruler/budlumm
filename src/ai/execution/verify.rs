@@ -45,7 +45,10 @@ pub fn verify_execution_proof_structural_with_model(
 ) -> ExecutionVerifyReport {
     let program_hash_matches_model = match model.and_then(|m| m.execution_program_hash) {
         Some(expected) => expected == proof.program_hash,
-        None => true, // no registered hash → don't fail structural on bind
+        // H2 fix (pre-mortem V3): if model requires execution proof,
+        // program_hash must be registered. None bypass only allowed
+        // when require_execution_proof is false.
+        None => !model.require_execution_proof,
     };
     ExecutionVerifyReport {
         commitments_ok: proof.commitments_match(request, result),
