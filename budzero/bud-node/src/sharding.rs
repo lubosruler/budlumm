@@ -93,7 +93,7 @@ impl ShardManager {
         // Take the last 16 bytes for a u128 distance metric.
         // PeerId bytes vary in length, so we hash it to get a fixed 32 bytes.
         use sha2::{Digest, Sha256};
-        let mut hasher = Sha256::new();
+        let mut hasher = Sha256::default();
         hasher.update(&peer_bytes);
         let peer_hash = hasher.finalize();
 
