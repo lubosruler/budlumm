@@ -905,4 +905,78 @@ mod tests {
         assert!(!reg.is_active_attester(&addr(77)));
         assert!(!reg.is_active_content_validator(&addr(77)));
     }
+
+    // --- Görev B (D1): permissionless relayer bond + malicious-relayer slash ---
+
+    #[test]
+    fn d1_permissionless_relayer_bond_then_griefing_slash_jails() {
+        let mut reg = PermissionlessRegistry::new();
+        let relayer = addr(123);
+
+        // Permissionless entry: anyone may bond the min stake and become an
+        // active relayer — no whitelist, no admin gate (master context, CLAUDE.md §2).
+        reg.register_relayer(relayer, MIN_REGISTRATION_STAKE, 0)
+            .unwrap();
+        assert!(reg.is_active_relayer(&relayer));
+        assert!(reg.ensure_active_relayer(&relayer).is_ok());
+
+        // A griefing offence (Görev B slashing variant) slashes the relayer
+        // 100% and jails it — it can no longer relay.
+        reg.slash(
+            relayer,
+            roles::RELAYER,
+            SlashingCondition::MaliciousBehaviour,
+            FIXED_POINT_SCALE,
+        )
+        .unwrap();
+        assert!(!reg.is_active_relayer(&relayer));
+        assert!(reg.ensure_active_relayer(&relayer).is_err());
+    }
+
+    #[test]
+    fn d1_malicious_relayer_griefing_report_is_well_formed() {
+        // The D1 griefing report is structurally valid, malicious (100% slash),
+        // and can drive a registry slash of the RELAYER role.
+        let report = crate::registry::evidence::SlashingReport::consensus_invalid_relay_griefing(
+            addr(7),
+            "submitted resource-wasting proofs".into(),
+            Some(addr(8)),
+        );
+        assert!(report.validate_shape().is_ok());
+        assert_eq!(report.condition(), SlashingCondition::MaliciousBehaviour);
+    }
+
+    #[test]
+    fn d1_malicious_relayer_invalid_proof_slash_from_report() {
+        // Görev B (D1): a consensus-verified invalid-relay-proof report must
+        // drive a 100% (MaliciousBehaviour) slash of the RELAYER bond and jail
+        // the relayer so it can no longer relay. This is the registry-level
+        // path that backs submit_relay_proof rejection (see relayer_e2e path).
+        let mut reg = PermissionlessRegistry::new();
+        let relayer = addr(123);
+        let stake = 10_000u64;
+        reg.register_relayer(relayer, stake, 0).unwrap();
+        assert!(reg.is_active_relayer(&relayer));
+
+        let report = crate::registry::evidence::SlashingReport::consensus_invalid_relay_proof(
+            relayer,
+            "tampered/invalid relay proof".into(),
+            Some(addr(8)),
+        );
+        assert!(report.validate_shape().is_ok());
+        assert_eq!(report.condition(), SlashingCondition::MaliciousBehaviour);
+
+        let outcome = reg
+            .slash_from_report(&report)
+            .unwrap()
+            .expect("slash applied");
+        // 100% slash of the full bond.
+        assert_eq!(outcome.penalty, stake);
+        assert_eq!(outcome.remaining_stake, 0);
+
+        // Relayer is jailed and can no longer relay.
+        assert!(!reg.is_active(&relayer, roles::RELAYER));
+        assert!(!reg.is_active_relayer(&relayer));
+        assert!(reg.ensure_active_relayer(&relayer).is_err());
+    }
 }
