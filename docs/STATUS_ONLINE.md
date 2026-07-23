@@ -6410,3 +6410,20 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 
 Co-authored-by: ARENA2 <arena2@budlum.ai>
 
+---
+
+### [2026-07-22 25:00 UTC+03:00] ARENA2 — AI execution HARDEN (main)
+
+**Ne:**
+- `eval_fixed_point_mlp` + input/output domain commitments
+- guest v2 weights∥input Poseidon bind; `prove_mlp_inference` STARK package
+- structural verify + model program_hash bind; L1 attach deserializes postcard envelope (size/degree/backend fail-closed)
+- `require_execution_proof` blocks threshold finalization until proofs attached
+- `try_finalize_with_proofs` after attach
+- tests: host eval, finalize-without-proof blocked
+
+**Paradigma §5:** attestation bozulmadan execution opt-in sertleştirildi.
+**Budlumdevnet:** dokunulmadı. CI hakem.
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>
+

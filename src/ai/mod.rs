@@ -8,7 +8,9 @@ pub mod registry;
 pub mod types;
 
 pub use execution::{
-    build_fixed_point_mlp_guest, program_hash_from_words, verify_execution_proof_structural,
+    build_fixed_point_mlp_guest, eval_fixed_point_mlp, input_commitment, output_commitment,
+    program_hash_from_words, prove_mlp_inference, verify_execution_proof_full,
+    verify_execution_proof_structural, verify_execution_proof_structural_with_model,
     AiExecutionModelClass, ExecutionVerifyReport, FixedPointMlpSpec, DEFAULT_EXECUTION_CLASS,
     MLP_GUEST_VERSION,
 };

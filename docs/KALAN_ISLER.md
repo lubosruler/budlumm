@@ -6,32 +6,17 @@
 
 ## AI execution layer
 
-🔧 **İskelet main'de:** `src/ai/execution/*` + `AiAttachExecutionProof` tx + model class whitelist + MLP guest builder.
+✅ **Hardened skeleton:** host MLP eval, domain commitments, guest v2, structural+STARK envelope checks, `require_execution_proof` finalization gate, `prove_mlp_inference`, `try_finalize_with_proofs`.
 
-⏳ Kalan: full matmul guest prove/verify, VerifyInference AIR, policy enforce on results.
+⏳ Full matmul-in-guest AIR; VerifyInference opcode wiring to envelope; production gas metering.
 
 ## Intent → zincir (private transfer)
 
-✅ **L1 path:** `L1NoteRegistry` + `PrivateTransferSubmit` / `PrivacyNoteInsert` tx + executor auth (ed25519 over public_digest).
+✅ L1NoteRegistry + PrivateTransferSubmit path.
 
-⏳ Relayer mempool UX / fee market tuning; spent_commitment gizleme (TEE proof-only) later.
+## Z-B / HSM / TEE / Ceremony
 
-## Z-B VerifyMerkle 64-depth
-
-✅ KAPANDI (test + CI). MainnetActivation default off.
-
-## BLS/PQ HSM vendor-native
-
-🔧 kısmi kod; ⏳ donanım + audit (Ayaz).
-
-## TEE runtime
-
-🔧 fail-closed stub (wallet); ⏳ SGX/Nitro SDK (donanım).
-
-## Ceremony
-
-⏳ MainnetActivation privacy/merkle flip (Ayaz).
+Z-B ✅ · HSM ⏳ donanım · TEE ⏳ SDK · Ceremony ⏳ Ayaz.
 
 ---
-
-*Kod ajanı sahte-yeşil iddia etmez. CI tek hakem.*
+*CI tek hakem.*

@@ -7,7 +7,7 @@ use crate::ai::types::{
     AiAgentPayment, AiAgentPaymentSettlement, AiAgentReputation, AiCallbackEvent,
     AiDisputeStatusInfo, AiExecutionProof, AiInferenceOutcome, AiInferenceRequest,
     AiInferenceResult, AiModelId, AiModelSpec, AiPaymentEscrowStatus, AiRequestId, AiVerifierQos,
-    AiVerifierStakeInfo,
+    AiVerifierStakeInfo, BoundedBytes,
 };
 use crate::core::address::Address;
 use serde::{Deserialize, Serialize};
@@ -282,12 +282,25 @@ impl AiRegistry {
             .or_insert_with(|| AiVerifierQos::new(result.verifier))
             .record_result(response_blocks, result.submitted_at_block);
 
-        // Check if we reached agreement threshold for this commitment
+        // Check if we reached agreement threshold for this commitment.
+        // Hardening: when model.require_execution_proof, only verifiers that
+        // already attached a structurally-valid execution proof count toward
+        // agreement — attestation alone cannot finalize execution-class models.
+        let candidates: Vec<(Address, [u8; 32])> = entries
+            .iter()
+            .filter(|r| r.output_commitment == result.output_commitment)
+            .map(|r| (r.verifier, r.output_commitment))
+            .collect();
+        // Drop mutable borrow of `results` before querying execution_proofs.
+        let request_id_for_proof = result.request_id;
         let mut agreeing_verifiers = Vec::new();
-        for r in entries.iter() {
-            if r.output_commitment == result.output_commitment {
-                agreeing_verifiers.push(r.verifier);
+        for (verifier, _) in candidates {
+            if spec.require_execution_proof
+                && !self.has_execution_proof(&request_id_for_proof, &verifier)
+            {
+                continue;
             }
+            agreeing_verifiers.push(verifier);
         }
 
         if agreeing_verifiers.len() as u32 >= spec.agreement_threshold
@@ -940,27 +953,19 @@ impl AiRegistry {
                 )
             })?;
 
-        // Verify commitment binding
-        if proof.output_commitment != result.output_commitment {
-            return Err(format!(
-                "Execution proof output_commitment does not match result for request {}",
-                request_id.to_hex()
-            ));
-        }
-
-        // Verify model binding — proof must be for the same model as the request
         let request = self
             .requests
             .get(request_id)
             .ok_or_else(|| format!("Request {} not found", request_id.to_hex()))?;
-        if proof.model_id != request.model_id {
-            return Err(format!(
-                "Execution proof model_id does not match request model_id"
-            ));
-        }
 
-        if proof.input_commitment != request.input_commitment {
-            return Err("Execution proof input_commitment does not match request".into());
+        let model = self.models.get(&request.model_id);
+        let report = crate::ai::execution::verify_execution_proof_structural_with_model(
+            &proof, request, result, model,
+        );
+        if !report.is_structurally_valid() {
+            return Err(format!(
+                "Execution proof structural validation failed: {report:?}"
+            ));
         }
 
         // Store the proof
@@ -976,6 +981,80 @@ impl AiRegistry {
         verifier: &Address,
     ) -> Option<&AiExecutionProof> {
         self.execution_proofs.get(&(*request_id, verifier.0))
+    }
+
+    /// Re-evaluate agreement after execution proofs are attached.
+    /// Used when `require_execution_proof` delayed finalization until proofs landed.
+    pub fn try_finalize_with_proofs(
+        &mut self,
+        request_id: &AiRequestId,
+    ) -> Option<AiInferenceOutcome> {
+        if self.outcomes.contains_key(request_id) {
+            return None;
+        }
+        let request = self.requests.get(request_id)?.clone();
+        let spec = self.models.get(&request.model_id)?.clone();
+        let entries = self.results.get(request_id)?;
+        if entries.is_empty() {
+            return None;
+        }
+        // Group by output_commitment
+        use std::collections::BTreeMap;
+        let mut by_commit: BTreeMap<[u8; 32], Vec<Address>> = BTreeMap::new();
+        for r in entries {
+            if spec.require_execution_proof && !self.has_execution_proof(request_id, &r.verifier) {
+                continue;
+            }
+            by_commit
+                .entry(r.output_commitment)
+                .or_default()
+                .push(r.verifier);
+        }
+        let mut best: Option<([u8; 32], Vec<Address>)> = None;
+        for (c, vs) in by_commit {
+            if vs.len() as u32 >= spec.agreement_threshold {
+                match &best {
+                    Some((_, bvs)) if bvs.len() >= vs.len() => {}
+                    _ => best = Some((c, vs)),
+                }
+            }
+        }
+        let (output_commitment, mut agreeing_verifiers) = best?;
+        agreeing_verifiers.sort();
+        let output_ref = entries
+            .iter()
+            .find(|r| r.output_commitment == output_commitment)
+            .map(|r| r.output_ref.clone())
+            .unwrap_or_else(BoundedBytes::empty);
+        let finalized_at_block = entries
+            .iter()
+            .map(|r| r.submitted_at_block)
+            .max()
+            .unwrap_or(0);
+        let outcome = AiInferenceOutcome {
+            request_id: *request_id,
+            output_commitment,
+            output_ref,
+            agreeing_verifiers: agreeing_verifiers.clone(),
+            finalized_at_block,
+            callback: request.callback,
+        };
+        self.outcomes.insert(*request_id, outcome.clone());
+        for verifier_addr in &agreeing_verifiers {
+            if let Some(qos) = self.verifier_qos.get_mut(verifier_addr) {
+                qos.record_finalization();
+            }
+        }
+        if let Some(ref cb_addr) = outcome.callback {
+            let event = AiCallbackEvent {
+                request_id: outcome.request_id,
+                output_commitment: outcome.output_commitment,
+                finalized_at_block: outcome.finalized_at_block,
+                callback_address: *cb_addr,
+            };
+            self.callback_queue.entry(*cb_addr).or_default().push(event);
+        }
+        Some(outcome)
     }
 
     /// P5 ADIM11 Bulgu 29: Check if a result has an execution proof.

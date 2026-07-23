@@ -486,6 +486,7 @@ dependencies = [
  "jsonrpsee",
  "libp2p",
  "ml-dsa",
+ "postcard",
  "pqcrypto-dilithium",
  "pqcrypto-traits",
  "prometheus",
