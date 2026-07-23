@@ -647,10 +647,20 @@ impl Vm {
                 self.pc += 1;
                 (result, cur_pc + 1)
             }
+            // S2 fix (pre-mortem audit): SumConservation uses field-safe
+            // comparison. Values >= Goldilocks prime P = 0xFFFFFFFF00000001
+            // would cause u64 vs field comparison mismatch. Reject such
+            // values (amounts should always be < P in practice).
             Opcode::SumConservation => {
                 let sum_in = src1_val;
                 let sum_out = src2_val;
-                let result = if sum_in == sum_out { 1 } else { 0 };
+                const GOLDILOCKS_P: u64 = 0xFFFFFFFF00000001;
+                let result = if sum_in < GOLDILOCKS_P && sum_out < GOLDILOCKS_P && sum_in == sum_out
+                {
+                    1
+                } else {
+                    0
+                };
                 if dst_idx as usize > 0 {
                     self.registers[dst_idx as usize] = result;
                 }
