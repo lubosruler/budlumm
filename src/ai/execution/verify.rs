@@ -47,8 +47,8 @@ pub fn verify_execution_proof_structural_with_model(
         Some(expected) => expected == proof.program_hash,
         // H2 fix (pre-mortem V3): if model requires execution proof,
         // program_hash must be registered. None bypass only allowed
-        // when require_execution_proof is false.
-        None => !model.require_execution_proof,
+        // when require_execution_proof is false or no model registered.
+        None => model.map_or(true, |m| !m.require_execution_proof),
     };
     ExecutionVerifyReport {
         commitments_ok: proof.commitments_match(request, result),
