@@ -144,10 +144,9 @@ impl PoSEngine {
     /// H4 fix (pre-mortem V3): Prune old slashing evidence to prevent unbounded growth.
     /// Keeps only evidence with header1.index >= `min_height`.
     pub fn prune_slashing_evidence(&self, min_height: u64) -> Result<usize, ConsensusError> {
-        let mut guard = self
-            .slashing_evidence
-            .write()
-            .map_err(|_| ConsensusError("Failed to acquire write lock on slashing evidence".into()))?;
+        let mut guard = self.slashing_evidence.write().map_err(|_| {
+            ConsensusError("Failed to acquire write lock on slashing evidence".into())
+        })?;
         let before = guard.len();
         guard.retain(|e| e.header1.index >= min_height);
         Ok(before - guard.len())

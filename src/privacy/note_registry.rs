@@ -105,7 +105,9 @@ impl L1NoteRegistry {
             }
         }
         // Spend
-        for (i, (commitment, nullifier)) in spent_commitments.iter().zip(nullifiers.iter()).enumerate() {
+        for (i, (commitment, nullifier)) in
+            spent_commitments.iter().zip(nullifiers.iter()).enumerate()
+        {
             // L3 fix: verify nullifier derivation proof if provided
             if !nullifier_proofs.is_empty() {
                 let proof = &nullifier_proofs[i];
@@ -162,7 +164,12 @@ impl L1NoteRegistry {
         }
         let to_remove = self.spent_nullifiers.len() - keep_count;
         // BTreeSet is ordered, so iter().take(to_remove) gives the oldest entries
-        let remove: Vec<NoteHash> = self.spent_nullifiers.iter().take(to_remove).copied().collect();
+        let remove: Vec<NoteHash> = self
+            .spent_nullifiers
+            .iter()
+            .take(to_remove)
+            .copied()
+            .collect();
         for n in remove {
             self.spent_nullifiers.remove(&n);
         }

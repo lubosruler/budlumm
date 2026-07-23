@@ -286,7 +286,10 @@ impl GovernanceState {
         self.proposals.push(proposal);
         self.next_proposal_id += 1;
         // L4 fix: increment proposer epoch count for escalating fee
-        let count = self.proposer_epoch_count.entry((proposer, current_epoch)).or_insert(0);
+        let count = self
+            .proposer_epoch_count
+            .entry((proposer, current_epoch))
+            .or_insert(0);
         *count += 1;
         Ok(id)
     }
@@ -308,8 +311,16 @@ impl GovernanceState {
     /// in the current epoch. Multiplier = 2^(count-1).
     /// 1st proposal = 1x, 2nd = 2x, 3rd = 4x, 10th = 512x, 20th = 524288x.
     pub fn proposal_fee_multiplier(&self, proposer: &Address, current_epoch: u64) -> u64 {
-        let count = self.proposer_epoch_count.get(&(*proposer, current_epoch)).copied().unwrap_or(0);
-        if count == 0 { 1 } else { 1u64.checked_shl(count as u32 - 1).unwrap_or(u64::MAX) }
+        let count = self
+            .proposer_epoch_count
+            .get(&(*proposer, current_epoch))
+            .copied()
+            .unwrap_or(0);
+        if count == 0 {
+            1
+        } else {
+            1u64.checked_shl(count as u32 - 1).unwrap_or(u64::MAX)
+        }
     }
 
     pub fn cancel_proposal(&mut self, proposal_id: u64, caller: &Address) -> Result<(), String> {

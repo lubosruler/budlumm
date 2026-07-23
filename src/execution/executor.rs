@@ -77,7 +77,9 @@ impl Executor {
                 // E1 fix (pre-mortem audit): checked arithmetic for critical
                 // balance paths. Sender sub is safe (balance check above),
                 // but receiver add must not silently cap at u64::MAX.
-                sender.balance = sender.balance.checked_sub(total_cost).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(total_cost).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
 
                 let receiver = state.get_or_create(&tx.to);
@@ -90,14 +92,18 @@ impl Executor {
             }
             TransactionType::Stake => {
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(total_cost).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(total_cost).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
 
                 let stake_amount = tx.amount;
                 let validator = state.get_validator_mut(&tx.from);
 
                 if let Some(v) = validator {
-                    v.stake = v.stake.checked_add(stake_amount).ok_or_else(|| BudlumError::validation("stake_overflow", "stake overflow"))?;
+                    v.stake = v.stake.checked_add(stake_amount).ok_or_else(|| {
+                        BudlumError::validation("stake_overflow", "stake overflow")
+                    })?;
                     v.active = true;
                 } else {
                     // C3 enforcement (pre-mortem audit): New validators MUST
@@ -139,7 +145,9 @@ impl Executor {
                 }
 
                 if let Some(validator) = state.get_validator_mut(&tx.from) {
-                    validator.stake = validator.stake.checked_sub(tx.amount).ok_or_else(|| BudlumError::validation("stake_underflow", "stake underflow"))?;
+                    validator.stake = validator.stake.checked_sub(tx.amount).ok_or_else(|| {
+                        BudlumError::validation("stake_underflow", "stake underflow")
+                    })?;
                     if validator.stake == 0 {
                         validator.active = false;
                     }
@@ -154,12 +162,16 @@ impl Executor {
                     });
 
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::Vote => {
                 let sender_acc = state.get_or_create(&tx.from);
-                sender_acc.balance = sender_acc.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender_acc.balance = sender_acc.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender_acc.nonce = sender_acc.nonce.saturating_add(1);
 
                 if tx.to != Address::zero() {
@@ -213,9 +225,16 @@ impl Executor {
                         }
 
                         // L4 fix (pre-mortem V3): escalating fee per proposer per epoch
-                        let multiplier = state.governance.proposal_fee_multiplier(&tx.from, state.epoch_index);
+                        let multiplier = state
+                            .governance
+                            .proposal_fee_multiplier(&tx.from, state.epoch_index);
                         if multiplier > 1 {
-                            let extra_fee = tx.fee.checked_mul(multiplier.saturating_sub(1)).ok_or_else(|| BudlumError::validation("fee_overflow", "extra fee overflow"))?;
+                            let extra_fee = tx
+                                .fee
+                                .checked_mul(multiplier.saturating_sub(1))
+                                .ok_or_else(|| {
+                                    BudlumError::validation("fee_overflow", "extra fee overflow")
+                                })?;
                             let sender = state.get_or_create(&tx.from);
                             if sender.balance < extra_fee {
                                 return Err(BudlumError::validation(
@@ -223,7 +242,13 @@ impl Executor {
                                     &format!("Escalating proposal fee requires {} extra (multiplier {}x), balance: {}", extra_fee, multiplier, sender.balance),
                                 ));
                             }
-                            sender.balance = sender.balance.checked_sub(extra_fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                            sender.balance =
+                                sender.balance.checked_sub(extra_fee).ok_or_else(|| {
+                                    BudlumError::validation(
+                                        "balance_underflow",
+                                        "balance underflow",
+                                    )
+                                })?;
                         }
 
                         state
@@ -300,7 +325,13 @@ impl Executor {
                                 }
                                 // Deduct max_fee from sender (escrow for verifiers)
                                 let sender = state.get_or_create(&tx.from);
-                                sender.balance = sender.balance.checked_sub(max_fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                                sender.balance =
+                                    sender.balance.checked_sub(max_fee).ok_or_else(|| {
+                                        BudlumError::validation(
+                                            "balance_underflow",
+                                            "balance underflow",
+                                        )
+                                    })?;
                             }
                             Err(_) => {
                                 // Request rejected (deadline, max_fee=0, etc.)
@@ -311,7 +342,9 @@ impl Executor {
                 }
 
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::BnsRegister => {
@@ -339,9 +372,22 @@ impl Executor {
 
                 let sender = state.get_or_create(&tx.from);
                 // SECURITY H1 FIX: Only subtract exact cost
-                sender.balance = sender.balance
-                    .checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow on fee deduction"))?
-                    .checked_sub(cost).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow on cost deduction"))?;
+                sender.balance = sender
+                    .balance
+                    .checked_sub(tx.fee)
+                    .ok_or_else(|| {
+                        BudlumError::validation(
+                            "balance_underflow",
+                            "balance underflow on fee deduction",
+                        )
+                    })?
+                    .checked_sub(cost)
+                    .ok_or_else(|| {
+                        BudlumError::validation(
+                            "balance_underflow",
+                            "balance underflow on cost deduction",
+                        )
+                    })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::BnsSetContent => {
@@ -357,7 +403,9 @@ impl Executor {
                     })?;
 
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::BnsRegisterSubdomain => {
@@ -371,7 +419,9 @@ impl Executor {
                     .map_err(|e| BudlumError::validation("bns_subdomain_failed", e.to_string()))?;
 
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::BnsSetStorage => {
@@ -386,7 +436,9 @@ impl Executor {
                     })?;
 
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::NftMint => {
@@ -399,7 +451,9 @@ impl Executor {
                     .mint(tx.from, cid, state.epoch_index, author);
 
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::NftTransfer => {
@@ -412,7 +466,9 @@ impl Executor {
                     .map_err(|e| BudlumError::validation("nft_transfer_failed", e.to_string()))?;
 
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::NftBurn => {
@@ -430,7 +486,9 @@ impl Executor {
                 tracing::info!(%cid, "NftBurn recorded — storage content pruning delegated to blockchain");
 
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::NftBoost { nft_id, amount } => {
@@ -439,14 +497,31 @@ impl Executor {
                 if amount > u64::MAX / 100 {
                     return Err(BudlumError::validation(
                         "boost_amount_too_large",
-                        &format!("Boost amount {} exceeds safe maximum {}", amount, u64::MAX / 100),
+                        &format!(
+                            "Boost amount {} exceeds safe maximum {}",
+                            amount,
+                            u64::MAX / 100
+                        ),
                     ));
                 }
-                let bud_share = amount.checked_mul(4).ok_or_else(|| BudlumError::validation("share_overflow", "bud_share overflow"))? / 100;
-                let creator_share = amount.checked_mul(16).ok_or_else(|| BudlumError::validation("share_overflow", "creator_share overflow"))? / 100;
+                let bud_share = amount.checked_mul(4).ok_or_else(|| {
+                    BudlumError::validation("share_overflow", "bud_share overflow")
+                })? / 100;
+                let creator_share = amount.checked_mul(16).ok_or_else(|| {
+                    BudlumError::validation("share_overflow", "creator_share overflow")
+                })? / 100;
                 let protocol_share = amount
-                    .checked_sub(bud_share).ok_or_else(|| BudlumError::validation("share_underflow", "bud_share exceeds amount"))?
-                    .checked_sub(creator_share).ok_or_else(|| BudlumError::validation("share_underflow", "creator_share exceeds remainder"))?;
+                    .checked_sub(bud_share)
+                    .ok_or_else(|| {
+                        BudlumError::validation("share_underflow", "bud_share exceeds amount")
+                    })?
+                    .checked_sub(creator_share)
+                    .ok_or_else(|| {
+                        BudlumError::validation(
+                            "share_underflow",
+                            "creator_share exceeds remainder",
+                        )
+                    })?;
 
                 let nft = state
                     .nft_registry
@@ -455,7 +530,11 @@ impl Executor {
                     .ok_or(BudlumError::validation("nft_not_found", "NFT not found"))?;
 
                 let booster = state.get_or_create(&tx.from);
-                if booster.balance < amount.checked_add(tx.fee).ok_or_else(|| BudlumError::validation("cost_overflow", "boost cost overflow"))? {
+                if booster.balance
+                    < amount.checked_add(tx.fee).ok_or_else(|| {
+                        BudlumError::validation("cost_overflow", "boost cost overflow")
+                    })?
+                {
                     return Err(BudlumError::validation(
                         "insufficient_funds",
                         "Cannot afford boost",
@@ -463,8 +542,14 @@ impl Executor {
                 }
                 booster.balance = booster
                     .balance
-                    .checked_sub(amount).ok_or_else(|| BudlumError::validation("balance_underflow", "boost amount underflow"))?
-                    .checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "boost fee underflow"))?;
+                    .checked_sub(amount)
+                    .ok_or_else(|| {
+                        BudlumError::validation("balance_underflow", "boost amount underflow")
+                    })?
+                    .checked_sub(tx.fee)
+                    .ok_or_else(|| {
+                        BudlumError::validation("balance_underflow", "boost fee underflow")
+                    })?;
                 booster.nonce = booster.nonce.saturating_add(1);
 
                 let creator = state.get_or_create(&nft.owner);
@@ -475,8 +560,15 @@ impl Executor {
 
                 // F4 (Constitution §3): route 4% B.U.D. share to storage operator pool.
                 // Distributed by blockchain after block commit via distribute_bud_boost_share.
-                state.pending_bud_boost_share =
-                    state.pending_bud_boost_share.checked_add(bud_share).ok_or_else(|| BudlumError::validation("pending_share_overflow", "pending bud boost share overflow"))?;
+                state.pending_bud_boost_share = state
+                    .pending_bud_boost_share
+                    .checked_add(bud_share)
+                    .ok_or_else(|| {
+                        BudlumError::validation(
+                            "pending_share_overflow",
+                            "pending bud boost share overflow",
+                        )
+                    })?;
 
                 // F4 treasury_pool (Q-X4 config_driven): 80% protocol share goes to burn_reserve (treasury) if set,
                 // otherwise implicit burn (honest fallback). This makes Treasury/Burn explicit per Constitution §3.
@@ -534,19 +626,25 @@ impl Executor {
                     .update_luminance(*nft_id, *delta_mcd)
                     .map_err(|e| BudlumError::validation("luminance_update", e.to_string()))?;
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::NftTag { nft_id, tag } => {
                 let _ = (nft_id, tag);
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::UniversalRelay(ext_tx) => {
                 tracing::info!(chain = ?ext_tx.chain, target = %ext_tx.target_address, "Universal Relayer: Master Key authorization");
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::RelayerResult(res) => {
@@ -620,8 +718,16 @@ impl Executor {
                                         )
                                     })?
                                     .clone();
-                                let fee = transfer.amount.checked_mul(1).ok_or_else(|| BudlumError::validation("fee_overflow", "bridge fee overflow"))? / 100;
-                                let final_amount = transfer.amount.checked_sub(fee).ok_or_else(|| BudlumError::validation("bridge_amount_underflow", "bridge fee exceeds amount"))?;
+                                let fee = transfer.amount.checked_mul(1).ok_or_else(|| {
+                                    BudlumError::validation("fee_overflow", "bridge fee overflow")
+                                })? / 100;
+                                let final_amount =
+                                    transfer.amount.checked_sub(fee).ok_or_else(|| {
+                                        BudlumError::validation(
+                                            "bridge_amount_underflow",
+                                            "bridge fee exceeds amount",
+                                        )
+                                    })?;
                                 if final_amount > u64::MAX as u128 {
                                     return Err(BudlumError::validation(
                                         "bridge_mint_failed",
@@ -679,8 +785,16 @@ impl Executor {
                                         BudlumError::validation("bridge_unlock_failed", e.0)
                                     })?;
                                 // Refund owner (1% relayer fee deducted, same as submit_relay_proof)
-                                let fee = transfer.amount.checked_mul(1).ok_or_else(|| BudlumError::validation("fee_overflow", "bridge fee overflow"))? / 100;
-                                let final_amount = transfer.amount.checked_sub(fee).ok_or_else(|| BudlumError::validation("bridge_amount_underflow", "bridge fee exceeds amount"))?;
+                                let fee = transfer.amount.checked_mul(1).ok_or_else(|| {
+                                    BudlumError::validation("fee_overflow", "bridge fee overflow")
+                                })? / 100;
+                                let final_amount =
+                                    transfer.amount.checked_sub(fee).ok_or_else(|| {
+                                        BudlumError::validation(
+                                            "bridge_amount_underflow",
+                                            "bridge fee exceeds amount",
+                                        )
+                                    })?;
                                 if final_amount > u64::MAX as u128 {
                                     return Err(BudlumError::validation(
                                         "bridge_unlock_failed",
@@ -688,8 +802,11 @@ impl Executor {
                                     ));
                                 }
                                 // K3 fix (pre-mortem V3): use try_add_balance instead of add_balance
-                                state.try_add_balance(&transfer.owner, final_amount as u64)
-                                    .map_err(|e| BudlumError::validation("bridge_unlock_overflow", &e))?;
+                                state
+                                    .try_add_balance(&transfer.owner, final_amount as u64)
+                                    .map_err(|e| {
+                                        BudlumError::validation("bridge_unlock_overflow", &e)
+                                    })?;
                                 // V134 fix (ARENAS): Credit relayer fee to tx.from on unlock too.
                                 if fee > 0 {
                                     state.add_balance(&tx.from, fee as u64);
@@ -701,7 +818,9 @@ impl Executor {
                 }
 
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::AiOfferData { cid, price } => {
@@ -710,7 +829,9 @@ impl Executor {
                     .create_offer(tx.from, *cid, *price)
                     .map_err(|e| BudlumError::validation("offer_invalid", e))?;
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::AiPurchaseData { offer_id } => {
@@ -730,13 +851,17 @@ impl Executor {
                     .close_offer(*offer_id, &offer.seller)
                     .map_err(|e| BudlumError::validation("race", e))?;
 
-                let total_cost = offer.price.checked_add(tx.fee).ok_or_else(|| BudlumError::validation("cost_overflow", "offer cost overflow"))?;
+                let total_cost = offer.price.checked_add(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("cost_overflow", "offer cost overflow")
+                })?;
                 if state.get_balance(&tx.from) < total_cost {
                     return Err(BudlumError::validation("funds", "Insufficient funds"));
                 }
 
                 let buyer = state.get_or_create(&tx.from);
-                buyer.balance = buyer.balance.checked_sub(total_cost).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                buyer.balance = buyer.balance.checked_sub(total_cost).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 buyer.nonce = buyer.nonce.saturating_add(1);
 
                 let seller = state.get_or_create(&offer.seller);
@@ -773,17 +898,31 @@ impl Executor {
                 );
                 let sender = state.get_or_create(&tx.from);
                 // K1 fix (pre-mortem V3): balance check before deduction
-                let hub_total = tx.fee.checked_add(crate::hub::HUB_REGISTER_MIN_FEE).ok_or_else(|| BudlumError::validation("cost_overflow", "hub total cost overflow"))?;
+                let hub_total = tx
+                    .fee
+                    .checked_add(crate::hub::HUB_REGISTER_MIN_FEE)
+                    .ok_or_else(|| {
+                        BudlumError::validation("cost_overflow", "hub total cost overflow")
+                    })?;
                 if sender.balance < hub_total {
                     return Err(BudlumError::validation(
                         "insufficient_funds",
-                        &format!("Hub registration requires {}, balance: {}", hub_total, sender.balance),
+                        &format!(
+                            "Hub registration requires {}, balance: {}",
+                            hub_total, sender.balance
+                        ),
                     ));
                 }
                 sender.balance = sender
                     .balance
-                    .checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "hub fee underflow"))?
-                    .checked_sub(crate::hub::HUB_REGISTER_MIN_FEE).ok_or_else(|| BudlumError::validation("balance_underflow", "hub register fee underflow"))?;
+                    .checked_sub(tx.fee)
+                    .ok_or_else(|| {
+                        BudlumError::validation("balance_underflow", "hub fee underflow")
+                    })?
+                    .checked_sub(crate::hub::HUB_REGISTER_MIN_FEE)
+                    .ok_or_else(|| {
+                        BudlumError::validation("balance_underflow", "hub register fee underflow")
+                    })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::AiModelRegister(spec) => {
@@ -796,7 +935,9 @@ impl Executor {
                     .register_model(spec)
                     .map_err(|e| BudlumError::validation("ai_model_registration_failed", e))?;
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::AiInferenceRequest(req) => {
@@ -806,7 +947,11 @@ impl Executor {
                 }
                 {
                     let sender = state.get_or_create(&tx.from);
-                    if sender.balance < req.max_fee.checked_add(tx.fee).ok_or_else(|| BudlumError::validation("cost_overflow", "AI cost overflow"))? {
+                    if sender.balance
+                        < req.max_fee.checked_add(tx.fee).ok_or_else(|| {
+                            BudlumError::validation("cost_overflow", "AI cost overflow")
+                        })?
+                    {
                         return Err(BudlumError::validation(
                             "ai_insufficient_fee_balance",
                             "Sender balance insufficient for AI inference request max_fee",
@@ -831,17 +976,28 @@ impl Executor {
                 }
                 let sender = state.get_or_create(&tx.from);
                 // K2 fix (pre-mortem V3): balance check before deduction
-                let ai_total = tx.fee.checked_add(req.max_fee).ok_or_else(|| BudlumError::validation("cost_overflow", "AI total cost overflow"))?;
+                let ai_total = tx.fee.checked_add(req.max_fee).ok_or_else(|| {
+                    BudlumError::validation("cost_overflow", "AI total cost overflow")
+                })?;
                 if sender.balance < ai_total {
                     return Err(BudlumError::validation(
                         "insufficient_funds",
-                        &format!("AI inference requires {}, balance: {}", ai_total, sender.balance),
+                        &format!(
+                            "AI inference requires {}, balance: {}",
+                            ai_total, sender.balance
+                        ),
                     ));
                 }
                 sender.balance = sender
                     .balance
-                    .checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "AI fee underflow"))?
-                    .checked_sub(req.max_fee).ok_or_else(|| BudlumError::validation("balance_underflow", "AI max_fee underflow"))?;
+                    .checked_sub(tx.fee)
+                    .ok_or_else(|| {
+                        BudlumError::validation("balance_underflow", "AI fee underflow")
+                    })?
+                    .checked_sub(req.max_fee)
+                    .ok_or_else(|| {
+                        BudlumError::validation("balance_underflow", "AI max_fee underflow")
+                    })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::AiInferenceResult(res) => {
@@ -917,7 +1073,9 @@ impl Executor {
                 }
 
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::AiFeeReclaim(request_id) => {
@@ -948,7 +1106,9 @@ impl Executor {
                     })?;
 
                 let sender = state.get_or_create(&requester);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::AiModelDeactivate(model_id) => {
@@ -959,7 +1119,9 @@ impl Executor {
                     .map_err(|e| BudlumError::validation("ai_model_deactivate_failed", e))?;
 
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::AiModelReactivate(model_id) => {
@@ -971,7 +1133,9 @@ impl Executor {
                     .map_err(|e| BudlumError::validation("ai_model_reactivate_failed", e))?;
 
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::AiRequestCancel(request_id) => {
@@ -992,7 +1156,9 @@ impl Executor {
                     })?;
 
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::PollenRegisterDataAsset(asset) => {
@@ -1014,7 +1180,9 @@ impl Executor {
                     .register_data_asset(asset)
                     .map_err(|e| BudlumError::validation("pollen_asset_register_failed", e))?;
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::PollenAuthorizeSale(authorization) => {
@@ -1030,7 +1198,9 @@ impl Executor {
                     .create_sale_authorization(authorization)
                     .map_err(|e| BudlumError::validation("pollen_sale_authorization_failed", e))?;
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::PollenGrantAccess(grant) => {
@@ -1049,7 +1219,9 @@ impl Executor {
                     .create_access_grant(grant)
                     .map_err(|e| BudlumError::validation("pollen_grant_failed", e))?;
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::PollenRevokeGrant(grant_id) => {
@@ -1058,7 +1230,9 @@ impl Executor {
                     .revoke_access_grant(grant_id, &tx.from)
                     .map_err(|e| BudlumError::validation("pollen_grant_revoke_failed", e))?;
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::PollenRevokeDataAsset(asset_id) => {
@@ -1067,7 +1241,9 @@ impl Executor {
                     .revoke_data_asset(asset_id, &tx.from)
                     .map_err(|e| BudlumError::validation("pollen_asset_revoke_failed", e))?;
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::AiDisputeSlash {
@@ -1096,7 +1272,9 @@ impl Executor {
                     state.burn_from(&slashed_verifier, seized_stake);
                 }
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::AiAgentPayment(payment) => {
@@ -1109,7 +1287,9 @@ impl Executor {
                         "Agent payment: from_agent must equal tx.from",
                     ));
                 }
-                let total_cost = payment.amount.checked_add(tx.fee).ok_or_else(|| BudlumError::validation("cost_overflow", "payment cost overflow"))?;
+                let total_cost = payment.amount.checked_add(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("cost_overflow", "payment cost overflow")
+                })?;
                 // Check sender has sufficient balance
                 if state.get_balance(&tx.from) < total_cost {
                     return Err(BudlumError::validation(
@@ -1124,7 +1304,9 @@ impl Executor {
                     .map_err(|e| BudlumError::validation("ai_payment_invalid", e))?;
                 // Deduct from sender immediately
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(total_cost).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(total_cost).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
                 // If not escrowed, credit recipient immediately and ARCHIVE
                 // settlement receipt (V89) — never drop payment_id without trail.
@@ -1183,7 +1365,9 @@ impl Executor {
                     })?;
                 // Deduct fee from sender
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::AiAgentPaymentReclaim(payment_id) => {
@@ -1200,7 +1384,9 @@ impl Executor {
                 // validate upfront, matching the pattern of all other tx types.
                 {
                     let sender = state.get_or_create(&tx.from);
-                    let total_available = sender.balance.checked_add(amount).ok_or_else(|| BudlumError::validation("balance_overflow", "reclaim balance overflow"))?;
+                    let total_available = sender.balance.checked_add(amount).ok_or_else(|| {
+                        BudlumError::validation("balance_overflow", "reclaim balance overflow")
+                    })?;
                     if total_available < tx.fee {
                         return Err(BudlumError::validation(
                             "ai_payment_reclaim_insufficient_fee",
@@ -1230,7 +1416,9 @@ impl Executor {
                     .insert_note(*commitment)
                     .map_err(|e| BudlumError::validation("privacy_note_insert", e))?;
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::PrivateTransferSubmit(sub) => {
@@ -1264,7 +1452,9 @@ impl Executor {
                     )
                     .map_err(|e| BudlumError::validation("private_transfer_apply", e))?;
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
             TransactionType::AiAttachExecutionProof { request_id, proof } => {
@@ -1330,7 +1520,9 @@ impl Executor {
                             let limits = cls.limits();
                             // Proof size heuristic: bound by max_params * 64 bytes
                             // (each param contributes ~64 bytes to the STARK trace).
-                            let max_proof = limits.max_params.checked_mul(64).ok_or_else(|| BudlumError::validation("proof_overflow", "max proof size overflow"))?;
+                            let max_proof = limits.max_params.checked_mul(64).ok_or_else(|| {
+                                BudlumError::validation("proof_overflow", "max proof size overflow")
+                            })?;
                             if proof.proof_bytes.len() > max_proof {
                                 return Err(BudlumError::validation(
                                     "ai_exec_gas_exceeded",
@@ -1386,7 +1578,9 @@ impl Executor {
                 // Convenience: attempt threshold re-eval without new result.
                 let _ = state.ai_registry.try_finalize_with_proofs(request_id);
                 let sender = state.get_or_create(&tx.from);
-                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| BudlumError::validation("balance_underflow", "balance underflow"))?;
+                sender.balance = sender.balance.checked_sub(tx.fee).ok_or_else(|| {
+                    BudlumError::validation("balance_underflow", "balance underflow")
+                })?;
                 sender.nonce = sender.nonce.saturating_add(1);
             }
         }
@@ -1422,7 +1616,9 @@ impl Executor {
                 // 100M cap when most BUD is staked.
                 let total_bud = state.total_bud_committed();
                 let cap = crate::tokenomics::BUD_TOTAL_SUPPLY as u128;
-                let actual = reward.min(cap.checked_sub(total_bud).ok_or_else(|| BudlumError::validation("cap_underflow", "reward cap underflow"))? as u64);
+                let actual = reward.min(cap.checked_sub(total_bud).ok_or_else(|| {
+                    BudlumError::validation("cap_underflow", "reward cap underflow")
+                })? as u64);
                 if actual > 0 {
                     state.add_balance(producer, actual);
                 }
@@ -1430,7 +1626,9 @@ impl Executor {
             // Distribute tx fees (minus metabolic burn) to producer
             for tx in transactions {
                 let burn = state.tokenomics.metabolic_burn(tx.fee);
-                let producer_fee = tx.fee.checked_sub(burn).ok_or_else(|| BudlumError::validation("fee_underflow", "producer fee underflow"))?;
+                let producer_fee = tx.fee.checked_sub(burn).ok_or_else(|| {
+                    BudlumError::validation("fee_underflow", "producer fee underflow")
+                })?;
                 if producer_fee > 0 {
                     state.add_balance(producer, producer_fee);
                 }
