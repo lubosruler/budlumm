@@ -235,6 +235,27 @@ pub fn default_domain(
         operator[0] = 1;
     }
 
+    // Validation hardening (registry.rs) requires PoW domains to carry
+    // pow_parameters and min_confirmations >= 1. Emit valid defaults so
+    // callers (tests + devnet genesis) build registrable PoW domains.
+    let min_confirmations = if kind == ConsensusKind::PoW && min_confirmations == 0 {
+        1
+    } else {
+        min_confirmations
+    };
+    let pow_parameters = if kind == ConsensusKind::PoW {
+        Some(crate::domain::types::PoWDomainParameters {
+            min_difficulty_bits: 8,
+            max_difficulty_bits: 64,
+            min_cumulative_work: 1,
+            max_headers: 64,
+        })
+    } else {
+        None
+    };
+
+    // NOTE: PoW domains now carry pow_parameters + min_confirmations >= 1
+    // so they pass the registry.rs validation hardening on registration.
     ConsensusDomain {
         id,
         kind,
@@ -246,7 +267,7 @@ pub fn default_domain(
         validator_set_hash: [0u8; 32],
         finality_adapter: finality_adapter.into(),
         min_confirmations,
-        pow_parameters: None,
+        pow_parameters: pow_parameters,
         bridge_enabled: true,
         block_hash_scheme: RootScheme::BudlumBlockV2,
         state_root_scheme: RootScheme::BudlumBlockV2,
