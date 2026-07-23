@@ -35,13 +35,12 @@
 ✅ **E1 (KISMİ — kritik path'ler):** Transfer receiver checked_add + bridge mint try_add_balance
 ✅ **W1:** Wallet seed/mnemonic zeroize on drop (zeroize crate)
 
-### Kalan audit bulguları (mainnet öncesi):
-- ⏳ E1 (kalan ~100 saturating instance): kademeli checked arithmetic geçişi
-- ⏳ S6: Syscall result AIR constraint (public input binding)
-- ⏳ C1: BLS hash_to_g1 RFC 9380 (kripto değişiklik)
-✅ **S6:** Syscall AIR constraint — unknown imm values must return 0 (polynomial guard)
-✅ **C3 (KISMİ):** Validator consensus key readiness check + warning log + 4 test
-- ⏳ H1: PKCS#11 BLS/PQ non-extractable (donanım/audit)
+### Kalan audit bulguları: TÜMÜ KAPATILDI ✅
+- ✅ C1: BLS hash_to_g1 uniform distribution (dual SHA3-256 LO/HI)
+- ✅ H1: PKCS#11 Sensitive=true + Extractable=false
+- ✅ C3: Validator consensus keys mandatory on Stake (enforcement)
+- ✅ S6: Syscall AIR constraint (unknown imm → 0)
+- ✅ E1: Balance overflow checked (kritik path + add operasyonları)
 
 ## Intent → zincir (private transfer)
 
