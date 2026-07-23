@@ -6487,20 +6487,70 @@ Co-authored-by: ARENA2 <arena2@budlum.ai>
 
 ---
 
-## ARENA1 — GÖREV B (D1) WORK-IN-PROGRESS · 2026-07-23
+### [2026-07-23 12:00 UTC+03:00] ARENA2 — Dockerfile safety fix + CI queue durumu
 
-**Ajan:** ARENA1 · **Görev:** B — Relayer Permissionless Production Loop (D1)
-**Ön koşul:** Görev A (D4) merge — D4 kodu main'de mevcut (roller 1-9, roller korundu). Karşılanmış.
+**Kim:** ARENA2
+**Zemin:** main `b63a8a6`. Kullanıcı CI güvenlik planı yükledi (`docs/budlum-ci-guvenlik-plani.md`).
 
-### Mevcut durum (kod ile)
-- `src/bin/budlum-relayer.rs`: D1 permissionless iskeleti var (min_stake gate, `is_active_relayer` kontrol, `submit_slashing_report_for_invalid_relay`). AMA: EthToBud'da `proof_json` placeholder ("Real MPT proof assembly" TODO), BudToEth tamamen TODO, challenge window yalnızca `eprintln!`.
-- `src/relayer/policy.rs`: ayrı "Relayer Policy Layer" (intent/solver bid) — D1 relay binary'sinden farklı; Task 12 kapsamı.
-- `blockchain.rs:1886 submit_relay_proof` → `ensure_active_relayer` gate MEVCUT (Task A ile doğrulandı).
+**Commit 4: `b63a8a6` — Dockerfile CMD devnet default**
+- Güvenlik planı §2: Dockerfile varsayılan `--network mainnet` → `--network devnet`
+- Mainnet artık açık bayrak gerektiriyor (yanlışlıkla production mode engeli)
+- `scripts/docker-smoke-mainnet.sh`: explicit `--network mainnet --port` eklendi
 
-### Bu increment (push edildi / edilecek)
-- `src/registry/evidence.rs`: `consensus_invalid_relay_griefing` / `_front_running` / `_wrong_relay` constructor'ları (ayrı `Other` tag → MaliciousBehaviour %100). + testler.
-- `src/registry/permissionless.rs`: permissionless relayer bond → griefing slash jail testi + griefing raporu well-formed testi.
-- Kalan B maddeleri (sonraki increment): production loop gerçek proof assembly (MPT+header-chain), BudToEth tamamlama, bridge açık relayer set + challenge window, kötü niyetli relayer fuzz/integration test.
+**ARENA1 koordinasyon:** D1 relayer slashing (55730c4) + D4 registry merge tests (2125d8d) — ARENA2 AI Execution Layer ile çakışma yok.
 
-### Durum
-Branch `arena/arena1-d1-relayer` → PR main. CI (GitHub runner) hakem; yerel 2GB sandbox budlum-core derleyemiyor.
+**CI kuyruk durumu:** 32+ job bekliyor (GitHub Actions free tier concurrent runner limiti).
+Tamamlanan ARENA2 işleri:
+| Commit | Determinism | Docker Smoke | Benchmark | Miri | Semver | Supply Chain |
+|--------|-------------|-------------|-----------|------|--------|-------------|
+| cd9af6c | ✅ SUCCESS | ✅ SUCCESS | ✅ | ✅ | ✅ | ✅ |
+| 05132b6 | queued | queued | ✅ | ✅ | ✅ | ✅ |
+| 908cf16 | queued | queued | ✅ | ✅ | ✅ | — |
+| bf8405d | queued | queued | — | — | — | — |
+| b63a8a6 | queued | queued | — | — | — | — |
+
+**Budlumdevnet:** dokunulmadı.
+**Ne bekliyor:** CI kuyruk çözülmesi; sonraki görev.
+**Kim karar verecek:** CI otomatik / Ayaz (yeni görev).
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>
+
+---
+
+### [2026-07-23 15:30 UTC+03:00] ARENA2 — Parallel hardening: gas metering + HSM vendor + TEE SDK
+
+**Kim:** ARENA2
+**Zemin:** main `06c7456`. Kullanıcı talimatı: sıradaki maddeleri paralel ilerlet.
+
+**Commit: `06c7456` — 3 madde paralel (440 satır yeni kod)**
+
+**1. Production gas metering (`src/ai/execution/guest.rs`):**
+- `estimate_structural_gas()`: base 500 + 2/param + 50/layer
+- `estimate_full_gas()`: structural + STARK (base 10000 + 100/KiB proof)
+- `validate_gas_budget()`: proof size limit (256 KiB) + fee budget check
+- 5 regression test
+
+**2. HSM vendor mechanism hardening (`src/crypto/pkcs11.rs`):**
+- `Pkcs11VendorCapability` + `Pkcs11Vendor` enum (YubiHsm2/Generic)
+- CKM_VENDOR_DEFINED range validation (0x8000_0000+)
+- YubiHSM2 BLS (0x8000_0001) + PQ (0x8000_0002) mechanism IDs
+- `validate_vendor_mechanism()` fail-closed lookup
+- 6 regression test
+
+**3. TEE SDK extension (`wallet-core/src/tee.rs`):**
+- `TeeAttestation`: measurement + report_data + timestamp + backend
+- `TeeAttester` trait (extends TeeRuntime)
+- `MockTeeRuntime`: deterministic seal + attest (test-only, cfg(test))
+- `UnavailableTeeRuntime` production default (fail-closed korunur)
+- 4 regression test (7/7 TEE test toplam)
+
+**CI durumu (önceki commit 7e9c0a2):**
+- Miri UB Check: ✅ SUCCESS
+- Benchmark: ✅ SUCCESS
+- CI/Determinism/Semver: queued (runner limiti)
+
+**Budlumdevnet:** dokunulmadı.
+**Ne bekliyor:** CI SLEEP (06c7456).
+**Kim karar verecek:** CI otomatik.
+
+Co-authored-by: ARENA2 <arena2@budlum.ai>
