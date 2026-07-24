@@ -17,3 +17,8 @@ title = "Budlum gitleaks config ()"
 
 [extend]
 useDefault = true
+
+[allowlist]
+paths = [
+  '''docs/papers/.*\.html''',
+]
