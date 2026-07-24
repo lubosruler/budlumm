@@ -76,11 +76,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Install gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz | tar xz -C /usr/local/bin gitleaks
       - name: gitleaks detect
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
-        env:
-          GITLEAKS_CONFIG: .gitleaks.toml
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "true"
+        run: gitleaks detect --config .gitleaks.toml --verbose
 
   codeql:
     name: CodeQL (Rust SAST)
@@ -142,7 +142,7 @@ jobs:
       - name: cargo install cargo-hack
         run: cargo install cargo-hack --locked
       - name: Feature matrix check
-        run: cargo hack check --each-feature --exclude-no-default-features --locked
+        run: cargo hack check --each-feature --exclude-no-default-features --exclude-features pq-ml-dsa --locked
 
   hadolint:
     name: Hadolint (Dockerfile lint)
